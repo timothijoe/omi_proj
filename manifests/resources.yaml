@@ -1,0 +1,30 @@
+schema_version: 1
+resources:
+  - id: tianji-a-mjcf-scene
+    path: local/assets/robot_assets/mujoco/right_chopping_scene.xml
+    tracked: false
+    required_for: a_arm_simulation
+    source: cooking_proj local simulation assets
+    purpose: Marvin dual-arm MuJoCo scene; OMI controls left SDK A arm
+    restore: Restore the complete cooking_proj local/assets/robot_assets tree under OMI local/assets, or use it externally; pass the XML with --scene or OMI_TIANJI_SCENE.
+  - id: marvinccs-meshes
+    path: local/assets/MarvinCCS
+    tracked: false
+    required_for: a_arm_simulation
+    source: Tianji model assets referenced by cooking_proj scene
+    purpose: Arm and base meshes loaded relative to the MJCF
+    restore: Restore adjacent to robot_assets under the chosen assets root; verify redistribution rights before copying.
+  - id: vendor-python-sdk
+    path: local/vendor/SDK_PYTHON
+    tracked: false
+    required_for: future_real_robot_only
+    source: Tianji vendor SDK
+    purpose: Controller API and matching native libraries
+    restore: Obtain the version matching the site controller; pass SDK root explicitly to TianjiConfig after onsite review.
+  - id: experiment-data
+    path: data
+    tracked: false
+    required_for: generated_outputs
+    source: OMI simulation commands
+    purpose: JSONL, checkpoints, replay buffers, metrics, PNG and GIF
+    restore: Regenerate with the documented commands; preserve important experiments separately before replacing output directories.
