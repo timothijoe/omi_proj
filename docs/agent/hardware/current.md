@@ -1,5 +1,10 @@
 # Hardware 当前摘要
 
+新增[触觉分辨率与30 Hz吞吐讨论](evolution/tactile-resolution-and-throughput.md)：用户最新倾向
+考虑16×24低分辨率数值场；与现有箭头18×24采样网格区分，尚未定案或实施。
+完整场/低分辨率发送录包、预训练编码方案留待比较；SQLite3暂保留，缓存只登记观察项。
+系统资源检查与载荷算术不构成实机30 Hz无丢帧验收。
+
 [SDK原生数值看板](evolution/sdk-native-dashboard.md)已新增：`view_sdk_observation.sh`，
 默认domain88，直接订阅schema2字段，显示彩色/内参、raw/infer/def/shear和有效性状态。
 合成数据采集、录包、循环回放、断流STALE已headless验证；旧看板冻结文件不变。

@@ -3,7 +3,7 @@ resources:
   - id: daimon-tactile-local-bundle
     path: local/vendor/daimon_tactile
     tracked: false
-    required_for: tactile_image_reconstruction
+    required_for: tactile_image_reconstruction_and_live_sdk_acquisition
     source: Legally obtained Daimon SDK; encrypted implementation and native runtime remain unchanged
     purpose: Local runtime independent of the diamond reference checkout; per-file hashes in migration-manifest.json
     restore: Use python -m omi_sensors.vendor_bundle import SOURCE_SDK TARGET then verify TARGET. Match SDK Python/architecture; redistribution permission not verified.
@@ -17,7 +17,7 @@ resources:
   - id: tactile-raw-replay-cache
     path: local/tactile/replay_cache
     tracked: false
-    required_for: tactile_bag_visualization
+    required_for: generated_tactile_bag_visualization_cache_not_transfer_requirement
     source: A/B raw CDR copied from source MCAP via private temporary decompression
     purpose: Avoid shared decompression collisions; raw-only record010 cache is about 110 MB. Combined mode creates a separate larger cache with camera RGB and tactile raw.
     restore: Run bash scripts/view_tactile_bag.sh BAG; first creation requires temporary space for the decompressed MCAP and the final raw-only cache.
@@ -52,7 +52,7 @@ resources:
   - id: ros2-camera-clip-tools
     path: ../ros2_camera_clip_tools
     tracked: false
-    required_for: camera_roi_preview
+    required_for: legacy_external_camera_preview_only_not_omi_combined_viewer
     source: OMI workspace companion tool
     purpose: Play record010, crop the head and wrist ROIs, publish 128x128 RGB topics, and display the comparison dashboard in RViz.
     restore: Keep the tool beside omi_proj; use the workspace README and the tool README for entry points and ROI parameters.
@@ -83,7 +83,21 @@ resources:
     required_for: tactile_offline_reprocessing
     source: Python 3.12 venv using system site packages plus h5py and gymnasium
     purpose: Import the local protected Daimon SDK and run CPU FlowTracker without constructing a Sensor.
-    restore: Create a Python 3.12 venv with --system-site-packages and install h5py plus gymnasium; keep the vendor SDK outside Git.
+    restore: Recreate a Python 3.12 environment with matching system/CPU SDK dependencies; h5py and gymnasium were additions to this host, not a complete dependency lock. The tested offline venv lacks grpc and is not qualified for live Flux acquisition. See tutorials/machine_transfer_checklist.md.
+  - id: marvin-ros-message-source
+    path: /home/zhoutong/Downloads/img/record001/bag_001_jazzy_tools/src/marvin_msgs
+    tracked: false
+    required_for: legacy_full_observation_joint_feedback_not_sdk_native_viewer
+    source: Local reference ROS message source defining Jointfeedback
+    purpose: Deserialize and subscribe to custom Tianji arm feedback; message definitions must match producer/bag
+    restore: Obtain matching source and rebuild with the target ROS/Python; source that workspace overlay. Do not copy install/build between ROS distributions. No hardware feedback producer is supplied by this message package.
+  - id: native-sensor-sessions
+    path: local
+    tracked: false
+    required_for: sdk_native_recorded_data_replay
+    source: OMI record command session directories
+    purpose: Sensor bag plus session.json and recording_report.json
+    restore: Transfer the selected complete session directory, including bag metadata and every data volume; do not copy all of local blindly.
   - id: record010-offline-tactile-fields
     path: local/tactile/record010_offline_fields_confirmed_v3
     tracked: false
