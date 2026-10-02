@@ -23,4 +23,7 @@ fi
 # Ubuntu's ROS Python packages use the distribution PyYAML. Keep it visible to
 # the project venv unless PyYAML was installed through the `ros` extra.
 export PYTHONPATH="/usr/lib/python3/dist-packages${PYTHONPATH:+:$PYTHONPATH}"
+omi_sensor_source="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../ros2/omi_sensors" && pwd)"
+export PYTHONPATH="$omi_sensor_source:$PYTHONPATH"
+unset omi_sensor_source
 unset omi_ros_distro omi_ros_setup

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "description": "Historical record010 fixed-baseline CPU migration reference; not SDK live equivalence",
+  "processing_version": "daimon-cpu-fixed-baseline-v1",
+  "input_representation": "legacy_infer_mono8",
+  "sdk_bundle_content_sha256": "e0b7fa93c677310da5bd66e93aae2b9d4e43e59cbb020772455417ad15221eae",
+  "sdk_python_sha256": "9cf54c60f63b28b829ec355a6f5f7ce0417579d13d4d48888c2e45075d0934db",
+  "baseline_id": "fd990feec8c7efeb11d031b8102827ac8b1c3fedef856cc157f5fc06734f989c",
+  "reference_environment": {
+    "python": "3.12.3",
+    "numpy": "1.26.4"
+  },
+  "tolerance": {
+    "atol": 0.000001,
+    "rtol": 0.00001
+  },
+  "samples": [
+    {
+      "file": "a_23.00s.npz",
+      "sha256": "0299b6adcba10a3fa497e981cb9666a0f648ec8fd2a1c02fb48b54a57de9ba39",
+      "fields": [
+        "deformation",
+        "shear"
+      ],
+      "shape": [
+        288,
+        384,
+        2
+      ],
+      "dtype": "float32"
+    },
+    {
+      "file": "a_25.50s.npz",
+      "sha256": "f2b7d12e8268c2e08074715b279c16e3b8766c417bc93a8eefd509f052b8df14",
+      "fields": [
+        "deformation",
+        "shear"
+      ],
+      "shape": [
+        288,
+        384,
+        2
+      ],
+      "dtype": "float32"
+    },
+    {
+      "file": "a_28.00s.npz",
+      "sha256": "398e555636dff7497859cc099e5761ed7f65e8aa8de7912ffe5a7036a5715eb8",
+      "fields": [
+        "deformation",
+        "shear"
+      ],
+      "shape": [
+        288,
+        384,
+        2
+      ],
+      "dtype": "float32"
+    },
+    {
+      "file": "b_23.00s.npz",
+      "sha256": "1123fb2e1d3dd84449e4d6a5e0d9b42f5b2fdc98b46660e6af72d76d97a21fd5",
+      "fields": [
+        "deformation",
+        "shear"
+      ],
+      "shape": [
+        288,
+        384,
+        2
+      ],
+      "dtype": "float32"
+    },
+    {
+      "file": "b_25.50s.npz",
+      "sha256": "a109c5f979435df53623cac8e1ce3672e6d4af9eddc11b1043c96a5a4e9f5cec",
+      "fields": [
+        "deformation",
+        "shear"
+      ],
+      "shape": [
+        288,
+        384,
+        2
+      ],
+      "dtype": "float32"
+    },
+    {
+      "file": "b_28.00s.npz",
+      "sha256": "a5f39e20c17d74fae785b1f063295e5ce0878d317a048c7669c22394921606a6",
+      "fields": [
+        "deformation",
+        "shear"
+      ],
+      "shape": [
+        288,
+        384,
+        2
+      ],
+      "dtype": "float32"
+    }
+  ]
+}

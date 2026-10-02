@@ -1,0 +1,23 @@
+name: Independent ROS sensors
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  sensor-package:
+    strategy:
+      matrix:
+        distro: [humble, jazzy]
+    runs-on: ubuntu-latest
+    container: ros:${{ matrix.distro }}-ros-base
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test dependencies (no vendor SDK)
+        run: apt-get update && apt-get install -y python3-pytest python3-numpy python3-yaml python3-pil python3-colcon-common-extensions ros-${ROS_DISTRO}-rosbag2 ros-${ROS_DISTRO}-rosbag2-storage-default-plugins zstd
+      - name: Pure contract tests
+        run: PYTHONPATH=ros2/omi_sensors PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -c /dev/null -p no:cacheprovider tests/test_sensor_package.py tests/test_sdk_dashboard.py tests/test_stable_viewer.py -q
+      - name: Build and synthetic record/replay
+        shell: bash
+        run: |
+          source /opt/ros/${ROS_DISTRO}/setup.bash
+          colcon build --base-paths ros2/omi_sensors --build-base local/ci/build --install-base local/ci/install
+          source local/ci/install/setup.bash
+          python3 scripts/check_sensors_ros.py --config ros2/omi_sensors/config/sensors.example.json --output-root local
+          python3 scripts/check_sdk_dashboard_ros.py --config ros2/omi_sensors/config/sdk_dashboard.example.json --output-root local

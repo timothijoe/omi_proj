@@ -1,5 +1,19 @@
 # 数据格式与单位
 
+## 触觉表示名称
+
+术语定义以[领域词汇表](../../../CONTEXT.md)为准。现有接口名称保持不变：
+
+| 讨论名称 | 当前字段或产物 |
+| --- | --- |
+| 原始触觉图 | raw；策略字段 `tactile_raw` 是缩放后的双指原始触觉图 |
+| 触觉数值场 | `deformation` 形变场、`shear` 剪切相关场、`depth` 深度场 |
+| 触觉可视化图 | 数值场绘制的 RGB 箭头图或热力图 |
+
+例如 `a/deformation` 是“A 形变场”；dashboard 中带箭头的 A deformation 面板是
+“A 形变箭头图”。wrench 是六维整体数值量，不属于空间数值场。策略 observation
+是多种输入的集合，dashboard 是人用组合画面，二者不混称。
+
 新增回放触觉数值契约：带源 header 的 `32FC2` deformation/shear、配对 raw、带基准哈希
 和身份的 JSON metadata。详见[实时触觉显示](../hardware/evolution/tactile-live.md#数据契约)。
 此契约尚未并入策略 observation 或 replay。

@@ -1,5 +1,7 @@
 # 接口总索引
 
+- [统一领域术语：触觉图、数值场与可视化](../../../CONTEXT.md)
+
 - [Python 模块与稳定边界](python-modules.md)
 - [CLI 入口和参数](cli.md)
 - [观测、动作与 JSONL](data-formats.md)

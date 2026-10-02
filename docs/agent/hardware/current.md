@@ -1,8 +1,25 @@
 # Hardware 当前摘要
 
+[SDK原生数值看板](evolution/sdk-native-dashboard.md)已新增：`view_sdk_observation.sh`，
+默认domain88，直接订阅schema2字段，显示彩色/内参、raw/infer/def/shear和有效性状态。
+合成数据采集、录包、循环回放、断流STALE已headless验证；旧看板冻结文件不变。
+不代表实机SDK或新版RL observation已验收。
+
+图像重建已[迁入独立包](evolution/tactile-reconstruction-migration.md)，新 `_migrated` 看板复用共享适配器，
+SDK 运行文件已本地归档且按文件哈希校验。6组历史样本的12个数值场与迁移前逐元素一致；
+这不是实机SDK直读等价性验收。重建仍用厂商加密算法，并非自主实现。
+原 `view_observation_bag.sh` 链路已恢复d017387专用文件，保持稳定入口。
+新SDK数值场到最终策略尚未整合；不只是缺TCP，详见[集成方案及缺口](../../design/ros-to-policy-integration.md)。
+
+新增[独立 ROS 传感器包](evolution/sensor-collection.md)：Jazzy/Humble 目标，
+RealSense 彩色+内参、SDK 双指触觉原图/预处理图/数值场、录包与隔离回放。
+安装和配置不依赖外部参考工程，也不依赖主 RL Python 环境。本机 Jazzy 构建与合成数据
+录包→回放已通过；Humble、真设备和深度尚未验收，Humble 需要匹配 Python3.10 的厂商 SDK。
+细节与证据见[采集包编年](chronicles/2026-10-02-sensor-collection.md)。
+
 新增[相机与触觉合并模式](evolution/tactile-live.md#相机与触觉合并模式)：一个播放器、一个
 RViz Image，同时显示两路原图/128 ROI 和 A/B raw/deformation/shear。各路保留自己的
-时间戳与过期提示，不代表跨传感器逐帧同步。最新自动测试为 59 passed、1 skipped；
+时间戳与过期提示，不代表跨传感器逐帧同步。该合并显示阶段自动测试为 59 passed、1 skipped；
 运行证据见[合并显示编年](chronicles/2026-10-02-camera-tactile-dashboard.md)。
 
 `TianjiSdkArm` 已封装 SDK A/B 反馈索引、度/弧度换算、反馈帧与错误检查、显式运动授权、单步和关节范围检查、位置模式与停止/释放。假 SDK 与 MuJoCo 替身测试通过；没有设备只读连接记录，没有真机运动验收。项目也没有面向操作者的真机控制 CLI。

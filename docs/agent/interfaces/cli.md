@@ -1,5 +1,21 @@
 # CLI 入口
 
+SDK原生看板：`bash scripts/view_sdk_observation.sh [--fake | --bag BAG] [--config FILE] [--no-rviz]`。
+不带数据源参数时只订阅已有流，不启动硬件；默认domain88。安装后可用 `omi-sdk-view`。
+只启动发布看板节点：`python3 -m omi_sensors.cli --config FILE dashboard`。
+输出 `/omi/sdk/dashboard`，不重建字段；[完整说明](../../../tutorials/sdk_native_dashboard.md)。
+
+稳定合并看板仍用 `view_observation_bag.sh`，迁移版必须显式使用
+`view_observation_bag_migrated.sh`（纯触觉对应 `view_tactile_bag_migrated.sh`）。
+迁移版内部模块为 `omi_hil_rl.real.tactile_live_migrated`；两版不要在同一domain同时运行。
+新版SDK到RL的实现状态见[集成方案](../../design/ros-to-policy-integration.md)。
+
+独立传感器包：`python3 -m omi_sensors.cli --config FILE {plan,doctor,live,fake,record,replay}`。
+先 source colcon overlay；不依赖主 RL Python 环境。安装入口 `bash scripts/setup_sensors.sh`，
+显式 `--install-system` 才调用 apt。详细参数/作用及双系统边界见
+[传感器教程](../../../tutorials/sensor_collection.md)和[接口契约](../hardware/evolution/sensor-collection.md)。
+`live` 会连接相机/触觉设备，但不启动机械臂/夹爪控制；其余入口不连接硬件。
+
 合并相机与触觉：`bash scripts/view_observation_bag.sh BAG [RATE] [--no-rviz]`。
 它对缓存生成器和 dashboard 传入 `--with-cameras`，使用同一播放器回放四路传感器。
 显示 topic 为 `/omi/observation/dashboard`；纯触觉入口继续保留。

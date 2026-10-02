@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "domain_id": 88,
+  "realsense": {
+    "enabled": true,
+    "serial": "",
+    "color_profile": "640x480x30",
+    "enable_depth": false,
+    "depth_profile": "640x480x30",
+    "align_depth": false
+  },
+  "tactile": {
+    "enabled": true,
+    "sdk_root": "",
+    "sdk_python": "3.12",
+    "host": "",
+    "pc_host": "",
+    "fps": 30,
+    "enable_depth": false,
+    "enable_wrench": false,
+    "sensors": {
+      "a": {
+        "dev_id": 2,
+        "port": 50052,
+        "pc_port": 60033,
+        "serial": "",
+        "physical_side": "right"
+      },
+      "b": {
+        "dev_id": 0,
+        "port": 50051,
+        "pc_port": 60032,
+        "serial": "",
+        "physical_side": "left"
+      }
+    }
+  }
+}

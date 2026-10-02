@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "d01738742ff827addef680ee849ffce5ef5a5c78",
+  "purpose": "Protect stable record010 visualization entry and its viewer-specific dependencies; new work belongs in opt-in entry points.",
+  "files": {
+    "scripts/view_observation_bag.sh": "4d96ef0b3eadc168854b8b3ce08ba033f1b94193f6b50ba50cab3aa283730cdc",
+    "scripts/view_tactile_bag.sh": "80c0ecf98afc775f61c63073d3197883a2523a72bcc417d93f7f081098ffd3bd",
+    "src/omi_hil_rl/real/tactile_live.py": "4682d7748960fdc7b65fd947345d8cbcd50c7599c21e1e562b938c67286d7da2",
+    "scripts/observation.rviz": "bd8f0024e063671160a46639f9a82b252fcf9141e28390e8c59e82338350e847",
+    "scripts/tactile.rviz": "ffe7fd9dcbee643adbea0d6683ce33800360ceae2c7acef6f2947483d7cad5d8",
+    "src/omi_hil_rl/real/tactile_vectors.py": "8f87da36660687529f11e2dab2d20e6cac18cb4df8ef90359e0ca2f476cf6de2",
+    "src/omi_hil_rl/real/camera_panels.py": "f55d0d51e6425e5a4d27952bf1949ddef7ae48bdec543d71899dfe801e1c91f8",
+    "src/omi_hil_rl/real/tactile_replay_cache.py": "7d50219bb46f5fc00d31211a3d7410e547e439781e1fca6e6af3470507a6284b"
+  }
+}

@@ -1,5 +1,11 @@
 # rosbag 播放时的触觉向量显示
 
+稳定入口及 `real.tactile_live` 保留 `d017387` 实现与外部SDK默认路径，不自动迁移。
+独立包重建另用 `view_observation_bag_migrated.sh` / `real.tactile_live_migrated`，
+默认SDK为 `local/vendor/daimon_tactile`。见[迁移方案](tactile-reconstruction-migration.md)。
+两入口不能在同一domain同时运行。SDK原生字段另用[新看板](sdk-native-dashboard.md)，
+入口 `view_sdk_observation.sh` 默认domain88，不从图像重建。
+
 `real.tactile_live` 提供两个独立进程：`fields` 从双指 raw 和固定零载荷基准调用 Daimon
 CPU FlowTracker/Decomposer；`dashboard` 订阅处理结果并绘制双行 raw/deformation/shear。
 不创建厂商 Sensor，不连接 USB，不发布机器人控制命令。操作见

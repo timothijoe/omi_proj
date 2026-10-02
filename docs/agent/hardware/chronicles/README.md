@@ -12,3 +12,8 @@
 - [2026-10-02：触觉 deformation/shear 字段语义与实现边界](2026-10-02-tactile-field-semantics.md)
 - [2026-10-02：rosbag 实时触觉向量回放](2026-10-02-tactile-live-replay.md)
 - [2026-10-02：相机和触觉合并显示](2026-10-02-camera-tactile-dashboard.md)
+- [2026-10-02：触觉表示名称统一](2026-10-02-tactile-terminology.md)
+- [2026-10-02：独立 ROS 传感器采集、录包与回放](2026-10-02-sensor-collection.md)
+- [2026-10-02：触觉重建接口和 SDK 本地归档迁移](2026-10-02-tactile-reconstruction-migration.md)
+- [2026-10-02：稳定入口保护及ROS到策略输入核查](2026-10-02-stable-viewer-policy-audit.md)
+- [2026-10-02：独立 SDK 原生数值看板](2026-10-02-sdk-native-dashboard.md)

@@ -1,5 +1,19 @@
 schema_version: 1
 resources:
+  - id: daimon-tactile-local-bundle
+    path: local/vendor/daimon_tactile
+    tracked: false
+    required_for: tactile_image_reconstruction
+    source: Legally obtained Daimon SDK; encrypted implementation and native runtime remain unchanged
+    purpose: Local runtime independent of the diamond reference checkout; per-file hashes in migration-manifest.json
+    restore: Use python -m omi_sensors.vendor_bundle import SOURCE_SDK TARGET then verify TARGET. Match SDK Python/architecture; redistribution permission not verified.
+  - id: tactile-reconstruction-golden-fixtures
+    path: local/tactile/record010_offline_fields_confirmed_v3
+    tracked: false
+    required_for: tactile_migration_regression
+    source: Archived record010 A/B infer inputs and historical CPU numeric fields at 23, 25.5 and 28 seconds
+    purpose: Six NPZ samples for same-input before/after numeric and visual comparison
+    restore: Restore the archived six a_*.npz and b_*.npz files plus the original record010_zero_load_25_26_confirmed_v2 baseline directory; do not regenerate the reference silently.
   - id: tactile-raw-replay-cache
     path: local/tactile/replay_cache
     tracked: false
