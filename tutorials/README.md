@@ -4,6 +4,11 @@
 
 新SDK原生字段看板见[原生数值看板](sdk_native_dashboard.md)：独立入口，旧看板保持不动。
 
+旧record010可选[机器人文字状态同屏](robot_state_dashboard.md)，
+或[RViz双臂3D回放](robot_3d_replay.md)：机器人命令只读，不回放控制话题。
+带原生触觉场与末端的新ZIP/录包，使用同教程的 `view_recorded_observation_3d.sh` 独立入口；
+末端与模型尚未标定对齐，不能拿显示位置当作已验证TCP。
+
 独立 ROS 相机/触觉采集、录包、回放与双发行版安装见[传感器采集](sensor_collection.md)。
 触觉图像重建的 SDK 本地归档、跨机器数值/箭头对照见[重建复现教程](tactile_reconstruction_migration.md)。
 

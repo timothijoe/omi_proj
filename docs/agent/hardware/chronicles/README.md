@@ -18,3 +18,6 @@
 - [2026-10-02：稳定入口保护及ROS到策略输入核查](2026-10-02-stable-viewer-policy-audit.md)
 - [2026-10-02：独立 SDK 原生数值看板](2026-10-02-sdk-native-dashboard.md)
 - [2026-10-02：触觉分辨率、预训练编码与30 Hz采集讨论](2026-10-02-tactile-resolution-and-throughput.md)
+- [2026-10-02：旧录包机器人状态同屏](2026-10-02-robot-state-dashboard.md)
+- [2026-10-02：RViz双臂3D回放](2026-10-02-robot-3d-replay.md)
+- [2026-10-02：新录包原生字段回放及末端坐标偏差核查](2026-10-02-native-record-review.md)

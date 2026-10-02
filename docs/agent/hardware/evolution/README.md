@@ -8,4 +8,5 @@
 - [独立 ROS 传感器采集](sensor-collection.md)
 - [触觉分辨率、策略编码与采集吞吐（讨论中）](tactile-resolution-and-throughput.md)
 - [SDK 原生数值看板](sdk-native-dashboard.md)
+- [机器人3D录包回放](robot-3d-replay.md)
 - [触觉重建迁移方案](tactile-reconstruction-migration.md)

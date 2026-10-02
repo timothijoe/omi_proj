@@ -3,7 +3,14 @@
 完整的按功能拷贝/重装清单见[换机器教程](../../../tutorials/machine_transfer_checklist.md)。
 当前OMI新原生看板无需SDK；旧看板重建需要SDK和固定基准；SDK直读采集需要厂商依赖但不需要离线基准。
 `ros2_camera_clip_tools`仅为历史外部工具，不是OMI合并看板的运行依赖。
-`marvin_msgs`仅在旧完整observation/关节反馈路径需要，应复制匹配源码并在目标机重建。
+`marvin_msgs`在完整observation、机器人回放及新外部录包原生字段+3D看板路径需要，
+应复制匹配源码并在目标机重建；纯schema2 SDK传感器看板不需要。
+
+新外部录包看板使用命令参数指定ZIP/目录，不依赖原机器Downloads布局。
+`local/recorded_review`存生成显示缓存；`local/robot_state/models`存本机生成URDF，
+`local/robot_state/viewer.env`存本机Marvin overlay等可信Shell配置，均不进Git。
+输入包、模型资产和匹配消息定义另行恢复，见[资源清单](../../../manifests/resources.yaml)
+及[拷贝清单](../../../tutorials/machine_transfer_checklist.md)。缓存不是训练数据集。
 
 当前 A 臂场景通过 `--scene` 或 `OMI_TIANJI_SCENE` 定位。2026-10-01 已从本机已有的 `cooking_proj` 资源恢复完整 `robot_assets` 和相邻 `MarvinCCS` 到 `omi_proj/local/assets/`，其中包含灵巧手模型。`source scripts/env.sh` 默认使用项目内的 `local/assets/robot_assets/mujoco/right_chopping_scene.xml`；可在激活前设置 `OMI_TIANJI_SCENE` 覆盖。来源路径与场景 SHA256 保存在忽略版本控制的 `local/assets/provenance.json`。换机器时按 [manifest](../../../manifests/resources.yaml)恢复资源。
 

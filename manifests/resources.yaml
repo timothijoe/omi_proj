@@ -1,5 +1,19 @@
 schema_version: 1
 resources:
+  - id: external-native-record001
+    path: local/bags/record001.zip
+    tracked: false
+    required_for: external_native_field_and_eef_review
+    source: User-supplied oct2/record001.zip external recording; restore from the original data owner
+    purpose: Native tactile fields, camera, joint feedback and left end-effector pose review; not schema2 OMI sensor data
+    restore: Copy the original ZIP or complete bag directory to a chosen data disk and pass its path to scripts/view_recorded_observation_3d.sh. The listed path is a suggested destination, not an already copied file. Also restore model assets and rebuild matching marvin_msgs.
+  - id: recorded-review-generated-cache
+    path: local/recorded_review
+    tracked: false
+    required_for: generated_review_only
+    source: Offline read-only native bag renderer
+    purpose: 10 Hz dashboard PNG and historical robot states; not a training dataset
+    restore: Regenerate using view_recorded_observation_3d.sh; do not copy virtual environments or generated absolute-path URDFs between machines. Review runtime additionally uses local/robot_state/models and local/robot_state/viewer.env.
   - id: daimon-tactile-local-bundle
     path: local/vendor/daimon_tactile
     tracked: false

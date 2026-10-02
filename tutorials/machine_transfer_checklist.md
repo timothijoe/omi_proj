@@ -15,10 +15,15 @@
 | 迁移版看板/CPU重建 | 同上，但SDK默认放项目local/vendor下 | 外部diamond工程 |
 | 比对迁移前后数值 | 再加六个历史参考NPZ，保留相同基准metadata | 重放缓存、生成PNG不是数值回归的必需品 |
 | 旧完整ROS observation/关节反馈 | 上述观测所需数据，以及匹配的marvin_msgs源码并重新构建 | 新SDK纯传感器看板不需要此包 |
+| 新外部录包原生字段+3D看板 | 原包ZIP/目录、匹配marvin_msgs源码重建、robot_assets及相邻MarvinCCS；安装Jazzy/RViz/robot_state_publisher、NumPy/Pillow/SciPy/PyYAML/zstd | 触觉SDK、零载荷基准、机械臂SDK；缓存和URDF可再生成 |
 | MuJoCo真实模型仿真 | robot_assets与相邻MarvinCCS完整资源树 | 厂商触觉SDK不是仿真必需品 |
 | 未来臂SDK操作 | Tianji SDK_PYTHON及原生库、工具/控制器配置，另行安全验收 | 仅看图不需要机械臂SDK |
 
 旧record010没有新SDK看板所需的完整原生字段，不能因为“都叫bag”就互换入口。
+外部新包的 `/tj/dm_sensor/` 数值topic也不是schema2 SDK看板格式；使用
+`view_recorded_observation_3d.sh`，见[3D操作教程](robot_3d_replay.md)。
+在目标机填写 `local/robot_state/viewer.env`（模板 `scripts/robot_viewer.env.example`），
+配置本机重建的Marvin overlay；可用 `OMI_TACTILE_PYTHON` 指向满足依赖的ROS Python环境。
 只拷贝相机标定图片或渲染截图也不能替代bag和数值参考样本。
 
 ## 2. 当前机器可以作为拷贝来源的资源

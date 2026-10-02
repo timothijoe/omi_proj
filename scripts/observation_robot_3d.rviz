@@ -1,0 +1,84 @@
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+- Class: rviz_common/Views
+  Name: Views
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Class: rviz_default_plugins/Grid
+    Name: Ground
+    Enabled: true
+    Cell Size: 0.1
+    Plane Cell Count: 30
+    Color: 100; 110; 120
+    Alpha: 0.35
+    Reference Frame: omi_replay_world
+    Value: true
+  - Class: rviz_default_plugins/RobotModel
+    Name: Recorded Arm Pose - UNCALIBRATED
+    Enabled: true
+    Description Source: Topic
+    Description Topic:
+      Value: /omi/replay_3d/robot_description
+      Depth: 1
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+    Visual Enabled: true
+    Collision Enabled: false
+    Alpha: 1
+    Update Interval: 0
+    TF Prefix: ''
+    Value: true
+  - Class: rviz_default_plugins/Marker
+    Name: Replay Status and Limitations
+    Enabled: true
+    Topic:
+      Value: /omi/replay_3d/notice
+      Depth: 1
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+    Value: true
+  - Class: rviz_default_plugins/Image
+    Name: Cameras Tactile and Robot State
+    Enabled: true
+    Normalize Range: false
+    Topic:
+      Value: /omi/observation_robot/dashboard
+      Depth: 1
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+    Transport Hint: raw
+    Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 30; 34; 40
+    Fixed Frame: omi_replay_world
+    Frame Rate: 15
+  Name: root
+  Tools:
+  - Class: rviz_default_plugins/Interact
+  - Class: rviz_default_plugins/MoveCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 2.8
+      Focal Point:
+        X: 0.2
+        Y: 0
+        Z: 0.65
+      Pitch: 0.32
+      Yaw: 0.8
+      Target Frame: omi_replay_world
+      Name: Arm Replay
+    Saved: ~
+  Value: true
+Window Geometry:
+  # Qt5 dock layout: controls left, 3D center, observation image right.
+  QMainWindow State: 000000ff00000000fd0000000200000000000001f400000503fc0200000002fb000000100044006900730070006c0061007900730100000011000003890000001a00fffffffb0000000a0056006900650077007301000003a0000001740000001a00ffffff000000010000044c00000503fc0200000001fb0000003e00430061006d0065007200610073002000540061006300740069006c006500200061006e006400200052006f0062006f00740020005300740061007400650100000011000005030000001a00ffffff000003dc0000050300000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Height: 1300
+  Width: 2600
+  Hide Left Dock: false
