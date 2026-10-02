@@ -1,5 +1,7 @@
 # SDK 原生数值看板
 
+跨机器依赖按[转移清单](machine_transfer_checklist.md)准备；仅查看原生bag无需拷贝SDK。
+
 这是独立的新入口，**不会修改或调用旧看板**，也不从图像重建数值场。
 订阅 `/omi/tactile/{a,b}/...` 的 SDK 原生字段与 RealSense 彩色图/内参，生成供 RViz 显示的图像。
 看板不需要触觉 SDK、不连接硬件、不发机器人指令，不是 RL observation 构建器。

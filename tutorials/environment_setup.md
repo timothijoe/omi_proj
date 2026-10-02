@@ -45,4 +45,7 @@ python -m omi_hil_rl.sim.visualize --scene "$OMI_TIANJI_SCENE" \
 
 真机适配代码、现场配置和实验数据继续放在 OMI。激活脚本中的 `OMI_TIANJI_SDK_ROOT` 默认指向兄弟目录 `TJ_FX_ROBOT_CONTRL_SDK`；它只是路径约定，不会自动读取该变量或创建硬件对象。配置适配器时，需显式将该路径传给 `TianjiConfig.sdk_root`，即包含 `SDK_PYTHON` 的目录。
 
-当前已验证的是仿真环境。SDK 与控制器版本、现场关节限位、工具 TCP、反馈和停止行为仍按 [真机准备](hardware_preflight.md)另行验收。当前环境不包含 LeRobot 分布式训练或 ROS 集成。
+本教程的环境面向仿真训练；ROS采集/看板另见[独立传感器教程](sensor_collection.md)，
+跨机器资源见[额外拷贝清单](machine_transfer_checklist.md)。项目已提供ROS采集/观测代码，但真机RL闭环尚未整合。
+SDK与控制器版本、现场关节限位、工具TCP、反馈和停止行为仍按[真机准备](hardware_preflight.md)另行验收。
+当前不包含LeRobot分布式训练运行环境。

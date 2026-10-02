@@ -1,5 +1,7 @@
 # 独立 ROS 传感器：安装、采集、录包与回放
 
+哪些随Git获取、哪些需额外拷贝或重新安装，见[换机器清单](machine_transfer_checklist.md)。
+
 本入口位于 `ros2/omi_sensors`，属于 OMI 自己维护的代码。外部 `daimong_ws`、
 `record_data`、`diamond` 应用只作为参考，不在运行时调用。不需要 MuJoCo、Gym、Torch、
 `marvin_msgs`，不会启动机械臂或夹爪控制节点。

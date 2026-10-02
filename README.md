@@ -1,5 +1,8 @@
 # OMI：天机机械臂 Human-in-the-Loop RL
 
+ROS采集与新看板：[传感器教程](tutorials/sensor_collection.md) · [SDK原生看板](tutorials/sdk_native_dashboard.md)。
+换机器前必看：[额外拷贝/重新安装清单](tutorials/machine_transfer_checklist.md)；Git不包含SDK、bag、基准和模型资源。
+
 本项目的目标是在**天机 Marvin 机械臂**上建立真实机器 Human-in-the-Loop 强化学习系统。正式代码、设备适配、任务配置、数据与实验记录统一放在 `omi_proj/`。参考项目保留在兄弟目录：`hil_serl_projects/` 提供 HIL-SERL 与 LeRobot 实现，`cooking_proj/` 提供天机实机控制经验，`TJ_FX_ROBOT_CONTRL_SDK/` 提供厂商 SDK。
 
 已选定 **SDK A 臂（左臂）**，首个任务是 MuJoCo 中的末端定点到达，遥操作初始化采用终端键盘逐关节点动。天机场景来自 `cooking_proj` 的外部本地资产。先看 [工作区总索引](../README.md)、[文档总目录](docs/README.md)、[能力总表](docs/capabilities.md) 和 [操作教程](tutorials/README.md)；[HIL RL 四项复现审计](docs/hil_rl_reproduction.md)明确训练、干预、buffer 与策略改善的证据和缺口。旧的自包含七关节代理环境只用于接口单元测试。项目尚未连接或驱动真机。

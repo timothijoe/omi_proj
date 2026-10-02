@@ -7,6 +7,8 @@
 | 读者 | 从这里开始 |
 | --- | --- |
 | 第一次运行 | [环境准备](../tutorials/environment_setup.md) → [最短仿真案例](../tutorials/quickstart.md) |
+| 换机器/核对额外依赖 | [额外拷贝与重新安装清单](../tutorials/machine_transfer_checklist.md) |
+| SDK原生采集与看板 | [独立采集](../tutorials/sensor_collection.md) → [新数值看板](../tutorials/sdk_native_dashboard.md) |
 | 操作键盘示范或回放 | [键盘示范](../tutorials/keyboard_demonstration.md) → [录制与训练](../tutorials/recording_and_replay.md) |
 | 核查 HIL RL 四项复现 | [训练、干预、buffer、policy improvement 审计](hil_rl_reproduction.md) |
 | 理解当前训练实现 | [干预、奖励、策略更新与 Buffer](agent/training/evolution/hil-training.md) |
