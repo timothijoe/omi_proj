@@ -5,7 +5,7 @@ resources:
     tracked: false
     required_for: tactile_bag_visualization
     source: A/B raw CDR copied from source MCAP via private temporary decompression
-    purpose: Avoid shared decompression collisions with other rosbag players; record010 cache is about 110 MB.
+    purpose: Avoid shared decompression collisions; raw-only record010 cache is about 110 MB. Combined mode creates a separate larger cache with camera RGB and tactile raw.
     restore: Run bash scripts/view_tactile_bag.sh BAG; first creation requires temporary space for the decompressed MCAP and the final raw-only cache.
   - id: tianji-a-mjcf-scene
     path: local/assets/robot_assets/mujoco/right_chopping_scene.xml

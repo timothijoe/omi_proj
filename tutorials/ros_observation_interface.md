@@ -85,6 +85,37 @@ PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
 25.5 秒应为零或接近零；23/28 秒应出现结构化接触场。重建 depth 与记录 depth 的空间
 形状高度相关但幅值不同，不能用重建值覆盖 bag 原值。
 
+## 同时查看相机与触觉
+
+从 `omi_proj/` 执行：
+
+```bash
+bash scripts/view_observation_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+```
+
+同一个 RViz Image 显示两部分：左侧上下分别是头部和腕部相机，每行有带 ROI 框的原图
+预览和实际 `128×128` 裁剪图；右侧上下分别是 A/B 的 raw、deformation、shear。
+合成图为 `1792×740 rgb8`。原图缩放适配面板，小裁剪图在合成图中占 128×128 像素；
+RViz 窗口缩放时可能整体缩放。
+
+四路传感器共用一个播放器，所以进度、倍速和循环一致。传感器本身异步采样，触觉计算
+也有延迟；这不是同时间戳的跨传感器配准。每块面板显示自己的源时间戳、接收年龄和
+WAITING/VALID/STALE。界面沿用原相机工具的 Lanczos 裁剪缩放，策略 observation 仍使用
+原有最近邻处理。
+
+首次生成独立的四路传感器缓存，旧的纯触觉缓存保留；不会把控制 topic 放入缓存或回放。
+先关闭此前的纯触觉回放，避免同一 domain 内有两个播放器。`Ctrl+C` 或关闭 RViz 结束。
+
+```bash
+# 半速查看
+bash scripts/view_observation_bag.sh /path/to/bag 0.5
+# 无 GUI 检查
+bash scripts/view_observation_bag.sh /path/to/bag 1.0 --no-rviz
+```
+
+环境变量与下面纯触觉入口相同。显示 topic 为 `/omi/observation/dashboard`，使用 Reliable
+QoS；默认 localhost domain 87。依然可以单独运行下面的纯触觉版本。
+
 ## 播放时实时查看触觉向量
 
 从 `omi_proj/` 执行：

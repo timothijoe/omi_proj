@@ -1,5 +1,9 @@
 # CLI 入口
 
+合并相机与触觉：`bash scripts/view_observation_bag.sh BAG [RATE] [--no-rviz]`。
+它对缓存生成器和 dashboard 传入 `--with-cameras`，使用同一播放器回放四路传感器。
+显示 topic 为 `/omi/observation/dashboard`；纯触觉入口继续保留。
+
 触觉回放新入口：`bash scripts/view_tactile_bag.sh BAG [RATE] [--no-rviz]`。
 它调用 `python -m omi_hil_rl.real.tactile_replay_cache BAG CACHE_ROOT` 创建本地 raw 缓存，
 并启动 `python -m omi_hil_rl.real.tactile_live fields --baseline-dir DIR --sdk-root DIR`

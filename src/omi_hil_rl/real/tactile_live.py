@@ -223,8 +223,27 @@ def run(args):
         else:
             joiners = {side: FrameJoiner() for side in ("a", "b")}
             samples = {}
-            publisher = node.create_publisher(Image, f"{PREFIX}/dashboard", qos)
+            output_topic = "/omi/observation/dashboard" if args.with_cameras else f"{PREFIX}/dashboard"
+            publisher = node.create_publisher(Image, output_topic, qos)
             last_header = [None]
+            cameras = {}
+            if args.with_cameras:
+                from .camera_panels import CAMERA_TOPICS, camera_panel, prepare_camera
+
+                def receive_camera(name, message):
+                    try:
+                        source = stamp_ns(message.header)
+                        if source <= 0:
+                            raise ValueError("camera requires a nonzero source timestamp")
+                        value = decode_image_message(message)
+                        cameras[name] = prepare_camera(value, name, source, time.monotonic())
+                        last_header[0] = message.header
+                    except Exception as exc:
+                        if rclpy.ok():
+                            node.get_logger().error(f"{name}: rejected camera: {exc}")
+
+                for name, topic in CAMERA_TOPICS.items():
+                    node.create_subscription(Image, topic, lambda msg, n=name: receive_camera(n, msg), qos)
 
             def receive(side, kind, message):
                 try:
@@ -252,7 +271,11 @@ def run(args):
 
             def render():
                 if last_header[0] is not None:
-                    publisher.publish(image_message(dashboard(samples, time.monotonic()), last_header[0], "rgb8"))
+                    now = time.monotonic()
+                    pixels = dashboard(samples, now)
+                    if args.with_cameras:
+                        pixels = np.concatenate((camera_panel(cameras, now), pixels), axis=1)
+                    publisher.publish(image_message(pixels, last_header[0], "rgb8"))
             node.create_timer(1 / args.rate, render)
         node.get_logger().info(f"READY {args.mode}: {PREFIX}")
         rclpy.spin(node)
@@ -276,6 +299,7 @@ def main():
     parser.add_argument("--baseline-dir", type=Path)
     parser.add_argument("--sdk-root", type=Path)
     parser.add_argument("--rate", type=float, default=10)
+    parser.add_argument("--with-cameras", action="store_true", help="dashboard: add camera originals and 128px ROIs")
     args = parser.parse_args()
     if not np.isfinite(args.rate) or args.rate <= 0:
         parser.error("rate must be finite and positive")

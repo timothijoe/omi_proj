@@ -5,6 +5,19 @@ CPU FlowTracker/Decomposer；`dashboard` 订阅处理结果并绘制双行 raw/d
 不创建厂商 Sensor，不连接 USB，不发布机器人控制命令。操作见
 [ROS 教程](../../../../tutorials/ros_observation_interface.md#播放时实时查看触觉向量)。
 
+## 相机与触觉合并模式
+
+`scripts/view_observation_bag.sh` 在同一播放器中回放双指 raw、头部和腕部 RGB，
+`dashboard --with-cameras` 发布 `/omi/observation/dashboard`（`1792×740 rgb8`）。
+左侧 640 像素宽放两路原图预览与 128×128 ROI；右侧保留完整 1152×740 触觉面板。
+`camera_panels` 复用 observation 的 ROI 边界计算，缩放沿用旧人用相机工具的 Lanczos，
+与策略 observation 的最近邻缩放不同。原图保持宽高比，128 小图在合成图中不放大。
+
+合并模式使用独立缓存键和四路 topic 白名单。所有输入共用播放进度，但传感器源时间戳
+不同，显示为每路最新到达值，不声称逐帧同步。各路分别显示时间戳、接收年龄与过期状态。
+默认域号与纯触觉模式相同，运行合并模式前应停止旧的纯触觉播放器。
+最新证据见[合并显示编年](../chronicles/2026-10-02-camera-tactile-dashboard.md)。
+
 ## 数据契约
 
 - 输入 `/tj/dm_sensor/{a,b}_raw`，要求非零 header 时间戳、与基准一致的 mono8 shape。

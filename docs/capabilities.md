@@ -23,7 +23,10 @@
 新增[触觉实时回放](agent/hardware/evolution/tactile-live.md)：原始 bag 重建双指向量数值，
 独立 dashboard 约 10 Hz 实收；RViz GUI 交互、真机在线和完整触觉验收仍待完成。
 
-最近完整自动测试为 **57 passed, 1 skipped**；前阶段测试数字保留在历史编年记录。
+新增同一播放器的[相机与触觉合并显示](agent/hardware/evolution/tactile-live.md#相机与触觉合并模式)，
+原图/128 ROI 与双指向量同屏，实收约 9.94 Hz。
+
+最近完整自动测试为 **59 passed, 1 skipped**；前阶段测试数字保留在历史编年记录。
 四项训练机制见 [训练纪传体](agent/training/evolution/hil-training.md)，磁盘验证见
 [开发编年](agent/training/chronicles/2026-10-02-disk-replay.md)，完整对照见
 [HIL RL 审计](hil_rl_reproduction.md)。SDK 适配器默认无运动授权。

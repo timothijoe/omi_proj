@@ -32,8 +32,16 @@ export ROS_DOMAIN_ID="${OMI_TACTILE_ROS_DOMAIN_ID:-87}"
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 export ROS_LOCALHOST_ONLY=1
 export RMW_FASTRTPS_PUBLICATION_MODE=ASYNCHRONOUS
-echo "Preparing private raw-only playback cache (source bag stays untouched)..."
-omi_cached_bag="$("$omi_python" -m omi_hil_rl.real.tactile_replay_cache "$omi_bag" "$omi_root/local/tactile/replay_cache")"
+omi_camera_args=()
+omi_topics=(/tj/dm_sensor/a_raw /tj/dm_sensor/b_raw)
+omi_rviz="$omi_root/scripts/tactile.rviz"
+if [[ "${OMI_TACTILE_WITH_CAMERAS:-0}" == 1 ]]; then
+    omi_camera_args+=(--with-cameras)
+    omi_topics+=(/camera/camera/color/image_raw /tj/dm_sensor/camera/color)
+    omi_rviz="$omi_root/scripts/observation.rviz"
+fi
+echo "Preparing private sensor playback cache (source bag stays untouched)..."
+omi_cached_bag="$("$omi_python" -m omi_hil_rl.real.tactile_replay_cache "$omi_bag" "$omi_root/local/tactile/replay_cache" "${omi_camera_args[@]}")"
 omi_pids=()
 cleanup() {
     trap - EXIT INT TERM
@@ -46,13 +54,13 @@ trap 'exit 143' TERM
 cd "$omi_root"
 "$omi_python" -m omi_hil_rl.real.tactile_live fields --baseline-dir "$omi_baseline" --sdk-root "$omi_sdk" --rate "${OMI_TACTILE_RATE:-10}" &
 omi_pids+=("$!")
-"$omi_python" -m omi_hil_rl.real.tactile_live dashboard --rate "${OMI_TACTILE_RATE:-10}" &
+"$omi_python" -m omi_hil_rl.real.tactile_live dashboard --rate "${OMI_TACTILE_RATE:-10}" "${omi_camera_args[@]}" &
 omi_pids+=("$!")
 if [[ "${3:-}" != --no-rviz ]]; then
-    rviz2 -d "$omi_root/scripts/tactile.rviz" &
+    rviz2 -d "$omi_rviz" &
     omi_pids+=("$!")
 fi
-ros2 bag play "$omi_cached_bag" --rate "$omi_rate" --loop --delay 5 --disable-keyboard-controls --topics /tj/dm_sensor/a_raw /tj/dm_sensor/b_raw &
+ros2 bag play "$omi_cached_bag" --rate "$omi_rate" --loop --delay 5 --disable-keyboard-controls --topics "${omi_topics[@]}" &
 omi_pids+=("$!")
 echo "Tactile replay on localhost ROS domain $ROS_DOMAIN_ID. Ctrl+C to stop."
 wait -n "${omi_pids[@]}"
