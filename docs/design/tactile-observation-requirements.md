@@ -177,6 +177,10 @@ observation 可以只选择经实验需要的字段，但原始 bag 和报告必
 
 ## 9. 当前差距
 
+新增的 [实时回放工具](../agent/hardware/evolution/tactile-live.md)已覆盖 raw 重建数值 topic
+和独立 raw/deformation/shear dashboard。尚未覆盖本需求中的完整 depth/delta/wrench
+面板、人工方向实验、完整录制审计或向量 observation；原始 record010 字段仍保持原状。
+
 `record010` 已包含双指 raw、depth 和 WrenchStamped，但没有 deformation、shear、设备
 序列号、SDK fid、处理模型/标定版本和统一触觉 dashboard，因此不满足本需求的完整验收。
 bag 的 `25.0–26.0 s` 是已由外部相机人工确认的完全张开窗口；夹爪位置、双指 wrench 和

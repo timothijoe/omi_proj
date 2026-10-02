@@ -10,3 +10,4 @@
 - [2026-10-02：record010 无 serial 离线触觉场重建](2026-10-02-tactile-offline-reconstruction.md)
 - [2026-10-02：双指逻辑侧与 serial 外部确认](2026-10-02-tactile-identity-confirmation.md)
 - [2026-10-02：触觉 deformation/shear 字段语义与实现边界](2026-10-02-tactile-field-semantics.md)
+- [2026-10-02：rosbag 实时触觉向量回放](2026-10-02-tactile-live-replay.md)

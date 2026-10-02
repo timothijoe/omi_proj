@@ -85,6 +85,41 @@ PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
 25.5 秒应为零或接近零；23/28 秒应出现结构化接触场。重建 depth 与记录 depth 的空间
 形状高度相关但幅值不同，不能用重建值覆盖 bag 原值。
 
+## 播放时实时查看触觉向量
+
+从 `omi_proj/` 执行：
+
+```bash
+bash scripts/view_tactile_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+```
+
+打开独立 RViz，顶部为 A（右指），底部为 B（左指），每行从左到右为 raw、deformation、
+shear。箭头固定比例显示，红色表示超出显示长度；单位未标定，不能解释为牛顿。
+`Ctrl+C` 或关闭 RViz 会停止此入口启动的进程，不关闭已有相机窗口。
+
+首次启动先生成约 110 MB 的双指 raw 缓存，需暂存整份解压 MCAP；以后直接复用缓存。
+不会在源 bag 目录里解压，因此可以和现有相机播放器同时运行。两个窗口的播放进度独立。
+触觉默认使用 localhost ROS domain 87，只播放双指 raw，不播放动作 topic。
+
+```bash
+# 半速播放；计算和显示默认目标仍为 10 Hz
+bash scripts/view_tactile_bag.sh /path/to/bag 0.5
+# 无界面验证，只启动回放、数值计算和 dashboard publisher
+bash scripts/view_tactile_bag.sh /path/to/bag 1.0 --no-rviz
+```
+
+可用环境变量指定 `OMI_TACTILE_BASELINE`、`OMI_DAIMON_SDK_ROOT`、`OMI_TACTILE_PYTHON`、
+`OMI_TACTILE_RATE` 和 `OMI_TACTILE_ROS_DOMAIN_ID`。默认沿用本机已确认的 record010
+基准、Daimon 隔离环境及同级 SDK。换传感器或录制时必须选择对应基准，不能沿用错误身份。
+
+`WAITING` 表示尚未收到同侧同时间戳的完整样本；`STALE` 表示超过 0.5 秒没有完整新样本。
+处理慢时会跳旧帧；播放循环间的等待也会显示 STALE。源时间戳保留历史 bag 时间，
+显示年龄按本机收到完整样本后的经过时间计算。
+
+数值 topic 为 `/omi/tactile/{a,b}/{deformation,shear}`（`32FC2`），显示 topic 为
+`/omi/tactile/dashboard`（`rgb8`）。手动打开 RViz 时须使用同一域号、Image 显示、
+Reliable QoS。这个版本仅显示 raw 和向量场，不含完整 depth/wrench 验收面板。
+
 ## 在线只读检查
 
 确认对象已经夹住且机器人保持静止后运行：

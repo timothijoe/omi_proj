@@ -13,7 +13,8 @@
 | 改善曲线 | `training.plot_progress` | 周期评估 JSONL → PNG | 图已生成 |
 | Tianji SDK | `hardware.tianji_sdk.TianjiSdkArm` | SDK 反馈/目标，度↔弧度 | 假 SDK 测试；未连真机 |
 | 触觉零载荷基准 | `real.tactile_baseline` | rosbag 无接触窗口 → A/B 中位数 raw、预览与 JSON | `record010` 实际提取通过 |
-| 触觉向量显示 | `real.tactile_vectors.render_vector_field` | 浮点 `H×W×2` → 固定参数 RGB 箭头与统计 | 合成方向自动测试；未接真实矩阵 |
+| 触觉向量显示 | `real.tactile_vectors.render_vector_field` | 浮点 `H×W×2` → 固定参数 RGB 箭头与统计 | 合成方向测试、bag 重建矩阵 |
+| 回放触觉向量 | `real.tactile_live` | raw + baseline → 32FC2；独立 dashboard | 见[运行证据](../hardware/evolution/tactile-live.md) |
 | 触觉离线重建 | `real.tactile_offline.probe_bag` | raw+base+厂商 CPU 算法 → deformation/shear/depth | `record010` 三时刻实际运行；不连接设备 |
 
 `TianjiAReachEnv.step` 支持策略动作，以及 `intervention_active=True, human_action=...` 的人工覆盖；环境先限位再执行，并返回实际命令增量。内部环境和训练类目前服务单进程仿真，不承诺稳定外部包 API。硬件适配器只能在独立现场验收后进入真实 actor。

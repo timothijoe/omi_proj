@@ -80,14 +80,17 @@ def decode_image_message(message: Any) -> np.ndarray:
         return np.frombuffer(raw, dtype=np.uint8).reshape(height, step)[:, :width].copy()
     if encoding in {"16uc1", "mono16"}:
         dtype = np.dtype(">u2" if bool(message.is_bigendian) else "<u2")
-    elif encoding == "32fc1":
+    elif encoding in {"32fc1", "32fc2"}:
         dtype = np.dtype(">f4" if bool(message.is_bigendian) else "<f4")
     else:
         raise ValueError(f"unsupported image encoding {message.encoding!r}")
-    if step % dtype.itemsize or step < width * dtype.itemsize:
+    channels = 2 if encoding == "32fc2" else 1
+    if step % dtype.itemsize or step < width * channels * dtype.itemsize:
         raise ValueError("depth image step is incompatible with its encoding")
     row_values = step // dtype.itemsize
-    array = np.frombuffer(raw, dtype=dtype).reshape(height, row_values)[:, :width]
+    array = np.frombuffer(raw, dtype=dtype).reshape(height, row_values)[:, :width * channels]
+    if channels == 2:
+        array = array.reshape(height, width, channels)
     return np.asarray(array, dtype=dtype.newbyteorder("=")).copy()
 
 

@@ -14,7 +14,8 @@ observation builder 当前使用最近邻；ROI 边界一致但像素并不严�
 [只读教程](../../../../tutorials/ros_observation_interface.md)。
 
 当前触觉输入只含双指 raw、depth 和各六维 wrench。Daimon SDK 示例还可产生稠密
-deformation/shear 向量场并绘制箭头，但现有 ROS topic 和 `record010` 没有这两类字段。
+deformation/shear 向量场并绘制箭头；`record010` 没有这两类字段，新增的
+[回放工具](tactile-live.md)可从 raw 重建并发布数值 topic，尚未加入 observation。
 逻辑 A 是右侧夹爪 `X26040546`，逻辑 B 是左侧夹爪 `X26040345`；A/B 不是向量方向。
 deformation 的每个像素保存相对零载荷基准的 `[dx,dy]` 二维纹理位移，包含接触造成的
 面内运动；shear 由厂商 `Decomposer` 从 deformation 派生，厂商示例称其为 `2D curl`，
@@ -24,7 +25,7 @@ deformation 的每个像素保存相对零载荷基准的 `[dx,dy]` 二维纹理
 `H×W×2` 数值、使用固定归一化和 CNN 编码。`real.tactile_vectors.render_vector_field`
 现已实现人用 renderer：固定网格、scale、deadband 和最大显示长度，不逐帧归一化；约定
 图像坐标 `+x` 向右、`+y` 向下，超长箭头使用单独颜色并返回统计。合成方向测试通过，
-但尚无真实 deformation/shear topic 可做物理方向验收。左右传感器的图像坐标还没有映射
+但尚未完成现场物理方向验收。左右传感器的图像坐标还没有映射
 到统一夹爪坐标系，因此 A/B 图中同向箭头目前不能直接解释为同一机器人坐标方向。
 
 离线探针 `real.tactile_offline` 直接加载厂商 `FlowTracker`、`Decomposer` 和
@@ -32,11 +33,11 @@ deformation 的每个像素保存相对零载荷基准的 `[dx,dy]` 二维纹理
 23、25.5 和 28 秒已实际处理：deformation/shear 均为 `288×384×2 float32`；25.5 秒
 松开帧为零或接近零，23/28 秒接触帧产生结构化向量场。接触帧的重建 depth 与记录 depth
 空间 Pearson 相关约 0.907–0.951，最小二乘幅值比例约 0.44–0.47，说明空间形状一致但
-SDK 默认离线 depth 幅值约为在线记录的两倍。当前只把 deformation/shear 当作离线候选
+SDK 默认离线 depth 幅值约为在线记录的两倍。当前只把 deformation/shear 当作候选
 数据，不替换 bag 中的记录 depth。本地离线输出已经包含 A/B deformation、A/B shear、
-记录 depth 和重建 depth 的 PNG dashboard，以及保存原始矩阵的 NPZ。这完成了“从
-rosbag 重建并供人工查看”，没有完成“发布带 header 的 ROS 数值 topic、独立可视化进程
-订阅并在 RViz 显示”。
+记录 depth 和重建 depth 的 PNG dashboard，以及保存原始矩阵的 NPZ。新增
+`tactile_live` 进一步实现带 header 的数值 topic 和独立 raw/向量 dashboard；提供 RViz
+配置，完整 depth/wrench 面板与真机在线验收仍待完成。
 
 `omi_hil_rl.real.tactile_baseline` 可从 rosbag 的已知无接触窗口提取双指 raw 时间中位数，
 并同时检查夹爪开度、双指 wrench 与 depth。`record010` 的 `25.0–26.0 s` 已通过相机人工

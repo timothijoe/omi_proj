@@ -1,5 +1,9 @@
 # 数据格式与单位
 
+新增回放触觉数值契约：带源 header 的 `32FC2` deformation/shear、配对 raw、带基准哈希
+和身份的 JSON metadata。详见[实时触觉显示](../hardware/evolution/tactile-live.md#数据契约)。
+此契约尚未并入策略 observation 或 replay。
+
 ## 环境契约
 
 动作是 `float32[7]`，每轴归一化范围 `[-1,1]`，代表相对于当前关节角的增量；在当前仿真每轴满量程为 `0.04 rad`。观测字典含 `state: float32[14]`（前七关节角 `rad`，后七关节速度 `rad/s`）、`tcp_pos: float32[3]` 和 `target_tcp_pos: float32[3]`（世界坐标 `m`），共 20 个数值。`terminated` 表示任务成功，`truncated` 表示步数上限。训练 progress 与评估 sparse 奖励的定义见 [训练纪传体](../training/evolution/hil-training.md#2-奖励与回合结束)。

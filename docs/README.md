@@ -15,6 +15,7 @@
 | 开发与维护 | [Agent 知识库](agent/README.md) → [接口索引](agent/interfaces/README.md) |
 | 理解边界 | [安全与副作用](safety.md) → [跨领域设计](design/hil-architecture.md) |
 | 规划和验收真机触觉数据 | [触觉观测、录制与可视化验证需求](design/tactile-observation-requirements.md) |
+| 播包时查看触觉箭头 | [操作入口](../tutorials/ros_observation_interface.md#播放时实时查看触觉向量) → [当前机制](agent/hardware/evolution/tactile-live.md) |
 | 查找 OMI 之外的工具和资源 | [工作区总索引](../../README.md) → [本地资源接口](agent/interfaces/local-resources.md) |
 
 现有 [A 臂实验报告](a_arm_reach.md) 保存可复现实验与证据；[早期技术调查](tianji_hil_rl.md) 保留当时的 SDK 和参考项目分析。功能的**当前事实**由 `agent/*/evolution/` 维护，避免把早期计划误认为现状。

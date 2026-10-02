@@ -20,4 +20,10 @@
 | 相机 ROI/RViz 辅助显示 | `../ros2_camera_clip_tools/view_camera_clip*.sh` | 原图/128、独立 512 与双进程模式；用户人工观察 | 真机在线相机、端到端延迟与长期性能 |
 | Tianji SDK A/B 适配 | `TianjiSdkArm` | 假 SDK、MuJoCo SDK 替身自动测试 | 设备只读连接、真机运动、故障现场验收 |
 
-当前自动测试为 **41 passed**（外部 MJCF 环境变量已配置）；前阶段测试数字保留在历史编年记录。四项训练机制见 [训练纪传体](agent/training/evolution/hil-training.md)，磁盘验证见 [开发编年](agent/training/chronicles/2026-10-02-disk-replay.md)，完整对照见 [HIL RL 审计](hil_rl_reproduction.md)。当前仓库未提供真机可执行入口；SDK 适配器默认无运动授权。
+新增[触觉实时回放](agent/hardware/evolution/tactile-live.md)：原始 bag 重建双指向量数值，
+独立 dashboard 约 10 Hz 实收；RViz GUI 交互、真机在线和完整触觉验收仍待完成。
+
+最近完整自动测试为 **57 passed, 1 skipped**；前阶段测试数字保留在历史编年记录。
+四项训练机制见 [训练纪传体](agent/training/evolution/hil-training.md)，磁盘验证见
+[开发编年](agent/training/chronicles/2026-10-02-disk-replay.md)，完整对照见
+[HIL RL 审计](hil_rl_reproduction.md)。SDK 适配器默认无运动授权。

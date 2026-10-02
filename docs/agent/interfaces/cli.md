@@ -1,5 +1,11 @@
 # CLI 入口
 
+触觉回放新入口：`bash scripts/view_tactile_bag.sh BAG [RATE] [--no-rviz]`。
+它调用 `python -m omi_hil_rl.real.tactile_replay_cache BAG CACHE_ROOT` 创建本地 raw 缓存，
+并启动 `python -m omi_hil_rl.real.tactile_live fields --baseline-dir DIR --sdk-root DIR`
+和独立的 `...tactile_live dashboard`。两进程支持 `--rate`；仅发布触觉数值/显示消息，
+不发布控制命令。[数据契约及限制](../hardware/evolution/tactile-live.md)。
+
 从 `omi_proj/` 使用 `source scripts/env.sh` 激活环境。下表均是 `python -m` 模块入口，不是安装后自动生成的可执行命令，也不是 Shell 脚本。路径相对 `omi_proj/` 工作目录解析。
 
 | 模块 | 必要参数 | 作用 | 副作用 |
