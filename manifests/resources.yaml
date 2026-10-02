@@ -15,12 +15,12 @@ resources:
     purpose: Arm and base meshes loaded relative to the MJCF
     restore: Restore adjacent to robot_assets under the chosen assets root; verify redistribution rights before copying.
   - id: vendor-python-sdk
-    path: local/vendor/SDK_PYTHON
+    path: ../TJ_FX_ROBOT_CONTRL_SDK/SDK_PYTHON
     tracked: false
     required_for: future_real_robot_only
     source: Tianji vendor SDK
     purpose: Controller API and matching native libraries
-    restore: Obtain the version matching the site controller; pass SDK root explicitly to TianjiConfig after onsite review.
+    restore: Keep the vendor repository beside omi_proj or set OMI_TIANJI_SDK_ROOT; TianjiConfig.sdk_root must point to the directory containing SDK_PYTHON. Match the site controller version before device use.
   - id: experiment-data
     path: data
     tracked: false
@@ -28,3 +28,45 @@ resources:
     source: OMI simulation commands
     purpose: JSONL, checkpoints, replay buffers, metrics, PNG and GIF
     restore: Regenerate with the documented commands; preserve important experiments separately before replacing output directories.
+  - id: ros2-camera-clip-tools
+    path: ../ros2_camera_clip_tools
+    tracked: false
+    required_for: camera_roi_preview
+    source: OMI workspace companion tool
+    purpose: Play record010, crop the head and wrist ROIs, publish 128x128 RGB topics, and display the comparison dashboard in RViz.
+    restore: Keep the tool beside omi_proj; use the workspace README and the tool README for entry points and ROI parameters.
+  - id: record010-rosbag
+    path: /home/zhoutong/Downloads/img/record010/bag_001
+    tracked: false
+    required_for: ros_observation_offline_validation
+    source: Local Tianji multimodal recording
+    purpose: Offline validation input for the synchronized ROS observation contract and camera ROI preview.
+    restore: Restore the complete rosbag directory including metadata.yaml and compressed MCAP data; override this machine-local path in commands when stored elsewhere.
+  - id: camera-roi-preview-images
+    path: ../camera_roi_preview
+    tracked: false
+    required_for: camera_roi_visual_check
+    source: Generated from local camera frames
+    purpose: Static 128x128 head and wrist ROI previews; not a training dataset.
+    restore: Regenerate from the camera ROI tool or source bag; do not treat the JPEG files as canonical observations.
+  - id: record010-tactile-zero-load-baseline
+    path: local/tactile/record010_zero_load_25_26_confirmed_v2
+    tracked: false
+    required_for: tactile_offline_reprocessing
+    source: Generated from record010 at 25.0-26.0 seconds
+    purpose: A/B temporal-median raw references, open-gripper contact sheet, timestamps and zero-load validation metadata.
+    restore: Source scripts/env_ros.sh, then run tactile_baseline on record010 with --start-s 25 --end-s 26, A/right serial X26040546 and B/left serial X26040345; record that identity is externally confirmed rather than bag metadata.
+  - id: daimon-offline-environment
+    path: local/venvs/daimon312
+    tracked: false
+    required_for: tactile_offline_reprocessing
+    source: Python 3.12 venv using system site packages plus h5py and gymnasium
+    purpose: Import the local protected Daimon SDK and run CPU FlowTracker without constructing a Sensor.
+    restore: Create a Python 3.12 venv with --system-site-packages and install h5py plus gymnasium; keep the vendor SDK outside Git.
+  - id: record010-offline-tactile-fields
+    path: local/tactile/record010_offline_fields_confirmed_v3
+    tracked: false
+    required_for: tactile_vector_visual_validation
+    source: Generated from record010 raw and the 25-26 second temporal-median baseline
+    purpose: Three-timepoint deformation, shear, reconstructed/recorded depth comparisons, wrench snapshots and dashboards.
+    restore: Run omi_hil_rl.real.tactile_offline with record010, the generated baseline, and the local Daimon SDK root; no serial or device connection is required.

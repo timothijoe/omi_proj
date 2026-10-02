@@ -13,6 +13,7 @@ dependencies = ["numpy>=2,<3", "mujoco>=3.3,<4", "gymnasium>=1,<2"]
 dev = ["pytest>=8,<10"]
 train = ["stable-baselines3>=2.9,<3"]
 viz = ["pillow>=11,<13", "imageio>=2.37,<3"]
+ros = ["PyYAML>=6,<7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

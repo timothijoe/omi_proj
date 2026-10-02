@@ -9,7 +9,15 @@
 | 第一次运行 | [环境准备](../tutorials/environment_setup.md) → [最短仿真案例](../tutorials/quickstart.md) |
 | 操作键盘示范或回放 | [键盘示范](../tutorials/keyboard_demonstration.md) → [录制与训练](../tutorials/recording_and_replay.md) |
 | 核查 HIL RL 四项复现 | [训练、干预、buffer、policy improvement 审计](hil_rl_reproduction.md) |
+| 理解当前训练实现 | [干预、奖励、策略更新与 Buffer](agent/training/evolution/hil-training.md) |
+| 使用磁盘经验池 | [操作教程](../tutorials/disk_replay.md) → [存储与恢复机制](agent/training/evolution/disk-replay.md) |
+| 理解原版 HIL-SERL | [开源任务、USB、SpaceMouse、观测与视觉网络](agent/training/evolution/hil-serl-reference.md) |
 | 开发与维护 | [Agent 知识库](agent/README.md) → [接口索引](agent/interfaces/README.md) |
 | 理解边界 | [安全与副作用](safety.md) → [跨领域设计](design/hil-architecture.md) |
+| 规划和验收真机触觉数据 | [触觉观测、录制与可视化验证需求](design/tactile-observation-requirements.md) |
+| 查找 OMI 之外的工具和资源 | [工作区总索引](../../README.md) → [本地资源接口](agent/interfaces/local-resources.md) |
 
 现有 [A 臂实验报告](a_arm_reach.md) 保存可复现实验与证据；[早期技术调查](tianji_hil_rl.md) 保留当时的 SDK 和参考项目分析。功能的**当前事实**由 `agent/*/evolution/` 维护，避免把早期计划误认为现状。
+
+同级的 `ros2_camera_clip_tools/`、参考仓库、厂商 SDK 和工作区外数据统一由
+[工作区总索引](../../README.md)登记；不要只在某篇专题文档中留下无法反向发现的路径。

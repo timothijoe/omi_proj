@@ -20,7 +20,25 @@ from omi_hil_rl.sim.tianji_surrogate import TianjiSurrogateEnv
 from omi_hil_rl.training.executed_action_sac import DemoRegularizedSAC
 from omi_hil_rl.training.demo_import import import_human_demonstrations
 from omi_hil_rl.training.hil_replay import HILReplayBuffer
+from omi_hil_rl.training.disk_replay import DiskHILReplayBuffer
 from omi_hil_rl.training.recording import TransitionRecorder
+
+
+def save_policy_checkpoint(model, path):
+    """Keep policy archives portable; disk replay is restored separately."""
+    if not isinstance(model.replay_buffer, DiskHILReplayBuffer):
+        model.save(path)
+        return
+    original = model.replay_buffer_class, model.replay_buffer_kwargs, model.buffer_size
+    try:
+        # SB3 allocates replay during load even for inference. Do not serialize
+        # a disk directory or a large capacity into a portable policy archive.
+        model.replay_buffer_class = HILReplayBuffer
+        model.replay_buffer_kwargs = {"demo_fraction": model.replay_buffer.demo_fraction}
+        model.buffer_size = 1
+        model.save(path)
+    finally:
+        model.replay_buffer_class, model.replay_buffer_kwargs, model.buffer_size = original
 
 
 class InterventionSchedule(BaseCallback):
@@ -68,7 +86,7 @@ class EvaluationTrace(BaseCallback):
         self.records.append(record)
         with (self.output_dir / "policy_progress.jsonl").open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(record) + "\n")
-        self.model.save(self.output_dir / f"policy_step_{step}.zip")
+        save_policy_checkpoint(self.model, self.output_dir / f"policy_step_{step}.zip")
 
     def _on_step(self) -> bool:
         if self.num_timesteps % self.interval == 0 and self.num_timesteps < self.model._total_timesteps:
@@ -126,6 +144,10 @@ def train(
     demo_recording: Path | None = None,
     evaluation_interval: int = 300,
     entropy_initial: float = 1.0,
+    replay_backend: str = "memory",
+    replay_capacity: int | None = None,
+    replay_directory: Path | None = None,
+    replay_prefetch: bool = True,
 ) -> dict:
     if steps < 1 or not 0 <= demonstration_steps <= steps or evaluation_episodes < 1:
         raise ValueError("invalid step or episode count")
@@ -135,6 +157,10 @@ def train(
         raise ValueError("evaluation_interval must be positive")
     if not np.isfinite(entropy_initial) or entropy_initial <= 0:
         raise ValueError("entropy_initial must be positive and finite")
+    if replay_backend not in {"memory", "disk"}:
+        raise ValueError("replay_backend must be memory or disk")
+    if replay_capacity is not None and replay_capacity < 1:
+        raise ValueError("replay_capacity must be positive")
     torch.set_num_threads(1)
     base = make_env(scene, reward_mode="progress", reset_noise_rad=0.03)
     teacher = joint_goal_teacher(base.goal_rad, base.max_delta_rad)
@@ -143,16 +169,20 @@ def train(
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "policy_progress.jsonl").write_text("")
     env = TransitionRecorder(intervention_env, output_dir / "transitions.jsonl")
+    model = None
     try:
         demo_lines = sum(1 for _ in demo_recording.open(encoding="utf-8")) if demo_recording else 0
+        replay_kwargs = {"demo_fraction": 0.5}
+        if replay_backend == "disk":
+            replay_kwargs.update(directory=replay_directory or output_dir / "replay", prefetch=replay_prefetch)
         model = DemoRegularizedSAC(
             "MultiInputPolicy",
             env,
             seed=seed,
             device="cpu",
-            buffer_size=max(1000, steps + demo_lines + 1),
-            replay_buffer_class=HILReplayBuffer,
-            replay_buffer_kwargs={"demo_fraction": 0.5},
+            buffer_size=replay_capacity if replay_capacity is not None else max(1000, steps + demo_lines + 1),
+            replay_buffer_class=DiskHILReplayBuffer if replay_backend == "disk" else HILReplayBuffer,
+            replay_buffer_kwargs=replay_kwargs,
             learning_starts=min(100, max(1, steps // 4)),
             batch_size=64,
             train_freq=1,
@@ -188,13 +218,23 @@ def train(
             "entropy_initial": entropy_initial,
             "sac_updates": model._n_updates,
             "bc_updates": model.bc_updates,
+            "replay_backend": replay_backend,
+            "replay_capacity": model.replay_buffer.buffer_size,
         }
-        model.save(output_dir / "policy.zip")
-        model.save_replay_buffer(output_dir / "replay.pkl")
+        save_policy_checkpoint(model, output_dir / "policy.zip")
+        if replay_backend == "disk":
+            metrics["replay_storage"] = model.replay_buffer.storage_stats()
+            metrics["replay_checkpoint"] = str(model.replay_buffer.checkpoint())
+        else:
+            model.save_replay_buffer(output_dir / "replay.pkl")
         (output_dir / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
         return metrics
     finally:
-        env.close()
+        try:
+            if model is not None and isinstance(model.replay_buffer, DiskHILReplayBuffer):
+                model.replay_buffer.close()
+        finally:
+            env.close()
 
 
 def main() -> None:
@@ -210,6 +250,10 @@ def main() -> None:
     parser.add_argument("--demo-recording", type=Path, help="JSONL from keyboard_teleop to seed human replay")
     parser.add_argument("--evaluation-interval", type=int, default=300, help="Steps between fixed-seed policy audits")
     parser.add_argument("--entropy-initial", type=float, default=1.0, help="Initial automatic SAC entropy coefficient")
+    parser.add_argument("--replay-backend", choices=("memory", "disk"), default="memory")
+    parser.add_argument("--replay-capacity", type=int, help="Fixed ring capacity; oldest transitions are overwritten")
+    parser.add_argument("--replay-directory", type=Path, help="Empty directory for disk arrays; defaults to OUTPUT_DIR/replay")
+    parser.add_argument("--no-replay-prefetch", action="store_true", help="Disable background disk batch prefetch")
     args = parser.parse_args()
     print(json.dumps(train(
         steps=args.steps,
@@ -223,6 +267,10 @@ def main() -> None:
         demo_recording=args.demo_recording,
         evaluation_interval=args.evaluation_interval,
         entropy_initial=args.entropy_initial,
+        replay_backend=args.replay_backend,
+        replay_capacity=args.replay_capacity,
+        replay_directory=args.replay_directory,
+        replay_prefetch=not args.no_replay_prefetch,
     ), indent=2))
 
 

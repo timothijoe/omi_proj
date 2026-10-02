@@ -9,6 +9,8 @@
 | 3. Buffer | 在线流收全部在线 transition；示范流收人工/脚本干预及离线示范；批次按配置从两流取样 | 单元测试验证离线示范不进入在线半批、在线干预进入两流、环形覆盖清理旧标记；训练输出 `replay_streams` | 独立进程/服务缓冲，原版大规模数据集机制 |
 | 4. Policy improvement | SB3 SAC 更新 actor/critic/温度，另可选示范 BC；固定种子基线、周期评估、参数变化和更新次数可追踪 | `bc_weight=0`、初始熵系数 `0.01` 时，1500 步由 0/10 到 10/10；另取 30 回合为 30/30 | 原版 JAX/LeRobot 分布式训练未复刻；超参数变化对结果影响明显 |
 
+干预、奖励、策略更新与 Buffer 的完整当前机制见 [HIL 训练纪传体](agent/training/evolution/hil-training.md)。本页保留复现证据与对照条件；日常训练入口见 [训练教程](../tutorials/a_arm_simulation.md)。
+
 ## 关键数据语义
 
 环境报告 `policy_action`、`human_action`、`executed_action` 和 `action_source`。回放存储的是限位后的 `executed_action`。这里“executed”指**仿真下发的命令增量**；并非真实机器人反馈位移。在线干预同时进入在线流与示范流；从键盘 JSONL 导入的离线示范只进入示范流。这样采样时离线示范不会污染在线半批。默认 `demo_fraction=0.5`，即有两流数据时一半从示范流、一半从在线流；在线干预可在两流出现，符合原版 actor 将干预 transition 同时插入两类 store 的语义。
@@ -16,6 +18,8 @@
 ## Policy improvement 的解释
 
 标准 SAC 的策略更新在 SB3 中执行：critic 学习带目标网络的 Bellman 值，actor 最小化由熵项与 `min(Q1,Q2)` 构成的目标，温度系数按目标熵更新。OMI 的 `DemoRegularizedSAC` 在 SAC 更新后可选地追加接管样本的行为克隆 MSE 更新。固定种子评估没有干预，避免用教师完成的回合伪装成策略成功。
+
+以下为此前各设置的实验对照，形成记录见 [低熵纯 SAC 编年](agent/training/chronicles/2026-10-01-low-entropy-sac.md)及[双流审计编年](agent/training/chronicles/2026-10-01-policy-improvement-audit.md)。
 
 | 设置 | 训练步 | SAC/BC 更新 | 固定 10 回合 | 另取 30 回合 | 结论 |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -27,6 +31,10 @@
 低熵纯 SAC 的固定种子策略由 0/10 到 10/10，平均终点 TCP 误差从 0.447 m 降至 0.022 m，平均完成 6.3 步。初始/最终快照重新加载复验一致；[纯 SAC 学习曲线](evidence/a_reach_sac_policy_improvement.png)显示到后期才越过成功阈值。组合设置的[学习曲线](evidence/a_reach_policy_improvement.png)也保留作对照。两个成功设置都只证明此简单仿真任务中的策略改善。
 
 这些对照说明“actor 参数改变”本身不够，必须看无干预表现；初始熵系数在七维动作任务上显著影响结果。纯 SAC 成功设置仍使用脚本示范和接管的双流数据，不是无示范的普通 SAC。实验仅使用固定目标、简单初始扰动，不能据此声称跨目标泛化，也不等于逐行复刻参考项目的 JAX/AgentLace 或 LeRobot 分布式实现。
+
+## 本机环境最近复验
+
+恢复本地模型、安装固定依赖后，使用同一低熵纯 SAC 配置重新训练 1500 步：709 次脚本干预、1400 次 SAC 更新、0 次 BC 更新，固定 10 回合评估从 0/10 到 10/10，终点误差从 0.4465 m 降至 0.0153 m。种子 2000 起的独立 30 回合为 30/30，平均 6.03 步、终点误差 0.0167 m。1500 条录制校验通过；26 项自动测试在本地 A 臂场景已配置时通过。版本、命令与证据位置见 [本地环境编年](agent/simulation/chronicles/2026-10-01-omi-environment.md)。这些数字属于最近复验，上面的早期对照数字保留其原实验条件。
 
 ## 操作入口
 
