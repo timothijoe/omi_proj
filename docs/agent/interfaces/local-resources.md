@@ -1,5 +1,15 @@
 # 本地资源定位
 
+末端实验数据/模型/报告位于 `local/eef_bc/`，消息包构建位于 `local/action_ros/`，均Git忽略。
+需原bag和匹配Marvin消息；不需要机器人mesh或触觉SDK。新机器按
+[末端教程](../../../tutorials/eef_action_space.md)重建消息包并重新导出。
+
+Stand派生模型固定归档为 `local/models/omi_marvin_stand_axis_corrected_v1/`，包含
+命名URDF、15个原STL、原URDF及来源说明。它不是厂商原版，不是已标定控制模型，
+整个目录被Git忽略，换机需单独复制。网格为`package://` URI，资源包安装描述尚未实跑。
+现有方向修正回放仍读取原`Marvin_Stand_2026.2.2.rar`，生成临时运行URDF及本机mesh URI，
+不会自动读取固定命名归档。操作与依赖见[教程](../../../tutorials/corrected_stand_review.md)。
+
 录包BC和影子推理使用 `local/bc/` 存NPZ、只含观测的MCAP、权重与报告，全部Git忽略。
 原始bag、匹配Marvin消息需另行准备；运行环境安装bc extra和ROS系统包，不需要Daimon SDK
 或机器人mesh。恢复与命令见[教程](../../../tutorials/bag_bc_shadow.md)和[manifest](../../../manifests/resources.yaml)。

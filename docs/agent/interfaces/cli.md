@@ -1,5 +1,26 @@
 # CLI 入口
 
+`eef_bc.sh export --wrist-camera {off,required,optional}`启用EEF v2相机配置，省略保持v1。
+train/shadow自动读取已保存的输入源契约，不接受静默切换相机；[用法](../../../tutorials/eef_action_space.md#6-开启或关闭腕部相机v2)。
+
+末端动作实验：`bash scripts/eef_bc.sh {export|train|shadow} --help`。
+export需`--accept-future-state-proxy`，train需独立episode或`--overfit-smoke`，shadow使用
+已构建的omi_action_msgs，默认localhost domain92，仅发布类型化候选。
+[构建及完整命令](../../../tutorials/eef_action_space.md)。
+
+当前Stand模型对照使用：
+
+```bash
+bash scripts/view_corrected_stand_observation_3d.sh ZIP_OR_BAG MODEL.rar [RATE=1] [--no-rviz]
+```
+
+固定localhost domain94，仅回放显示；左3/4/6、右3/4/5关节方向重参数化。
+同参数的 `view_stand_observation_3d.sh`（domain98）保留未修正角度定义，
+`view_hybrid_observation_3d.sh`（domain95）保留旧链并配准部分网格。
+这些是Shell脚本，不是已安装的ROS控制节点入口。
+调用`--help`不加载模型或连接设备；正常运行只发布显示topic。
+关节限位、base/TCP未验收；[版本选择和限制](../hardware/evolution/robot-3d-replay.md#入口选择与当前结论)。
+
 录包BC实验：`bash scripts/bag_bc.sh {export|train|shadow} --help`，分别调用
 training.bag_bc_data、bc_policy、bc_shadow；Jazzy与匹配Marvin消息，默认localhost domain99。
 export要求显式动作语义假设；train要求独立验证episode或overfit-smoke；shadow只输出JSON，

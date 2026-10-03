@@ -6,6 +6,7 @@ import time
 import numpy as np
 
 from .tactile import IncompleteFrame, connect, snapshot, sdk_check, sdk_digest
+from .tactile_grid import prepare_fields, topic_root
 
 
 def image_message(array, header):
@@ -25,7 +26,7 @@ def image_message(array, header):
     return msg
 
 
-def run(config, side=None, fake=False, duration=None):
+def run(config, side=None, fake=False, duration=None, tactile_mode='full', publish_raw=False):
     import rclpy
     from rclpy.executors import ExternalShutdownException
     from sensor_msgs.msg import Image, CameraInfo
@@ -33,6 +34,7 @@ def run(config, side=None, fake=False, duration=None):
     from geometry_msgs.msg import WrenchStamped
     from rclpy.qos import QoSProfile, ReliabilityPolicy
 
+    root = topic_root(tactile_mode)
     tac = config["tactile"]
     digest = "synthetic"
     if not fake:
@@ -44,8 +46,13 @@ def run(config, side=None, fake=False, duration=None):
     pubs = {}
     for s in sides:
         for kind in ("raw", "infer", "deformation", "shear", "depth", "metadata", "status", "wrench"):
+            if tactile_mode != 'full' and ((kind == 'raw' and not publish_raw) or kind == 'infer' or
+                    (kind == 'depth' and not tac['enable_depth']) or
+                    (kind == 'wrench' and not tac['enable_wrench'])):
+                continue
             cls = String if kind in ("metadata", "status") else WrenchStamped if kind == "wrench" else Image
-            pubs[s, kind] = node.create_publisher(cls, "/omi/tactile/%s/%s" % (s, kind), qos)
+            kind_root = '/omi/tactile' if kind == 'raw' else root
+            pubs[s, kind] = node.create_publisher(cls, kind_root + "/%s/%s" % (s, kind), qos)
     camera = None
     if fake and config["realsense"]["enabled"]:
         camera = (node.create_publisher(Image, "/camera/camera/color/image_raw", qos),
@@ -56,6 +63,18 @@ def run(config, side=None, fake=False, duration=None):
     state, error = "starting", ""
 
     def publish(s, frame, stamp, arrays, wrench_state, elapsed):
+        reduction_start = time.monotonic()
+        raw = arrays.get('raw') if publish_raw else None
+        arrays, reduction_meta = prepare_fields(arrays, tactile_mode)
+        if reduction_meta:
+            if raw is not None:
+                arrays['raw'] = raw
+                reduction_meta['omitted_fields'].remove('raw')
+                reduction_meta['raw_topic'] = '/omi/tactile/' + s + '/raw'
+            elapsed += (time.monotonic() - reduction_start) * 1000
+            reduction_meta['field_source'] = 'synthetic_downsampled' if fake else 'sdk_downsampled'
+            if fake:
+                reduction_meta['processing_version'] = 'synthetic-block-mean-24x16-v1'
         header = Header()
         header.stamp.sec, header.stamp.nanosec = divmod(stamp, 1_000_000_000)
         header.frame_id = "tactile_" + s
@@ -81,6 +100,18 @@ def run(config, side=None, fake=False, duration=None):
             "fields": {key: {"shape": list(a.shape), "dtype": str(a.dtype)} for key, a in arrays.items()},
             "dropped_incomplete_frames": dropped,
         }
+        meta.update(reduction_meta)
+        if 'wrench' in arrays:
+            matched = wrench_state == 'frame_id_matched_units_unverified'
+            meta['wrench_provenance'] = {
+                'source_frame_id': frame if matched else None,
+                'same_frame_as_fields_verified': matched,
+                'timestamp_kind': 'host_read_not_exposure',
+                'source_timestamp_available': False,
+                'freshness_verified': False,
+                'units_and_axes_calibrated': False,
+                'component_order': ['Fx', 'Fy', 'Fz', 'Tx', 'Ty', 'Tz'],
+            }
         pubs[s, "metadata"].publish(String(data=json.dumps(meta, sort_keys=True)))
 
     try:
@@ -89,7 +120,8 @@ def run(config, side=None, fake=False, duration=None):
             if fake:
                 fid += 1
                 stamp = time.time_ns()
-                yy, xx = np.mgrid[:48, :64]
+                height, width = (48, 64) if tactile_mode == 'full' else (288, 384)
+                yy, xx = np.mgrid[:height, :width]
                 mono = ((xx + yy + fid) % 256).astype(np.uint8)
                 field = np.stack((np.sin((xx + fid) / 10), np.cos(yy / 10)), axis=-1).astype(np.float32)
                 arrays = {"raw": mono, "infer": mono.copy(), "deformation": field, "shear": field * 0.5}

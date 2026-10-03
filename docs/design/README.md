@@ -1,5 +1,7 @@
 # 设计文档
 
+- [双相机ROI选择约定：第一版](camera-roi-v1.md)
+
 - [文档体系与维护规则](documentation-system.md)
 - [HIL RL 跨领域架构](hil-architecture.md)
 - [真机触觉观测、录制与可视化验证需求](tactile-observation-requirements.md)

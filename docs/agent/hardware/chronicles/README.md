@@ -1,5 +1,39 @@
 # Hardware 编年索引
 
+- [2026-10-03：当天阶段性版本检查点](2026-10-03-day-checkpoint.md)
+
+- [2026-10-03：腕部/触觉/速查教程三件套](2026-10-03-sensor-tutorial-triad.md)
+
+- [2026-10-03：raw与wrench显式发布开关](2026-10-03-raw-wrench-opt-in.md)
+
+- [2026-10-03：SDK无帧号wrench发布修复](2026-10-03-wrench-unframed-fix.md)
+
+- [2026-10-03：通用小矩阵RViz回放入口](2026-10-03-grid-general-viewer.md)
+
+- [2026-10-03：小矩阵实录回放、raw缺失与开发暂缓](2026-10-03-grid-bag-review-and-raw-deferred.md)
+
+- [2026-10-03：独立触觉采集默认低带宽完整数值输入](2026-10-03-tactile-numeric-default.md)
+
+- [2026-10-03：触觉深度与六维力启动开关](2026-10-03-tactile-depth-wrench-flags.md)
+
+- [2026-10-03：触觉24×16数值场可选传输](2026-10-03-tactile-grid-transport.md)
+
+- [2026-10-03：腕部视频流排查与解决过程归档](2026-10-03-wrist-stream-investigation-summary.md)
+
+- [2026-10-03：腕部原图/ROI发布开关](2026-10-03-wrist-roi-topic.md)
+
+- [2026-10-03：共享内存结论边界与策略ROI传输方案](2026-10-03-roi-stream-plan.md)
+
+- [2026-10-03：腕部大图共享内存传输实验](2026-10-03-wrist-shm-trial.md)
+
+- [2026-10-03：腕部真实出图与视频流卡顿遗留](2026-10-03-daimon-live-stream-stutter.md)
+
+- [2026-10-03：戴蒙真实触觉接通与腕部独立实时入口](2026-10-03-daimon-live.md)
+
+- [2026-10-03：bag_004腕部回放、双相机ROI基线与采集遗留](2026-10-03-wrist-roi-and-capture-followup.md)
+
+- [2026-10-03：Stand 模型对照、关节方向修正与命名归档](2026-10-03-stand-axis-correction.md)
+
 记录已发生且有证据的设备边界开发；现场验收要另开新记录。
 
 - [2026-10-01：SDK 边界与模拟测试](2026-10-01-sdk-boundary.md)

@@ -51,7 +51,8 @@
   不是原版 HIL-SERL 的 topic 命名或传输实现。
 
 当前 `training.bc_shadow` 的 `/omi/shadow/prediction` 仍为 `std_msgs/msg/String` JSON，
-只发布影子预测。类型化消息、人工输入、选择模块、真实控制输出均未在这条链路实现。
+只发布影子预测。旧关节链路尚未替换String；新独立[EEF实验](../agent/training/evolution/eef-action-space.md)
+已实现类型化策略候选。人工输入、选择模块和真实控制输出仍未实现。
 后续替换 String 时仍须保留 shadow 隔离，发布类型化预测不等于授权控制机器人。
 当前 BC 的七关节绝对弧度目标仍是待现场确认的假设，不能直接换成原版末端增量动作。
 

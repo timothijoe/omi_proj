@@ -1,5 +1,26 @@
 # 数据格式与单位
 
+## bag-eef-bc-v2（可选腕部）
+
+新增wrist_rgb uint8 `(N,3,128,128)`、camera_mask float32 `(N,2)`，顺序external/wrist。
+mask为启用且新鲜的0/1标记；外部固定必需。源选择off/required/optional、ROI和归一化等
+保存在manifest与checkpoint，必须一致。关闭/缺失腕部为零图＋mask0，不能冒充有效黑图。
+原state26、tactile10×16×24、action6不变。规则见[契约](../training/evolution/eef-action-space.md#v2可选腕部相机与输入源标记)。
+
+## bag-eef-bc-v1（未来状态变化代理）
+
+RGB/触觉沿用bag-bc-v1；state为26维，追加当前EEF xyz/xyzw；action为6维米/弧度旋转向量。
+`target_pose`只用于标签审计，`actual_horizon_ns=label_ns-source_ns[eef]`保存真实跨度。
+基座系增量按当前录制位姿重建，旋转左乘；具体时间、形状、单位与拒绝规则见
+[末端动作契约](../training/evolution/eef-action-space.md)。不兼容旧7关节检查点。
+新 `omi_action_msgs/msg/EefActionProposal` 仅表示影子策略候选，不是选定/下发动作。
+
+
+双相机ROI几何与插值约定见[第一版说明](../../design/camera-roi-v1.md)。
+外部(.507,.426,.40)、腕部(.500,.704,.36)依次表示中心X比例、中心Y比例、短边比例；
+两路输出128×128。当前新看板外部最近邻、腕部Lanczos，不能当成统一的训练插值契约；
+旧七关节BC及EEF v1不接腕部；EEF v2已按固定ROI＋最近邻接入可选腕部。
+
 ## bag-bc-v1（实验、仅影子推理）
 
 `training.bag_bc_data.CONTRACT`为训练/推理共同契约；不兼容时拒绝加载。

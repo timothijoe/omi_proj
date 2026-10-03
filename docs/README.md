@@ -1,5 +1,7 @@
 # OMI 文档总目录
 
+末端动作开发：[bag_004操作教程](../tutorials/eef_action_space.md) → [版本契约与验证边界](agent/training/evolution/eef-action-space.md)。
+
 本项目目前是天机 Marvin **A 臂（左臂）**的 MuJoCo HIL RL 原型。当前状态以 [能力总表](capabilities.md) 和各领域 `current.md` 为准；历史实验数字保存在编年记录中。
 
 ## 选择入口
@@ -9,6 +11,7 @@
 | 第一次运行 | [环境准备](../tutorials/environment_setup.md) → [最短仿真案例](../tutorials/quickstart.md) |
 | 换机器/核对额外依赖 | [额外拷贝与重新安装清单](../tutorials/machine_transfer_checklist.md) |
 | SDK原生采集与看板 | [独立采集](../tutorials/sensor_collection.md) → [新数值看板](../tutorials/sdk_native_dashboard.md) |
+| record001机器人/末端对照 | [Stand方向修正版](../tutorials/corrected_stand_review.md) → [版本选择及模型限制](agent/hardware/evolution/robot-3d-replay.md#入口选择与当前结论) |
 | 操作键盘示范或回放 | [键盘示范](../tutorials/keyboard_demonstration.md) → [录制与训练](../tutorials/recording_and_replay.md) |
 | 核查 HIL RL 四项复现 | [训练、干预、buffer、policy improvement 审计](hil_rl_reproduction.md) |
 | 理解当前训练实现 | [干预、奖励、策略更新与 Buffer](agent/training/evolution/hil-training.md) |

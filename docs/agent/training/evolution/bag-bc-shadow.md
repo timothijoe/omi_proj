@@ -1,5 +1,8 @@
 # 录包BC初始策略与ROS影子推理
 
+另有[末端6D试验](eef-action-space.md)，使用未来状态代理标签和类型化候选；
+本页继续描述旧bag-bc-v1七关节绝对目标实验，其输入/输出和检查点含义保持。
+
 独立于既有SB3 SAC流程，实现原生触觉录包的BC和ROS消息输入链路验收。
 见[设计目标](../../../design/bag-bc-shadow-policy.md)、[教程](../../../../tutorials/bag_bc_shadow.md)。
 不连接硬件、不发布实际控制指令，不是已部署机器人控制器。

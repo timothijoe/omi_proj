@@ -1,5 +1,11 @@
 # Hardware 导航
 
+- [腕部视频流卡顿：问题、排查与解决过程](evolution/wrist-stream-performance.md)
+
+- [当前Stand方向修正版操作入口](../../../tutorials/corrected_stand_review.md)
+- [五种机器人回放入口对照](evolution/robot-3d-replay.md#入口选择与当前结论)
+- [模型修正与命名归档记录](chronicles/2026-10-03-stand-axis-correction.md)
+
 - [长期章程](charter.md)
 - [当前摘要](current.md)
 - [SDK 原生数值看板](evolution/sdk-native-dashboard.md)

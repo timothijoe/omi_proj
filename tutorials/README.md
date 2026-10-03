@@ -1,5 +1,30 @@
 # 操作教程
 
+传感器常用操作优先看三个互相索引的教程：
+
+- [腕部＋触觉常用命令速查](sensor_commands.md)
+- [腕部相机专项](wrist_camera.md)
+- [触觉专项：小矩阵、raw/wrench开关与录包](tactile_grid_transport.md)
+
+默认参数、topic和常用命令变更时，三份文件共同维护。
+
+- [24×16触觉＋腕部ROI＋3D机器人通用回放](grid_bag_review.md)：用于新的`/omi/tactile_grid24x16/...`录包。
+
+- [末端动作 rosbag、Float64MultiArray 与模拟控制端联调](eef_action_bag.md)
+
+- [戴蒙触觉与腕部相机独立实时启动、RViz及时延检查](daimon_live.md)
+
+- [bag_004末端动作空间、BC与类型化影子推理](eef_action_space.md)
+
+含旧`/tj/dm_sensor/...`完整场的oct03包用[腕部＋触觉＋机器人回放](wrist_bag_review.md)：
+独立domain93，读取命名修正版模型。新的grid话题包使用上面的小矩阵入口，不能只按录制日期选择。
+
+新增[Stand关节方向修正版](corrected_stand_review.md)：新支架与完整网格，修正角度约定；TCP/限位未验收。
+
+新增[新外观＋旧运动链对照](hybrid_urdf_review.md)：保留旧关节链，新网格逐件配准，不确定部分回退旧外观。
+
+新增[Stand URDF 对照回放](stand_urdf_review.md)：独立新模型入口，区分 L7 原点与录包 EEF，未校准。
+
 新增[录包BC训练与ROS影子推理](bag_bc_shadow.md)：只输出诊断预测，不控制机械臂；
 短包验证只证明训练和推理链路跑通。
 
@@ -20,3 +45,4 @@
 建议顺序：[重建环境](environment_setup.md) → [最短仿真案例](quickstart.md) → [A 臂任务](a_arm_simulation.md) → [键盘示范](keyboard_demonstration.md) → [策略运行中干预](interactive_intervention.md) → [录制与回放](recording_and_replay.md)。真机阶段先看[硬件准备](hardware_preflight.md)，再运行[ROS 观测接口](ros_observation_interface.md)；两者都没有真机运动命令。遇到问题见 [排障](troubleshooting.md)。
 
 所有命令从 `omi_proj/` 执行。`SCENE` 需由操作者改为自己机器上完整的 MJCF 路径。
+- [触觉24×16低带宽发布](tactile_grid_transport.md)：独立可选数值场，不改变旧看板默认流程。

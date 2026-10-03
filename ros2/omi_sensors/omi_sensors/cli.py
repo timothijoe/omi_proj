@@ -16,12 +16,17 @@ import tempfile
 import time
 
 from .config import camera_command, load_config, positive, sensor_topics, replay_topics
+from .tactile_grid import MODES
 
 
 def environment(config):
     env = os.environ.copy()
-    env.update(ROS_DOMAIN_ID=str(config["domain_id"]), ROS_LOCALHOST_ONLY="1",
-               ROS_AUTOMATIC_DISCOVERY_RANGE="LOCALHOST", RMW_FASTRTPS_PUBLICATION_MODE="ASYNCHRONOUS")
+    discovery = env.get("OMI_SENSOR_DISCOVERY_RANGE", "LOCALHOST")
+    if discovery not in ("LOCALHOST", "SUBNET"):
+        raise ValueError("OMI_SENSOR_DISCOVERY_RANGE must be LOCALHOST or SUBNET")
+    env.update(ROS_DOMAIN_ID=str(config["domain_id"]),
+               ROS_LOCALHOST_ONLY="0" if discovery == "SUBNET" else "1",
+               ROS_AUTOMATIC_DISCOVERY_RANGE=discovery, RMW_FASTRTPS_PUBLICATION_MODE="ASYNCHRONOUS")
     return env
 
 
@@ -136,14 +141,21 @@ def main(argv=None):
     parser.add_argument("--config", required=True, type=Path)
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("doctor", "plan", "live"):
-        sub.add_parser(name)
+        command_parser = sub.add_parser(name)
+        if name == 'live':
+            command_parser.add_argument('--tactile-mode', choices=MODES, default='full')
+            command_parser.add_argument('--publish-raw', action='store_true')
     fake = sub.add_parser("fake")
     fake.add_argument("--duration", type=positive)
+    fake.add_argument('--tactile-mode', choices=MODES, default='full')
+    fake.add_argument('--publish-raw', action='store_true')
     dashboard = sub.add_parser("dashboard", help="subscribe to SDK-native fields; publish a human-view RGB dashboard")
     dashboard.add_argument("--rate", type=positive, default=10.0)
     dashboard.add_argument("--stale-seconds", type=positive, default=0.5)
     tactile = sub.add_parser("tactile", help=argparse.SUPPRESS)
     tactile.add_argument("side", choices=("a", "b"))
+    tactile.add_argument('--tactile-mode', choices=MODES, default='full')
+    tactile.add_argument('--publish-raw', action='store_true')
     record = sub.add_parser("record", help="record already-running sensors; output must not exist")
     record.add_argument("output", type=Path)
     record.add_argument("--duration", type=positive)
@@ -158,7 +170,10 @@ def main(argv=None):
         if config["realsense"]["enabled"]:
             commands.append(camera_command(config))
         if config["tactile"]["enabled"]:
-            commands += [[sys.executable, "-m", "omi_sensors.cli", "--config", str(args.config.resolve()), "tactile", side]
+            mode_args = [] if getattr(args, 'tactile_mode', 'full') == 'full' else ['--tactile-mode', args.tactile_mode]
+            if getattr(args, 'publish_raw', False):
+                mode_args += ['--publish-raw']
+            commands += [[sys.executable, "-m", "omi_sensors.cli", "--config", str(args.config.resolve()), "tactile", side, *mode_args]
                          for side in ("a", "b")]
         if args.command == "plan":
             print(json.dumps({"environment": {k: v for k, v in environment(config).items() if k.startswith("ROS_")},
@@ -190,7 +205,8 @@ def main(argv=None):
         if args.command in ("fake", "tactile"):
             os.environ.update(environment(config))
             from .node import run
-            run(config, side=getattr(args, "side", None), fake=args.command == "fake", duration=getattr(args, "duration", None))
+            run(config, side=getattr(args, "side", None), fake=args.command == "fake", duration=getattr(args, "duration", None),
+                tactile_mode=args.tactile_mode, publish_raw=args.publish_raw)
             return 0
         if args.command == "live":
             if not commands:

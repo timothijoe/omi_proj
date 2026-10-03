@@ -1,5 +1,13 @@
 schema_version: 1
 resources:
+  - id: omi-marvin-stand-axis-corrected-v1
+    path: local/models/omi_marvin_stand_axis_corrected_v1
+    tracked: false
+    required_for: named_corrected_stand_model_archive
+    source: User-supplied Marvin_Stand_2026.2.2.rar; OMI derived axis convention, NOT vendor original
+    source_sha256: 5c4f24b0b445da411a4a030e16f544559f8d230cf93cf30109199c46df3e5bcd
+    purpose: Named visualization-only URDF, original source URDF, 15 meshes and provenance; base/TCP/limits unverified
+    restore: Transfer the entire directory including meshes, source and provenance. Runtime replay can regenerate corrected geometry from the source RAR using scripts/view_corrected_stand_observation_3d.sh; the named archive uses package mesh URIs. Vendor redistribution rights are unverified.
   - id: bag-bc-artifacts
     path: local/bc
     tracked: false
@@ -126,3 +134,26 @@ resources:
     source: Generated from record010 raw and the 25-26 second temporal-median baseline
     purpose: Three-timepoint deformation, shear, reconstructed/recorded depth comparisons, wrench snapshots and dashboards.
     restore: Run omi_hil_rl.real.tactile_offline with record010, the generated baseline, and the local Daimon SDK root; no serial or device connection is required.
+
+  - id: eef-action-experiment
+    path: local/eef_bc
+    tracked: false
+    required_for: eef_proxy_bc_shadow_experiment
+    source: User-supplied oct03/bag_004.zip, SHA256 0da32bb8ee8b5434af4f36cc87548afe26b12439e16a3eac2913f0473faece2c
+    purpose: Versioned six-dimensional future-state proxy dataset, observations-only MCAP, weights and reports
+    restore: Run scripts/eef_bc.sh export/train/shadow with new output directories; rebuild matching Marvin messages and ros2/omi_action_msgs. No robot model or tactile SDK required.
+  - id: eef-action-ros-build
+    path: local/action_ros
+    tracked: false
+    required_for: eef_typed_shadow_proposals
+    source: Project ros2/omi_action_msgs
+    purpose: Generated ROS message build, install and logs; not a portable binary asset
+    restore: Rebuild with colcon following tutorials/eef_action_space.md; tested on Jazzy, Humble unverified.
+
+  - id: eef-dual-camera-artifacts
+    path: local/eef_bc
+    tracked: false
+    required_for: optional_wrist_eef_policy_experiment
+    source: bag_004 with wrist-camera profile; derived wrist-absent observations used for fallback validation
+    purpose: V2 fixed-shape RGB inputs, camera masks, selected-original-CDR replay caches, policy weights and verification reports
+    restore: Export with scripts/eef_bc.sh export SOURCE OUTPUT --wrist-camera off/required/optional as documented in tutorials/eef_action_space.md; train matching checkpoints. Rebuild ROS action messages. Old unfiltered V2 trials are retained as failure evidence, not recommended replay caches.

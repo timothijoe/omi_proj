@@ -1,9 +1,18 @@
 # 能力总表
 
+新增[双相机输入选择](agent/training/evolution/eef-action-space.md#v2可选腕部相机与输入源标记)：
+腕部与外部各3×128×128，显式camera_mask及off/required/optional配置；
+双相机、关闭、整路腕部缺失均实际两轮140条影子候选通过；最新完整测试155 passed、6 skipped。
+
+新增[末端6D动作实验](agent/training/evolution/eef-action-space.md)：bag_004共69代理标签，
+500步单段BC，140条类型化ROS影子候选实收及载荷核对通过；旧关节BC回归109条。
+末端初版测试147 passed、6 skipped，另ROS消息专项10 passed；无真机/泛化验收。
+
 证据等级：**代码/静态**、**自动测试**、**headless 仿真**、**人工 GUI 观察**、**设备只读**、**真机运动**。以下状态仅针对 OMI 当前代码。
 
 | 能力 | 当前入口 | 已验证 | 尚未验证 |
 | --- | --- | --- | --- |
+| Stand方向修正版录包可视化 | `scripts/view_corrected_stand_observation_3d.sh` | 新旧链随机角度数学对照、单元测试、RViz启动及截图；派生模型命名归档 | 真机base/TCP及限位；左joint4限位已知不一致，不可控制 |
 | A 臂 MJCF 加载和任务预检 | `python -m omi_hil_rl.sim.preflight --scene ...` | 外部场景在本机加载；headless 仿真与自动测试 | 现场模型、工具和 TCP 一致性 |
 | A 臂末端到达任务 | `TianjiAReachEnv` | 目标可达；策略独立评估 30/30（固定简单目标） | 真实设备、视觉变化和扰动 |
 | 代理模型接口测试 | `TianjiSurrogateEnv`、`sim.smoke` | 自动测试 | 代理动力学代表性 |
@@ -27,7 +36,7 @@
 新增同一播放器的[相机与触觉合并显示](agent/hardware/evolution/tactile-live.md#相机与触觉合并模式)，
 原图/128 ROI 与双指向量同屏，实收约 9.94 Hz。
 
-最近完整自动测试为 **59 passed, 1 skipped**；前阶段测试数字保留在历史编年记录。
+相机触觉合并显示阶段为 **59 passed, 1 skipped**；最新测试见本页顶部，前阶段数字保留在历史编年记录。
 四项训练机制见 [训练纪传体](agent/training/evolution/hil-training.md)，磁盘验证见
 [开发编年](agent/training/chronicles/2026-10-02-disk-replay.md)，完整对照见
 [HIL RL 审计](hil_rl_reproduction.md)。SDK 适配器默认无运动授权。

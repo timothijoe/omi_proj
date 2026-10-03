@@ -16,12 +16,16 @@
 | 比对迁移前后数值 | 再加六个历史参考NPZ，保留相同基准metadata | 重放缓存、生成PNG不是数值回归的必需品 |
 | 旧完整ROS observation/关节反馈 | 上述观测所需数据，以及匹配的marvin_msgs源码并重新构建 | 新SDK纯传感器看板不需要此包 |
 | 新外部录包原生字段+3D看板 | 原包ZIP/目录、匹配marvin_msgs源码重建、robot_assets及相邻MarvinCCS；安装Jazzy/RViz/robot_state_publisher、NumPy/Pillow/SciPy/PyYAML/zstd | 触觉SDK、零载荷基准、机械臂SDK；缓存和URDF可再生成 |
+| Stand方向修正版回放（当前对照推荐） | 原包ZIP/目录、匹配marvin_msgs源码重建、原Stand RAR；ROS/Jazzy、RViz、robot_state_publisher、项目Python环境、NumPy/Pillow/SciPy/PyYAML/zstd、系统libarchive | 旧MJCF/MarvinCCS、触觉SDK、机械臂SDK；无需复制运行临时URDF |
+| 保留命名派生模型 | 整个 `local/models/omi_marvin_stand_axis_corrected_v1/`，含URDF、meshes、source、README、provenance | 不需要整个SolidWorks工程；此归档不是现有回放脚本的直接输入 |
+| Hybrid新外观＋旧链对照 | Stand回放依赖，加上旧robot_assets/MarvinCCS；额外做外观配准 | 触觉SDK、机械臂SDK |
 | MuJoCo真实模型仿真 | robot_assets与相邻MarvinCCS完整资源树 | 厂商触觉SDK不是仿真必需品 |
 | 未来臂SDK操作 | Tianji SDK_PYTHON及原生库、工具/控制器配置，另行安全验收 | 仅看图不需要机械臂SDK |
 
 旧record010没有新SDK看板所需的完整原生字段，不能因为“都叫bag”就互换入口。
 外部新包的 `/tj/dm_sensor/` 数值topic也不是schema2 SDK看板格式；使用
-`view_recorded_observation_3d.sh`，见[3D操作教程](robot_3d_replay.md)。
+`view_recorded_observation_3d.sh`（旧模型）或当前[Stand方向修正版](corrected_stand_review.md)
+（另需原Stand RAR），见[3D操作教程](robot_3d_replay.md)。
 在目标机填写 `local/robot_state/viewer.env`（模板 `scripts/robot_viewer.env.example`），
 配置本机重建的Marvin overlay；可用 `OMI_TACTILE_PYTHON` 指向满足依赖的ROS Python环境。
 只拷贝相机标定图片或渲染截图也不能替代bag和数值参考样本。
@@ -39,6 +43,8 @@
 | record010原始bag | `/home/zhoutong/Downloads/img/record010/bag_001/` | 自选数据盘，例如 `omi_proj/local/bags/record010/bag_001/` | 5.3 GiB |
 | marvin_msgs源码 | `/home/zhoutong/Downloads/img/record001/bag_001_jazzy_tools/src/marvin_msgs/` | 新ROS工作区的 `src/marvin_msgs/` | 按需 |
 | 机器人模型 | `omi_proj/local/assets/robot_assets/`、`omi_proj/local/assets/MarvinCCS/` | 两目录保持相邻，连同provenance.json保留 | 按需 |
+| Stand原始归档 | 用户提供的 `Marvin_Stand_2026.2.2.rar` | 自选本地资源目录，命令显式传入 | 按需 |
+| OMI方向修正版模型 | `omi_proj/local/models/omi_marvin_stand_axis_corrected_v1/` | 同项目相对路径，整个目录 | 含15个STL，不随Git迁移 |
 | 臂SDK | 工作区同级 `TJ_FX_ROBOT_CONTRL_SDK/` | 自选目录，包含完整SDK_PYTHON及原生库 | 按需 |
 
 SDK必须复制完整运行归档，不能只拷贝 `dmSDK.py`：`dmrobotics/`中的模型/库、`Daimon/`运行时

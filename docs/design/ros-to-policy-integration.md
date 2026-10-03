@@ -1,5 +1,9 @@
 # ROS 到真机策略输入：当前缺口与实施方案
 
+阶段更新（2026-10-03）：原生录包已有[七关节BC影子实验](../agent/training/evolution/bag-bc-shadow.md)
+和[末端6D代理标签实验](../agent/training/evolution/eef-action-space.md)，通过真实ROS回放验收。
+下文第3—6步针对通用SDK schema/profile及真设备集成；不能据此否定两个独立录包实验已完成的部分。
+
 状态：设计方案，不是已完成的在线 RL 接口。2026-10-02 根据当前代码核对。
 本方案保留稳定可视化，后续开发走独立入口/版本；不授权设备连接或动作执行。
 

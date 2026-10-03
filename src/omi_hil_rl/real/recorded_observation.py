@@ -141,12 +141,19 @@ def render(latest, stamp, elapsed):
     return canvas
 
 
-def prepare(source, cache_root):
+def prepare(source, cache_root, *, topics=None, renderer=None, cache_version=None,
+            decoder=None, allow_future_headers=False):
     """Stream source to a bounded latest-sample state; atomic cache manifest last."""
     import yaml
     import rosbag2_py
     from rclpy.serialization import deserialize_message
     from rosidl_runtime_py.utilities import get_message
+    topics = TOPICS if topics is None else topics
+    renderer = render if renderer is None else renderer
+    cache_version = VERSION if cache_version is None else cache_version
+    decoder = decode if decoder is None else decoder
+    if allow_future_headers:
+        cache_version = [cache_version, 'receipt-order-future-headers-v1']
     source, cache_root = Path(source).resolve(), Path(cache_root).resolve()
     if source.is_file():
         signature = [(str(source), source.stat().st_size, source.stat().st_mtime_ns)]
@@ -156,7 +163,7 @@ def prepare(source, cache_root):
         if any(not p.is_relative_to(source) for p in paths):
             raise ValueError("Bag path escapes source")
         signature = [(str(p), p.stat().st_size, p.stat().st_mtime_ns) for p in paths]
-    key = hashlib.sha256(json.dumps([VERSION, signature]).encode()).hexdigest()[:24]
+    key = hashlib.sha256(json.dumps([cache_version, signature]).encode()).hexdigest()[:24]
     dest = cache_root/key
     if (dest/"manifest.json").is_file():
         return dest
@@ -189,14 +196,17 @@ def prepare(source, cache_root):
             raise ValueError("Only uncompressed/file-zstd bags supported")
         start = info["starting_time"]["nanoseconds_since_epoch"]
         duration = info["duration"]["nanoseconds"]
+        if duration <= 0:
+            raise ValueError('Bag duration must be positive')
         build = work/"frames"
         build.mkdir()
         latest, frames, counts = {}, [], {}
+        future_headers = {}
         next_frame = start
 
         def capture(stamp):
             filename = f"{len(frames):06d}.png"
-            render(latest, stamp, (stamp-start)/1e9).save(build/filename)
+            renderer(latest, stamp, (stamp-start)/1e9).save(build/filename)
             states = {k: dict(stamp=v["stamp"], frame=v["frame"], value=v["value"].tolist())
                       for k, v in latest.items() if k in ("joints", "eef")}
             frames.append(dict(stamp=stamp, image=filename, states=states,
@@ -210,7 +220,7 @@ def prepare(source, cache_root):
                 path = unpacked
             reader = rosbag2_py.SequentialReader()
             reader.open(rosbag2_py.StorageOptions(uri=str(path), storage_id="mcap"), rosbag2_py.ConverterOptions("cdr", "cdr"))
-            classes = {t.name: get_message(t.type) for t in reader.get_all_topics_and_types() if t.name in TOPICS}
+            classes = {t.name: get_message(t.type) for t in reader.get_all_topics_and_types() if t.name in topics}
             if not classes:
                 raise ValueError("No supported observation topics")
             reader.set_filter(rosbag2_py.StorageFilter(topics=list(classes)))
@@ -222,10 +232,14 @@ def prepare(source, cache_root):
                 while next_frame < stamp:
                     capture(next_frame)
                     next_frame += 100_000_000
-                field = TOPICS[topic]
-                item = decode(field, deserialize_message(data, classes[topic]))
+                field = topics[topic]
+                item = decoder(field, deserialize_message(data, classes[topic]))
                 if item["stamp"] > stamp:
-                    raise ValueError("Source header later than bag receipt; clock comparison needs review")
+                    if not allow_future_headers:
+                        raise ValueError("Source header later than bag receipt; clock comparison needs review")
+                    warning = future_headers.setdefault(field, {'count': 0, 'max_ahead_ns': 0})
+                    warning['count'] += 1
+                    warning['max_ahead_ns'] = max(warning['max_ahead_ns'], item['stamp'] - stamp)
                 if field in latest and item["stamp"] < latest[field]["stamp"]:
                     raise ValueError("Source timestamp goes backwards")
                 latest[field] = item
@@ -234,8 +248,12 @@ def prepare(source, cache_root):
         while next_frame <= start+duration:
             capture(next_frame)
             next_frame += 100_000_000
-        (build/"manifest.json").write_text(json.dumps(dict(version=VERSION, source=str(source),
-            signature=signature, duration_ns=duration, start_ns=start, counts=counts, frames=frames)))
+        (build/"manifest.json").write_text(json.dumps(dict(version=cache_version, source=str(source),
+            signature=signature, duration_ns=duration, start_ns=start, counts=counts, frames=frames,
+            future_headers=future_headers, allow_future_headers=allow_future_headers,
+            note='Receipt-order visual review, original source headers preserved; NOT training synchronization',
+            recorded_topic_counts={t['topic_metadata']['name']: t['message_count']
+                                   for t in info.get('topics_with_message_count', [])})))
         build.rename(dest)
     return dest
 

@@ -6,3 +6,5 @@
 - [录包BC与ROS影子推理](bag-bc-shadow.md)
 - [磁盘经验池、预取与恢复](disk-replay.md)
 - [HIL-SERL 开源任务、USB、SpaceMouse 与视觉参考](hil-serl-reference.md)
+
+- [左臂末端增量、代理标签与类型化影子候选](eef-action-space.md)

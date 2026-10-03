@@ -53,11 +53,28 @@ def connect(config, side):
     ))
 
 
+def normalize_wrench(result, frame_id):
+    """Accept vendor unframed six-vectors without inventing a device frame ID."""
+    framed = isinstance(result, (tuple, list)) and len(result) == 2
+    if framed:
+        if not isinstance(result[0], (int, np.integer)) or result[0] != frame_id:
+            return None, 'frame_id_mismatched_omitted'
+        result = result[1]
+    try:
+        value = np.asarray(result, dtype=np.float64)
+    except (TypeError, ValueError):
+        return None, 'invalid_shape_or_values_omitted'
+    if value.shape not in ((6,), (1, 6), (6, 1)) or not np.isfinite(value).all():
+        return None, 'invalid_shape_or_values_omitted'
+    state = 'frame_id_matched_units_unverified' if framed else 'unframed_host_read_unsynchronized'
+    return value.reshape(6).copy(), state
+
+
 def snapshot(sensor, depth=False, wrench=False):
     """Reject cross-frame getter races, missing fields and nonfinite arrays.
 
     There is no atomic vendor snapshot API. Copies are made immediately, then all
-    frame IDs must agree. Unframed wrench is deliberately not attached to a frame.
+    field frame IDs must agree. Unframed wrench is labeled unsynchronized.
     Timestamp is host receive time, NOT a device exposure timestamp.
     """
     methods = {"raw": "getRawImg", "infer": "getInferImg", "deformation": "getDeformation2D", "shear": "getShear"}
@@ -94,11 +111,7 @@ def snapshot(sensor, depth=False, wrench=False):
         raise IncompleteFrame("deformation/shear geometry differs")
     wrench_state = "disabled"
     if wrench:
-        result = sensor.getForce()
-        wrench_state = "unframed_or_mismatched_omitted"
-        if isinstance(result, (tuple, list)) and len(result) == 2 and result[0] == ids[0]:
-            value = np.asarray(result[1], dtype=np.float64).reshape(-1)
-            if value.size == 6 and np.isfinite(value).all():
-                arrays["wrench"] = value.copy()
-                wrench_state = "frame_id_matched_units_unverified"
+        value, wrench_state = normalize_wrench(sensor.getForce(), ids[0])
+        if value is not None:
+            arrays['wrench'] = value
     return ids[0], time.time_ns(), arrays, wrench_state

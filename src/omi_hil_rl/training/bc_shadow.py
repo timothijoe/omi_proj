@@ -22,6 +22,23 @@ from .bag_bc_data import ARRAYS, CONTRACT, TOPICS, ObservationBuffer, NotReady, 
 NS = "/omi/shadow"
 
 
+def profile_modules(name, contract=None):
+    if name == "eef":
+        from . import eef_bc_data as data, eef_bc_policy as policy
+        return data.profile_for(data.CONTRACT if contract is None else contract), policy, "/omi/eef_shadow"
+    if name == "joint":
+        from . import bag_bc_data as data, bc_policy as policy
+        return data, policy, NS
+    raise ValueError("Unknown BC profile")
+
+
+def validate_replay_topics(profile, manifest, actual):
+    allowed = set(profile.TOPICS)
+    required = set(getattr(profile, "REQUIRED_TOPICS", allowed))
+    if not required <= actual <= allowed or actual != set(manifest.get("replay_topics", allowed)):
+        raise ValueError("Replay topics differ from saved source contract or include non-observations")
+
+
 def validate_isolation():
     if int(os.environ.get("ROS_DOMAIN_ID", "0")) == 0 or os.environ.get("ROS_LOCALHOST_ONLY") != "1":
         raise ValueError("Requires nonzero ROS domain and ROS_LOCALHOST_ONLY=1; use scripts/bag_bc.sh")
@@ -33,16 +50,17 @@ def replay(args):
     from rosidl_runtime_py.utilities import get_message
     validate_isolation()
     manifest = json.loads((args.dataset/"manifest.json").read_text())
+    data_profile, policy_profile, namespace = profile_modules(args.profile, manifest["contract"])
+    TOPICS = data_profile.TOPICS
     refs = json.loads((args.dataset/"references.json").read_text())
     rclpy.init()
     node = rclpy.create_node("bc_sensor_replay")
-    control = node.create_publisher(String, NS+"/reference", 64)
+    control = node.create_publisher(String, namespace+"/reference", 64)
     ack = set()
-    node.create_subscription(String, NS+"/ack", lambda m: ack.add(m.data), 64)
+    node.create_subscription(String, namespace+"/ack", lambda m: ack.add(m.data), 64)
     rd = reader(args.dataset/"observations")
     types = rd.get_all_topics_and_types()
-    if {t.name for t in types} != set(TOPICS):
-        raise ValueError("Replay cache must contain observations ONLY")
+    validate_replay_topics(data_profile, manifest, {t.name for t in types})
     pubs = {t.name: node.create_publisher(get_message(t.type), t.name, 64) for t in types}
     del rd
 
@@ -96,7 +114,13 @@ def run(args):
     import rclpy
     from std_msgs.msg import String
     from rosidl_runtime_py.utilities import get_message
-    from .bc_policy import load_policy, predict
+    manifest = json.loads((args.dataset/"manifest.json").read_text())
+    data_profile, policy_profile, namespace = profile_modules(args.profile, manifest["contract"])
+    ARRAYS = data_profile.ARRAYS
+    CONTRACT, TOPICS = data_profile.CONTRACT, data_profile.TOPICS
+    ObservationBuffer, decode, digest = data_profile.ObservationBuffer, data_profile.decode, data_profile.digest
+    load_policy, predict = policy_profile.load_policy, policy_profile.predict
+    is_eef = args.profile == "eef"
     validate_isolation()
     if args.output.exists():
         raise FileExistsError("Refuse to overwrite shadow report")
@@ -105,21 +129,46 @@ def run(args):
         raise ValueError("Dataset contract mismatch")
     expected_per_epoch=sum(bool(r["valid"]) for r in json.loads((args.dataset/"references.json").read_text()))
     model, norm, checkpoint = load_policy(args.checkpoint)
+    if checkpoint["contract"] != manifest["contract"]:
+        raise ValueError("Dataset/checkpoint input-source contract mismatch")
     args.output.mkdir(parents=True)
     rclpy.init()
     node = rclpy.create_node("bc_shadow_inference")
-    action_pub = node.create_publisher(String, NS+"/prediction", 10)
-    status_pub = node.create_publisher(String, NS+"/status", 10)
-    ack_pub = node.create_publisher(String, NS+"/ack", 64)
+    if is_eef:
+        from omi_action_msgs.msg import EefActionProposal
+        from .eef_bc_output import proposal_values, message as proposal_message
+        action_pub = node.create_publisher(EefActionProposal, namespace+"/policy_proposal", 10)
+    else:
+        action_pub = node.create_publisher(String, NS+"/prediction", 10)
+    status_pub = node.create_publisher(String, namespace+"/status", 10)
+    ack_pub = node.create_publisher(String, namespace+"/ack", 64)
     buf, pending, records = ObservationBuffer(), deque(), []
     received, issues = Counter(), Counter()
     state = dict(epoch=-1, last_reference_wall=None, paused=False, ending=None, epochs_completed=0)
     errors = []
+    typed_received = set()
+    if is_eef:
+        def verify_proposal(m):
+            key=(int(m.epoch), int(m.header.stamp.sec)*10**9+int(m.header.stamp.nanosec))
+            if (not m.shadow_only or not m.valid or m.header.frame_id != CONTRACT["frame_id"]
+                    or m.contract_version != CONTRACT["action_version"] or m.source != "POLICY"):
+                errors.append("Invalid typed shadow proposal metadata")
+            expected = next((r for r in records if (r["epoch"], r["reference_ns"]) == key), None)
+            wire_action = np.array([m.translation.x,m.translation.y,m.translation.z,
+                                    m.rotation_vector.x,m.rotation_vector.y,m.rotation_vector.z])
+            wire_pose = np.array([m.proposed_pose.position.x,m.proposed_pose.position.y,m.proposed_pose.position.z,
+                                  m.proposed_pose.orientation.x,m.proposed_pose.orientation.y,
+                                  m.proposed_pose.orientation.z,m.proposed_pose.orientation.w])
+            if (expected is None or not np.array_equal(wire_action, expected["action_delta"])
+                    or not np.array_equal(wire_pose, expected["proposed_pose"])
+                    or m.translation_unit != "m" or m.rotation_unit != "rad_rotvec"):
+                errors.append("Typed shadow payload differs from policy proposal")
+            typed_received.add(key)
+        node.create_subscription(EefActionProposal, namespace+"/policy_proposal", verify_proposal, 64)
     rd = reader(args.dataset/"observations")
     types = rd.get_all_topics_and_types()
     del rd
-    if {t.name for t in types} != set(TOPICS):
-        raise ValueError("Unexpected replay topic")
+    validate_replay_topics(data_profile, manifest, {t.name for t in types})
 
     def receive(key, message):
         if state["epoch"] < 0:
@@ -159,7 +208,7 @@ def run(args):
                 issues["queue_overflow"] += 1
             else:
                 pending.append((ref, time.monotonic()))
-    node.create_subscription(String, NS+"/reference", reference, 64)
+    node.create_subscription(String, namespace+"/reference", reference, 64)
 
     def tick():
         now=time.monotonic()
@@ -187,14 +236,29 @@ def run(args):
             t=time.perf_counter()
             pred=predict(model, norm, {k:observation[k][None] for k in ARRAYS})[0]
             cost=(time.perf_counter()-t)*1000
-            if pred.shape != (7,) or not np.isfinite(pred).all():
+            if pred.shape != ((6,) if is_eef else (7,)) or not np.isfinite(pred).all():
                 errors.append("Invalid policy output")
                 return
             row=dict(epoch=ref["epoch"], reference_ns=ref["reference_ns"], source_stamps=stamps,
                      action_target_rad=pred.tolist(), inference_ms=cost,
                      transport_wait_ms=(now-queued)*1000, input_exact_match=True,
                      shadow_only=True, semantics="assumed left absolute target, not a robot command")
-            action_pub.publish(String(data=json.dumps(row)))
+            if is_eef:
+                row.pop("action_target_rad")
+                try:
+                    row.update(proposal_values(pred, observation))
+                except ValueError as exc:
+                    issues["prediction_rejected:"+str(exc)] += 1
+                    status_pub.publish(String(data=json.dumps(dict(state="PREDICTION_REJECTED", reason=str(exc),
+                        epoch=ref["epoch"], reference_ns=ref["reference_ns"], shadow_only=True))))
+                    return
+                if "camera_mask" in observation:
+                    row["camera_mask"] = observation["camera_mask"].tolist()
+                    row["wrist_camera"] = CONTRACT["wrist_camera"]
+                row["decision_ns"] = node.get_clock().now().nanoseconds
+                action_pub.publish(proposal_message(row, row["decision_ns"]))
+            else:
+                action_pub.publish(String(data=json.dumps(row)))
             records.append(row)
         if state["ending"] is not None and not pending:
             epoch=state["ending"]
@@ -202,7 +266,7 @@ def run(args):
             state["epochs_completed"]=max(state["epochs_completed"],epoch+1)
     node.create_timer(.02, tick)
     command=[sys.executable,"-m","omi_hil_rl.training.bc_shadow","--worker-replay","--dataset",str(args.dataset.resolve()),
-             "--loops",str(args.loops),"--rate",str(args.rate),"--pause-at",str(args.pause_at),"--pause-seconds",str(args.pause_seconds)]
+             "--profile",args.profile,"--loops",str(args.loops),"--rate",str(args.rate),"--pause-at",str(args.pause_at),"--pause-seconds",str(args.pause_seconds)]
     process=None
     topics=[]
     try:
@@ -218,6 +282,10 @@ def run(args):
                 topics=[name for name,_ in node.get_topic_names_and_types()]
                 if any(name.startswith('/tj/control/') for name in topics):
                     raise RuntimeError("Control topic detected in isolated test domain")
+            if is_eef:
+                drain_deadline=time.monotonic()+2
+                while len(typed_received)<len(records) and time.monotonic()<drain_deadline:
+                    rclpy.spin_once(node,timeout_sec=.02)
             if process.returncode:
                 raise RuntimeError("Replay failed; inspect replay.log")
     finally:
@@ -237,16 +305,28 @@ def run(args):
                     no_control_topics=not any(t.startswith('/tj/control/') for t in topics),
                     observed_topics=topics, checkpoint_mode=checkpoint["mode"],
                     input_parity="SHA256 of offline and ROS-built tensors, checked before each output")
+        report["profile"]=args.profile
+        if is_eef:
+            report["typed_proposals_received"]=len(typed_received)
+            report["action_contract"]=CONTRACT
+            if "wrist_camera" in CONTRACT:
+                report["camera_mask_counts"]=dict(Counter(
+                    ",".join(str(int(x)) for x in r["camera_mask"]) for r in records))
         if records:
             report["inference_ms_p50_p95_max"]=np.percentile([r["inference_ms"] for r in records],[50,95,100]).tolist()
             report["transport_wait_ms_p50_p95_max"]=np.percentile([r["transport_wait_ms"] for r in records],[50,95,100]).tolist()
             with np.load(args.dataset/"samples.npz",allow_pickle=False) as data:
                 labels={int(t):a for t,a in zip(data["reference_ns"],data["action"])}
-                residual=[np.asarray(r["action_target_rad"])-labels[r["reference_ns"]] for r in records if r["reference_ns"] in labels]
-                report["recorded_target_rmse_rad"]=float(np.sqrt(np.mean(np.square(residual)))) if residual else None
+                residual=[np.asarray(r["action_delta" if is_eef else "action_target_rad"])-labels[r["reference_ns"]] for r in records if r["reference_ns"] in labels]
+                if is_eef and residual:
+                    residual=np.asarray(residual)
+                    report["proxy_translation_rmse_m"]=float(np.sqrt(np.mean(residual[:,:3]**2)))
+                    report["proxy_rotation_rmse_rad"]=float(np.sqrt(np.mean(residual[:,3:]**2)))
+                elif not is_eef:
+                    report["recorded_target_rmse_rad"]=float(np.sqrt(np.mean(np.square(residual)))) if residual else None
             report["per_epoch_predictions"]={str(i):sum(r["epoch"]==i for r in records) for i in range(args.loops)}
         (args.output/"report.json").write_text(json.dumps(report,indent=2))
-    if (not records or state["epochs_completed"] != args.loops or errors or issues["transport_timeout"] or issues["queue_overflow"]
+    if ((is_eef and len(typed_received)!=len(records)) or not records or state["epochs_completed"] != args.loops or errors or issues["transport_timeout"] or issues["queue_overflow"]
             or any(sum(r["epoch"]==i for r in records) != expected_per_epoch for i in range(args.loops))):
         raise RuntimeError("Incomplete shadow acceptance; inspect report.json")
     print(json.dumps(report,indent=2))
@@ -254,6 +334,7 @@ def run(args):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--profile",choices=("joint","eef"),default="joint")
     p.add_argument("--dataset",type=Path,required=True)
     p.add_argument("--checkpoint",type=Path)
     p.add_argument("--output",type=Path)

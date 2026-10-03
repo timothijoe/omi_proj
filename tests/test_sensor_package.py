@@ -11,7 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ros2" / "omi_sensors"))
 from omi_sensors.config import load_config, camera_command, sensor_topics, positive
-from omi_sensors.tactile import IncompleteFrame, snapshot, sdk_check
+from omi_sensors.tactile import IncompleteFrame, snapshot, sdk_check, normalize_wrench
 from omi_sensors.cli import environment, main, supervise
 
 
@@ -90,7 +90,7 @@ def test_snapshot_copies_and_keeps_raw_infer_separate():
     fid, stamp, arrays, state = snapshot(sdk, depth=True, wrench=True)
     assert fid == 7 and stamp > 0
     assert arrays["deformation"].shape == (4, 5, 2)
-    assert "wrench" not in arrays and state == "unframed_or_mismatched_omitted"
+    assert arrays['wrench'].shape == (6,) and state == 'unframed_host_read_unsynchronized'
     sdk.raw[:] = 255
     assert arrays["raw"].max() == 0
     assert arrays["raw"] is not arrays["infer"]
@@ -151,6 +151,22 @@ def test_frame_matched_force():
     _, _, arrays, state = snapshot(sdk, wrench=True)
     assert state == "frame_id_matched_units_unverified"
     np.testing.assert_array_equal(arrays["wrench"], np.arange(6))
+
+
+def test_real_sdk_force_shape_and_copy():
+    source = np.arange(6, dtype=np.float32).reshape(1, 6)
+    value, state = normalize_wrench(source, 7)
+    assert state == 'unframed_host_read_unsynchronized'
+    np.testing.assert_array_equal(value, np.arange(6))
+    source[:] = -100
+    assert value[0] == 0
+
+
+@pytest.mark.parametrize('result', [(8, np.arange(6)), np.zeros((2,6)),
+    np.zeros(5), np.zeros(7), None, np.full((1,6),np.nan), np.full(6,np.inf)])
+def test_invalid_or_explicitly_mismatched_force_omitted(result):
+    value, state = normalize_wrench(result, 7)
+    assert value is None and state.endswith('omitted')
 
 
 def test_empty_recording_report(tmp_path):
