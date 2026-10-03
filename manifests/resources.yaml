@@ -1,5 +1,12 @@
 schema_version: 1
 resources:
+  - id: bag-bc-artifacts
+    path: local/bc
+    tracked: false
+    required_for: bag_bc_training_and_shadow_inference
+    source: User-supplied native-field MCAP/ZIP and local BC training
+    purpose: NPZ episodes, observation-only MCAP, causal references, policy weights and reports
+    restore: Re-export original bag using scripts/bag_bc.sh export, then train and shadow with new output directories. Rebuild matching marvin_msgs and install project bc extra, not a copied venv. No tactile SDK/model meshes required.
   - id: external-native-record001
     path: local/bags/record001.zip
     tracked: false

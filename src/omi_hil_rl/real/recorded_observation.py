@@ -26,7 +26,7 @@ TOPICS = {"/camera/camera/color/image_raw": "camera",
           "/tj/info/joint_feedback": "joints", "/tj/info/eef_left": "eef"}
 TOPICS.update({f"/tj/dm_sensor/{s}_{k}": f"{s}_{k}"
                for s in "ab" for k in ("raw", "deformation", "shear", "depth", "force")})
-VERSION = 1
+VERSION = 2
 WIDTH, HEIGHT = 1536, 1170
 
 
@@ -70,6 +70,16 @@ def camera_preview(value):
     return _crop_square_resize_nearest(value, ObservationConfig().external_rgb_roi, (128, 128))
 
 
+def tactile_preview_display(value):
+    """128px whole-image preview, interpolated back to the raw display footprint.
+
+    Display only: no SDK, rectification, ROI selection, or extra source detail.
+    """
+    small = _resize_nearest(value, (128, 128))
+    return np.asarray(Image.fromarray(small).resize(
+        (value.shape[1], value.shape[0]), Image.Resampling.BILINEAR))
+
+
 def render(latest, stamp, elapsed):
     canvas = Image.new("RGB", (WIDTH, HEIGHT), (18, 22, 28))
     draw = ImageDraw.Draw(canvas)
@@ -107,7 +117,8 @@ def render(latest, stamp, elapsed):
     tile("camera", "Camera original + observation ROI", 0, 0, camera_original)
     tile("camera", "Observation ROI 128x128 (2x view)", 1, 0, lambda v: camera_preview(v)[0], True)
     for i, side in enumerate("ab"):
-        tile(side+"_raw", side.upper()+" tactile raw 270x360", i+2, 0)
+        tile(side+"_raw", side.upper()+" raw -> 128x128 (enlarged)", i+2, 0,
+             tactile_preview_display)
         for j, kind in enumerate(("deformation", "shear")):
             tile(side+"_"+kind, side.upper()+" "+kind+" 288x384x2", 2*i+j, 1,
                  lambda v: render_vector_field(v, step=16, scale_px_per_unit=20., deadband=.01, max_arrow_px=24.)[0])
@@ -115,8 +126,7 @@ def render(latest, stamp, elapsed):
             u = np.clip(v/.3, 0, 1)
             return (np.stack((u, np.sqrt(u), 1-u), axis=-1)*255).astype(np.uint8)
         tile(side+"_depth", side.upper()+" depth 288x384 (fixed scale)", i, 2, depth)
-        tile(side+"_raw", side.upper()+" raw 128x128 (preview only)", i+2, 2,
-             lambda v: _resize_nearest(v, (128, 128)), True)
+        tile(side+"_raw", side.upper()+" tactile raw (original)", i+2, 2)
     for i, side in enumerate("ab"):
         item = latest.get(side+"_force")
         text(10, 1036+i*24, side.upper()+" force [Fx Fy Fz Tx Ty Tz]: " +

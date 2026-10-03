@@ -1,5 +1,10 @@
 # CLI 入口
 
+录包BC实验：`bash scripts/bag_bc.sh {export|train|shadow} --help`，分别调用
+training.bag_bc_data、bc_policy、bc_shadow；Jazzy与匹配Marvin消息，默认localhost domain99。
+export要求显式动作语义假设；train要求独立验证episode或overfit-smoke；shadow只输出JSON，
+没有实际控制接口。输出目录拒绝覆盖。见[教程](../../../tutorials/bag_bc_shadow.md)。
+
 SDK原生看板：`bash scripts/view_sdk_observation.sh [--fake | --bag BAG] [--config FILE] [--no-rviz]`。
 不带数据源参数时只订阅已有流，不启动硬件；默认domain88。安装后可用 `omi-sdk-view`。
 只启动发布看板节点：`python3 -m omi_sensors.cli --config FILE dashboard`。

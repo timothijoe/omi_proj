@@ -12,6 +12,7 @@
 | 脚本接管与动作仲裁 | `ScriptedInterventionWrapper`、环境 `step` | 自动测试；headless 训练 | 真人在线接管延迟 |
 | 奖励与回合结束 | 环境 progress/sparse 模式 | 训练进度奖励；独立评估稀疏成功奖励；TCP 阈值和超时已在仿真运行 | 视觉奖励、真机任务奖励、碰撞/力惩罚 |
 | SAC 训练、HIL 双流回放、示范导入 | `training.sim_train` | 1500 步仿真训练；7 条离线示范导入；双流采样和环形覆盖测试 | LeRobot actor/learner、真机在线训练 |
+| 原生录包BC与ROS影子推理 | `scripts/bag_bc.sh`，见[教程](../tutorials/bag_bc_shadow.md) | 108样本500步实际训练，两轮ROS接收218次预测，输入精确一致、无控制topic | 独立episode泛化、动作物理语义、真设备/控制、既有SAC初始化集成 |
 | 磁盘回放、预取与恢复 | `DiskHILReplayBuffer`、`--replay-backend disk` | 图像/状态自动测试；A 臂 200 步；缓存 batch 基准 | 超内存冷盘性能、长时采集、真机时限 |
 | Policy improvement 审计 | `policy_progress.jsonl`、`training.plot_progress` | SAC+BC 0/10 → 10/10；低熵纯 SAC 0/10 → 10/10，另取 30 回合 30/30；默认熵纯 SAC 对照失败 | 原版分布式实现与跨目标泛化 |
 | 录制格式校验与独立评估 | `validate_recording`、`sim_eval` | 1500 条记录校验；30 回合评估 | 长期统计泛化 |

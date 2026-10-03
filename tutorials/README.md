@@ -1,5 +1,8 @@
 # 操作教程
 
+新增[录包BC训练与ROS影子推理](bag_bc_shadow.md)：只输出诊断预测，不控制机械臂；
+短包验证只证明训练和推理链路跑通。
+
 换机器先看[额外拷贝与安装清单](machine_transfer_checklist.md)，按功能准备SDK、bag、基准和消息源码。
 
 新SDK原生字段看板见[原生数值看板](sdk_native_dashboard.md)：独立入口，旧看板保持不动。

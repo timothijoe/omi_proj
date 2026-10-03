@@ -1,5 +1,9 @@
 # 本地资源定位
 
+录包BC和影子推理使用 `local/bc/` 存NPZ、只含观测的MCAP、权重与报告，全部Git忽略。
+原始bag、匹配Marvin消息需另行准备；运行环境安装bc extra和ROS系统包，不需要Daimon SDK
+或机器人mesh。恢复与命令见[教程](../../../tutorials/bag_bc_shadow.md)和[manifest](../../../manifests/resources.yaml)。
+
 完整的按功能拷贝/重装清单见[换机器教程](../../../tutorials/machine_transfer_checklist.md)。
 当前OMI新原生看板无需SDK；旧看板重建需要SDK和固定基准；SDK直读采集需要厂商依赖但不需要离线基准。
 `ros2_camera_clip_tools`仅为历史外部工具，不是OMI合并看板的运行依赖。

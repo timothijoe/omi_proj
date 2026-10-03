@@ -9,3 +9,5 @@
 - [2026-10-02：HIL-SERL 参考核查与视觉融合勘误](2026-10-02-hil-serl-reference.md)
 - [2026-10-02：磁盘 HIL 经验池与后台预取](2026-10-02-disk-replay.md)
 - [2026-10-02：USB 资源、Buffer 与总体网络补录](2026-10-02-usb-resources-and-network.md)
+- [2026-10-03：真实录包BC训练与ROS影子推理](2026-10-03-bag-bc-shadow.md)
+- [2026-10-03：HIL-SERL 接管与 ROS 动作接口讨论](2026-10-03-intervention-action-contract.md)

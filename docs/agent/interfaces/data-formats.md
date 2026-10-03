@@ -1,5 +1,17 @@
 # 数据格式与单位
 
+## bag-bc-v1（实验、仅影子推理）
+
+`training.bag_bc_data.CONTRACT`为训练/推理共同契约；不兼容时拒绝加载。
+NPZ含rgb uint8 `(N,3,128,128)`、tactile float32 `(N,10,16,24)`、state float32 `(N,19)`、
+action float32 `(N,7)`，以及int64 reference_ns、label_ns、source_ns。触觉通道为
+A def_x/def_y/shear_x/shear_y/depth，再B同序；状态为左7关节、A六维wrench、B六维wrench。
+action是显式假设的左臂绝对弧度目标，并非已确认执行动作；触觉单位未物理标定。
+label取reference+100ms起第一条指令（额外等待≤50ms），源观测不晚于reference且年龄≤250ms。
+manifest含episode内容指纹、来源和样本文件SHA256；训练统计只取训练episode。
+影子JSON含epoch、参考/源时间、action_target_rad、推理/等待耗时和shadow_only；
+它不是控制器消息。机制与限制见[纪传体](../training/evolution/bag-bc-shadow.md)。
+
 ## 触觉表示名称
 
 术语定义以[领域词汇表](../../../CONTEXT.md)为准。现有接口名称保持不变：

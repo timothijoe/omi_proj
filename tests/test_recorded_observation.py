@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from omi_hil_rl.real.recorded_observation import (
-    TOPICS, WIDTH, HEIGHT, age_label, camera_preview, decode, render,
+    TOPICS, WIDTH, HEIGHT, age_label, camera_preview, decode, render, tactile_preview_display,
 )
 
 
@@ -52,3 +52,20 @@ def test_no_commands_in_source_allowlist_and_separate_launcher():
     module = (root/"src/omi_hil_rl/real/recorded_observation.py").read_text()
     assert "extractall" not in module
     assert "sensor.get" not in module
+
+
+def test_tactile_preview_top_right_and_original_bottom_right():
+    rng = np.random.default_rng(42)
+    raw = rng.integers(0, 256, (270, 360), dtype=np.uint8)
+    original = raw.copy()
+    preview = tactile_preview_display(raw)
+    assert preview.shape == raw.shape and preview.dtype == np.uint8
+    assert not np.array_equal(preview, raw)
+    np.testing.assert_array_equal(raw, original)
+    latest = {s+"_raw": dict(stamp=10**9, frame="tactile_"+s, value=raw) for s in "ab"}
+    canvas = np.asarray(render(latest, 10**9, 0))
+    for col in (2, 3):
+        x = col*384+12
+        for row, expected in ((0, preview), (2, raw)):
+            y = 58+row*324+42
+            np.testing.assert_array_equal(canvas[y:y+270, x:x+360], np.repeat(expected[...,None], 3, axis=2))

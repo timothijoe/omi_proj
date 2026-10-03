@@ -21,3 +21,6 @@
 - [2026-10-02：旧录包机器人状态同屏](2026-10-02-robot-state-dashboard.md)
 - [2026-10-02：RViz双臂3D回放](2026-10-02-robot-3d-replay.md)
 - [2026-10-02：新录包原生字段回放及末端坐标偏差核查](2026-10-02-native-record-review.md)
+- [2026-10-02：触觉预览与原图布局调整](2026-10-02-tactile-preview-layout.md)
+- [2026-10-02：腕部相机需求澄清与可视化遗留](2026-10-02-wrist-viewer-followup.md)
+- [2026-10-03：腕部相机准确话题名称核查与议题暂缓](2026-10-03-wrist-topic-question.md)

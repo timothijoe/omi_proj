@@ -60,6 +60,47 @@ USB 包装顺序中 `RelativeFrame` 在 `SpacemouseIntervention` 外层：策略
 
 OMI 当前仅有键盘逐步覆盖与脚本教师，尚无 SpaceMouse 接口。将 SpaceMouse 的末端动作接入七关节增量环境，需要增加逆运动学或雅可比映射，并验证坐标、限位和真实执行语义。
 
+## 人工接管、动作记录与训练采样
+
+2026-10-03 再次静态核查同一版本，参考工作树无修改。以下针对原版
+`examples/train_rlpd.py` 与 `SpacemouseIntervention`，不代表已经接入 OMI ROS。
+
+每步 Actor 先生成策略动作（初始探索阶段可能是随机动作），再调用环境包装器。
+包装器读取 SpaceMouse，有输入则整步替换，无输入则采用策略动作；人工接管期间
+策略侧仍生成候选动作。当前包装器没有持续接管锁存：输入回零、夹爪按钮松开后恢复策略。
+这不是针对设备断连、过期消息或安全停机的完整接管状态机。
+
+```text
+策略候选动作 → 接管包装器选择策略/人工 → 同一个 env.step → 底层限幅与机器人服务
+                        ↓
+             人工接管时返回 info["intervene_action"]
+                        ↓
+             Actor 用人工动作覆盖原候选后保存 transition
+```
+
+两种来源使用相同 transition 结构：观测、动作、奖励、下一观测、mask/done。
+在线经验池收所有在线 transition；人工接管 transition 还进入示范池，示范池也包含
+预先采集的示范。Learner 每批从在线池和示范池各采一半。这是强化学习的经验采样，
+不是每次干预触发一次单独的 BC 更新；示范池样本也不保证都是成功片段。
+
+被覆盖的策略候选动作没有作为这一步的 `actions` 写入上述 transition。
+记录的是环境接口层选定的动作，不保证等于底层安全裁剪后的最终下发目标，更不是
+实测位移。`RelativeFrame` 会把返回的人工动作转换回策略接口坐标系，避免混用坐标。
+
+源码定位（相对参考仓库根目录，行号对应上述 commit）：
+
+- `serl_robot_infra/franka_env/envs/wrappers.py:207`：接管判断与统一执行入口。
+- `examples/train_rlpd.py:156`、`:178`、`:198`：候选生成、人工动作覆盖、双池插入。
+- `examples/train_rlpd.py:288`：50/50 采样。
+- `serl_robot_infra/franka_env/envs/relative_env.py:39`：坐标转换。
+- `serl_robot_infra/franka_env/envs/franka_env.py:209`：后续限幅与目标生成。
+
+原版不靠人工和策略两个发布者争抢同一个 ROS 指令 topic。OMI 认可的 ROS 拆分方向、
+尚未实现的消息和安全边界见[影子推理设计补充](../../../design/bag-bc-shadow-policy.md#人工接管与类型化动作接口待实现)。
+注意 OMI 仿真七关节增量、当前录包 BC 假设的七关节绝对目标，与原版 USB
+六维末端增量加夹爪，三者不是同一个动作空间。
+本次形成过程见[接管讨论编年](../chronicles/2026-10-03-intervention-action-contract.md)。
+
 ## 观测与传感器
 
 USB 基础环境读取 RealSense：`pyrealsense2` 采集、后台保存最新帧，再裁剪和缩放，摄像头图像通过本地采集进入 observation，不依赖 ROS 图像 topic。机器人状态在 Franka 服务侧经 ROS 接收，再由环境通过 HTTP `/getstate` 获取。`tcp_force` 和 `tcp_torque` 是机器人外力/力矩估计，不是独立触觉阵列；此 USB 配置没有额外触觉传感器输入。

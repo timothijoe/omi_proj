@@ -12,6 +12,7 @@
 | 操作键盘示范或回放 | [键盘示范](../tutorials/keyboard_demonstration.md) → [录制与训练](../tutorials/recording_and_replay.md) |
 | 核查 HIL RL 四项复现 | [训练、干预、buffer、policy improvement 审计](hil_rl_reproduction.md) |
 | 理解当前训练实现 | [干预、奖励、策略更新与 Buffer](agent/training/evolution/hil-training.md) |
+| 录包训练BC与模拟在线推理 | [操作教程](../tutorials/bag_bc_shadow.md) → [当前能力及限制](agent/training/evolution/bag-bc-shadow.md) |
 | 使用磁盘经验池 | [操作教程](../tutorials/disk_replay.md) → [存储与恢复机制](agent/training/evolution/disk-replay.md) |
 | 理解原版 HIL-SERL | [开源任务、USB、SpaceMouse、观测与视觉网络](agent/training/evolution/hil-serl-reference.md) |
 | 开发与维护 | [Agent 知识库](agent/README.md) → [接口索引](agent/interfaces/README.md) |

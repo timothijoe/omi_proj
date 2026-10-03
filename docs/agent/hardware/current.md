@@ -1,5 +1,14 @@
 # Hardware 当前摘要
 
+2026-10-03腕部话题议题暂缓：用户指出 `/tj/dm_camera/camera/color`，
+当前oct2/record001.zip的metadata未列出该名称；设备端是否发布、是否有另一版本录包待核实。
+不推断缺失原因、不继续改代码，详见[议题现状](evolution/robot-3d-replay.md#可视化遗留右上角腕部相机原图与clip待下一次处理)。
+
+**可视化遗留，用户要求下一次再改**：右上角应显示腕部相机原图与clip，而非触觉预览；
+右下角保留A/B raw。新record001包没有腕部图像topic，当前布局不符合这项最终需求。
+先取得包含腕部相机的数据，再实现读取与布局；见[纪传体遗留项](evolution/robot-3d-replay.md#可视化遗留右上角腕部相机原图与clip待下一次处理)
+与[澄清编年](chronicles/2026-10-02-wrist-viewer-followup.md)。
+
 新外部录包record001已[检查并实现原生字段/末端同屏](evolution/robot-3d-replay.md#新录包原生触觉与末端同屏)：
 `view_recorded_observation_3d.sh ZIP_OR_BAG`，domain97，显示原图/128图、原生触觉场、
 关节驱动双臂与录包末端三轴。全部21960条解码、Jazzy GUI及循环检查通过，测试120通过5跳过。
