@@ -1,5 +1,9 @@
 # 末端动作 rosbag 与模拟控制端联调
 
+> **实机对接暂定约定：** 用户指定暂按基坐标系旋转向量解释控制接口后三维，尚未经接收端核实。策略输出仍为m/rad，axis_test接口为mm/度；单位换算不能替代基坐标系和TCP变换。具体公式与条件见[动作接口对齐说明](../docs/agent/training/evolution/axis-controller-interface.md)。
+
+**接口区别：** 用户已实机测试的 `axis_test.py` 使用同名 `/omi/action_test/decision` 话题，但单位为mm/度；本教程的模拟测试包为m/rad。不要直接向该实机接收端回放本教程的动作包。详见[接口对齐说明](../docs/agent/training/evolution/axis-controller-interface.md)。
+
 从 `omi_proj/` 执行。依赖本机 ROS Jazzy、rosbag2 MCAP 插件和项目 `.venv`。
 入口仅启动本机 domain96 的测试节点，无 SDK 连接或真机运动。
 

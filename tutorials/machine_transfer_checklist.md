@@ -5,6 +5,33 @@
 
 ## 1. 按用途准备
 
+### 历史实验数据的归档位置
+
+本机历史实验数据的移动盘归档位置：
+
+```text
+/media/zhoutong/zt-think-d1/legion_data/legion_omi_proj/local/oct_02/
+├── tactile/
+├── bc/
+└── eef_bc/
+```
+
+**`local/tactile/` 和 `local/bc/` 已校验并完成迁移，本地目录已移除，没有软链接。**
+**`local/eef_bc/` 按用户要求继续保留**，移动盘 `eef_bc/` 只是较早副本，不能当作完整最新备份。
+读取旧触觉/BC实验需改用归档路径或按需恢复；末端实验仍使用本地 `local/eef_bc/`。
+当前最新原生字段bag流程
+不需要这些旧基准或旧policy；程序、SDK和运行必需模型仍留在项目中。
+
+读取已迁移历史实验时挂载移动硬盘，将命令中 `local/bc/` 或 `local/tactile/` 前缀换成对应归档
+绝对路径；若报告/配置内还引用旧路径，逐项修正运行参数，或复制所需实验回原位置。
+新训练使用另一个输出目录，不要写入历史归档。硬盘未挂载时不能读取这些历史产物。
+
+例如旧record010重建可显式指定外置基准（SDK、bag及Python依赖仍需准备）：
+
+```bash
+export OMI_TACTILE_BASELINE="/media/zhoutong/zt-think-d1/legion_data/legion_omi_proj/local/oct_02/tactile/record010_zero_load_25_26_confirmed_v2"
+```
+
 | 要做什么 | Git之外必须另外准备 | 不需要拷贝 |
 | --- | --- | --- |
 | 新SDK看板 `--fake` | 无数据/厂商包；安装ROS、Pillow等系统依赖 | SDK、基准、bag、机器人模型、marvin_msgs |

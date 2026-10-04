@@ -18,8 +18,13 @@ class Policy(nn.Module):
     def __init__(self, contract=None):
         super().__init__()
         self.contract = profile_for(CONTRACT if contract is None else contract).CONTRACT
-        self.dual_camera = self.contract["version"] == "bag-eef-bc-v2"
+        self.has_wrench = "wrench_mask_shape" in self.contract
+        self.dual_camera = "camera_mask_shape" in self.contract
         self.architecture = "small_rgb_tactile_eef_cnn_v2" if self.dual_camera else "small_rgb_tactile_eef_cnn_v1"
+        if self.contract['version'] == 'bag-eef-bc-v3-grid-receive':
+            self.architecture = 'small_rgb_tactile_eef_cnn_v3_grid_state14'
+        if self.has_wrench:
+            self.architecture = "small_rgb_tactile_eef_cnn_v4_wrench"
         self.rgb = nn.Sequential(nn.Conv2d(3, 8, 5, stride=4, padding=2), nn.ReLU(),
                                  nn.Conv2d(8, 16, 3, stride=2, padding=1), nn.ReLU(), nn.AdaptiveAvgPool2d((4,4)), nn.Flatten())
         self.touch = nn.Sequential(nn.Conv2d(10, 16, 3, padding=1), nn.ReLU(),
@@ -28,9 +33,9 @@ class Policy(nn.Module):
             # Independent weights for two different viewpoints; same image shape.
             from copy import deepcopy
             self.wrist = deepcopy(self.rgb)
-        self.head = nn.Sequential(nn.Linear(16*16+16*6+26+(258 if self.dual_camera else 0), 128), nn.ReLU(), nn.Linear(128,64), nn.ReLU(), nn.Linear(64,6))
+        self.head = nn.Sequential(nn.Linear(16*16+16*6+self.contract['state_shape'][0]+(258 if self.dual_camera else 0)+(14 if self.has_wrench else 0), 128), nn.ReLU(), nn.Linear(128,64), nn.ReLU(), nn.Linear(64,6))
 
-    def forward(self, rgb, tactile, state, wrist_rgb=None, camera_mask=None):
+    def forward(self, rgb, tactile, state, wrist_rgb=None, camera_mask=None, wrench=None, wrench_mask=None):
         features = [self.rgb(rgb), self.touch(tactile), state]
         if self.dual_camera:
             if wrist_rgb is None or camera_mask is None:
@@ -48,6 +53,12 @@ class Policy(nn.Module):
             features.extend((wrist_features, mask))
         elif wrist_rgb is not None or camera_mask is not None:
             raise ValueError("V1 policy cannot consume V2 camera inputs")
+        if self.has_wrench:
+            if wrench is None or wrench_mask is None:
+                raise ValueError("V4 requires wrench and wrench_mask")
+            features.extend((wrench*wrench_mask.repeat_interleave(6,dim=1), wrench_mask))
+        elif wrench is not None or wrench_mask is not None:
+            raise ValueError("Checkpoint does not support wrench")
         return self.head(torch.cat(features, dim=1))
 
 
@@ -67,8 +78,8 @@ def load_dataset(paths, expected_contract=None):
         with np.load(path/"samples.npz", allow_pickle=False) as src:
             part={k: src[k].copy() for k in (*profile.ARRAYS, "action")}
         n=len(part["action"])
-        shapes=dict(rgb=(n,3,128,128),tactile=(n,10,16,24),state=(n,26),action=(n,6))
-        if profile.CONTRACT["version"] == "bag-eef-bc-v2":
+        shapes=dict(rgb=(n,3,128,128),tactile=(n,10,16,24),state=(n,*profile.CONTRACT['state_shape']),action=(n,6))
+        if "camera_mask_shape" in profile.CONTRACT:
             shapes.update(wrist_rgb=(n,3,128,128),camera_mask=(n,2))
         if n<2 or any(part[k].shape != shape or not np.isfinite(part[k]).all() for k,shape in shapes.items()):
             raise ValueError("Invalid dataset shapes/nonfinite values")
@@ -76,6 +87,9 @@ def load_dataset(paths, expected_contract=None):
             raise ValueError("RGB must be uint8")
         if "camera_mask" in part:
             validate_cameras(part, profile.CONTRACT)
+        if "wrench_mask_shape" in profile.CONTRACT:
+            from .eef_bc_wrench import validate_wrench
+            validate_wrench(part)
         parts.append(part)
         manifests.append(m)
     ids = [m["episode_id"] for m in manifests]
@@ -102,12 +116,25 @@ def validate_cameras(data, contract):
 
 def normalization(data):
     delta = data["action"]
-    return dict(tactile_mean=data["tactile"].mean(axis=(0,2,3), keepdims=True).tolist(),
+    result = dict(tactile_mean=data["tactile"].mean(axis=(0,2,3), keepdims=True).tolist(),
                 tactile_std=np.maximum(data["tactile"].std(axis=(0,2,3), keepdims=True), 1e-4).tolist(),
                 state_mean=data["state"].mean(axis=0, keepdims=True).tolist(),
                 state_std=np.maximum(data["state"].std(axis=0, keepdims=True), 1e-3).tolist(),
                 delta_mean=delta.mean(axis=0, keepdims=True).tolist(),
                 delta_std=np.maximum(delta.std(axis=0, keepdims=True), 1e-3).tolist())
+
+    if "wrench" in data:
+        from .eef_bc_wrench import validate_wrench
+        validate_wrench(data)
+        mean=np.zeros((1,12),np.float32);std=np.ones((1,12),np.float32);counts=[]
+        for side in range(2):
+            values=data["wrench"][data["wrench_mask"][:,side]==1,side*6:(side+1)*6]
+            counts.append(len(values))
+            if len(values):
+                mean[:,side*6:(side+1)*6]=values.mean(0)
+                std[:,side*6:(side+1)*6]=np.maximum(values.std(0),1e-3)
+        result.update(wrench_mean=mean.tolist(),wrench_std=std.tolist(),wrench_valid_counts=counts)
+    return result
 
 
 def inputs(data, norm):
@@ -117,6 +144,12 @@ def inputs(data, norm):
     if "camera_mask" in data:
         result += (torch.as_tensor(data["wrist_rgb"],dtype=torch.float32)/255.,
                    torch.as_tensor(data["camera_mask"],dtype=torch.float32))
+    if "wrench" in data:
+        from .eef_bc_wrench import validate_wrench
+        validate_wrench(data)
+        w=(data["wrench"]-np.asarray(norm["wrench_mean"],np.float32))/np.asarray(norm["wrench_std"],np.float32)
+        w=np.where(np.repeat(data["wrench_mask"],6,axis=1).astype(bool),w,0).astype(np.float32)
+        result += (torch.as_tensor(w),torch.as_tensor(data["wrench_mask"]))
     return result
 
 

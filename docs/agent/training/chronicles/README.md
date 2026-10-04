@@ -1,5 +1,29 @@
 # Training 编年索引
 
+- [2026-10-04：六关键点本地候选与人工审核](2026-10-04-six-keypoint-review.md)：实现、验收、交付反馈与独立纪传体归档。
+
+- [2026-10-04：当前帧独立＋过去9帧拼接，完成2000步对照](2026-10-04-current-stack-history.md)
+
+- [2026-10-04：下载ResNet-10并完成2000步历史策略训练](2026-10-04-resnet10-history.md)
+
+- [2026-10-04：暂定基坐标系旋转向量与转换说明](2026-10-04-axis-rotation-assumption.md)
+
+- [2026-10-04：核对 axis_test 实机接口与单位差异](2026-10-04-axis-controller-interface.md)
+
+- [2026-10-04：在线历史推理与 wrench 有效性标签](2026-10-04-history-online-wrench.md)
+
+- [2026-10-03：bag_002移入训练、替换验证包并重训对照](2026-10-03-validation-resplit.md)
+
+- [2026-10-03：最近1秒历史GRU训练与单帧对照](2026-10-03-history-gru-training.md)
+
+- [2026-10-03：完成tactile和bc迁移，保留eef_bc](2026-10-03-tactile-bc-archive-complete.md)
+
+- [2026-10-03：正式录包首轮2000步训练，验证未优于基线](2026-10-03-formal-training-run1.md)
+
+- [2026-10-03：历史实验数据外置归档，因并行写入暂停迁移](2026-10-03-experiment-data-archive.md)
+
+- [2026-10-03：正式10包审计与离线v3转换，训练待确认](2026-10-03-formal-dataset.md)
+
 - [2026-10-03：Float64MultiArray动作包与模拟控制端联调](2026-10-03-action-bag.md)
 
 编年记录保存已验证阶段，后续修订以新记录或勘误追加。

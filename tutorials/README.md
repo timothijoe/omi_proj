@@ -1,5 +1,15 @@
 # 操作教程
 
+- [六关键点候选与人工审核工具](six_keypoint_review.md)
+
+- [当前帧独立＋过去9帧通道拼接训练](current_stack_history.md)
+
+- [冻结ResNet-10历史策略训练与对照](resnet10_history.md)
+
+- [历史 policy 在线推理与 wrench 开关](eef_history_online.md)
+
+- [oct3正式录包检查、学习格式转换与训练](oct3_formal_dataset.md)
+
 传感器常用操作优先看三个互相索引的教程：
 
 - [腕部＋触觉常用命令速查](sensor_commands.md)

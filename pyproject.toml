@@ -15,12 +15,14 @@ train = ["stable-baselines3>=2.9,<3"]
 viz = ["pillow>=11,<13", "imageio>=2.37,<3"]
 ros = ["PyYAML>=6,<7"]
 bc = ["torch>=2.6,<3", "PyYAML>=6,<7"]
+keypoints = ["pillow>=10,<13", "opencv-python-headless>=4.6,<5"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 "omi_hil_rl.sim" = ["assets/*.xml"]
+"omi_hil_rl.keypoints" = ["static/*.html", "static/*.js", "static/*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

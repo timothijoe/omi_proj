@@ -25,6 +25,8 @@ NS = "/omi/shadow"
 def profile_modules(name, contract=None):
     if name == "eef":
         from . import eef_bc_data as data, eef_bc_policy as policy
+        if contract and contract.get('version') in ('bag-eef-bc-v3-grid-receive','bag-eef-bc-v4-wrench'):
+            raise ValueError('Recorder-time grid profile is offline-only in this legacy adapter; use eef_history_online.sh for history checkpoints')
         return data.profile_for(data.CONTRACT if contract is None else contract), policy, "/omi/eef_shadow"
     if name == "joint":
         from . import bag_bc_data as data, bc_policy as policy

@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('reports', nargs='+', type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--title', default='BC training loss')
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError('Refuse to overwrite figure')
@@ -30,13 +31,13 @@ def main():
         if dropout:
             label += f' | {dropout:.0%} wrist dropout'
         ax.plot(steps, loss, marker='o', markersize=4, linewidth=1.6, label=label)
-    ax.set(title='bag_004 | BC training loss', xlabel='Optimizer step',
+    ax.set(title=args.title, xlabel='Optimizer step',
            ylabel='Normalized action MSE (sampled training minibatch)')
     ax.set_ylim(bottom=0)
     ax.grid(alpha=.22)
     ax.legend(fontsize=9)
     fig.supxlabel('Recorded every 25 steps plus the final step; raw points, no smoothing.\n'
-                  'Single-trajectory fitting; no held-out validation curve.', fontsize=10)
+                  'Training minibatches only; validation over training steps was not recorded.', fontsize=10)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, dpi=170)
     plt.close(fig)

@@ -1,5 +1,45 @@
 # Training 当前摘要
 
+新增[六关键点候选与人工审核工具](evolution/six-keypoint-review.md)：12图已导入，29个几何候选；真实目标身份尚未确认，0/72命名建议、无人工真值。22项测试和浏览器交互回归通过，不修改policy或启动训练。
+
+新增[当前帧独立＋过去9帧通道拼接、去掉GRU](evolution/current-stack-history.md)：
+同划分完成2000步，最佳700步验证0.771823mm/0.00323121rad、归一化MSE0.790969。
+较ResNet＋GRU最佳分别降低8.37%/2.07%，单种子结果改善，后期仍过拟合。
+当前视觉骨干冻结，历史27通道首层可训练；触觉和状态保留10帧，尚未接入在线节点。
+正式产物`local/eef_history/oct04_current9stack_run2/`。
+同场2线程CPU推理平均27.34ms、P95 29.12ms；原ResNet＋GRU缓存路径10.00ms，
+因此此次验证性能改善伴随在线计算开销增加，详见实验说明。
+
+新增[冻结ResNet-10＋GRU实验](evolution/resnet10-history.md)：官方ImageNet权重已下载并转换核验，
+原004/008验证划分重训2000步，最佳100步0.842298mm/0.00329936rad、归一化MSE0.874630。
+相对旧CNN最佳误差下降约0.49%/2.41%，单seed小幅改善，后期仍过拟合；未加入定位辅助训练或在线接入。
+产物`local/eef_history/oct04_resnet10_run1/`，操作见[教程](../../../tutorials/resnet10_history.md)。
+
+后续硬件动作接口以用户已实机测试的 `axis_test.py` 为参考：10 Hz、六维增量、mm/度。现有策略为m/rad；**用户指定暂按基坐标系旋转向量对接（假设，尚未核实接收端）**。单位换算、跨基坐标系变换及TCP区别已单独注明；增量累加语义仍待核实，尚未启用控制桥接；见[对齐方案](evolution/axis-controller-interface.md)。
+
+新增[在线历史 policy 与可选 wrench](evolution/history-online-policy.md)：10 Hz 因果窗口、reset、缺帧 mask 和 Float64MultiArray 影子候选；wrench12 + enabled2 + mask2，无效或禁用严格置零。旧 v3 权重可禁用 wrench 在线推理，v4 完整观测历史池与训练输入已实现，尚未重训。见[教程](../../../tutorials/eef_history_online.md)。
+
+当前数据、历史模型设计、基线定义及200/2000步训练降幅见[实验与设计总结](evolution/oct_03-experiment-design-summary.md)。
+
+用户说明bag_002包含很多尝试，现移入训练，验证改为bag_004/008（1283训练/242验证）。
+单帧和历史模型均从头重训2000步；最佳历史200步验证0.846mm/0.003381rad，
+平移优于零动作约16%，旋转接近基线；继续训练仍过拟合，尚不能证明恢复策略泛化。
+当前产物`local/eef_history/oct03_split2/`，见[新划分编年](chronicles/2026-10-03-validation-resplit.md)
+及[oct_03日志](evolution/oct_03-training-log.md#第三轮用户说明bag_002包含反复尝试调整验证划分)。
+
+此前旧划分已完成最近1秒历史＋GRU的2000步训练，保留原8/2包划分与1525样本。
+最终验证1.011mm/0.004215rad；最佳100步0.907mm/0.003405rad，仍仅接近简单基线。
+验证曲线显示后续过拟合，屏蔽历史反而改善，尚未证明学到受阻退回。
+两轮集中维护于[oct_03训练日志](evolution/oct_03-training-log.md)，
+完整验证与产物见[历史GRU编年](chronicles/2026-10-03-history-gru-training.md)。
+
+oct3正式10包已审计并导出1525样本，用户确认后完成首轮2000步训练。
+1135训练/390验证；验证平移1.037mm、旋转0.004172rad，均未优于零动作/均值动作基线。
+模型、训练曲线与分包预测已保存，检查点重载一致；见[首轮结果](chronicles/2026-10-03-formal-training-run1.md)。
+新增离线v3小矩阵/腕部ROI输入：state14，排除无消息wrench，按录包接收时间对齐并保留原header。
+跨设备时钟偏移、旧相机帧及bag_009间断见[本轮记录](chronicles/2026-10-03-formal-dataset.md)，
+操作见[教程](../../../tutorials/oct3_formal_dataset.md)。
+
 新增[动作 rosbag 与模拟控制端联调](../../../tutorials/eef_action_bag.md)：
 Float64MultiArray六维增量，XYZ各5cm、三轴各10°、逆序返回，240帧实收与目标比对通过。
 目前验证到模拟目标位姿，未接真实末端控制器；见[联调记录](chronicles/2026-10-03-action-bag.md)。

@@ -1,5 +1,7 @@
 # OMI 文档总目录
 
+新增[六关键点自动候选与人工审核工具](../tutorials/six_keypoint_review.md)，用于独立关键点标注，不改变policy。
+
 末端动作开发：[bag_004操作教程](../tutorials/eef_action_space.md) → [版本契约与验证边界](agent/training/evolution/eef-action-space.md)。
 
 本项目目前是天机 Marvin **A 臂（左臂）**的 MuJoCo HIL RL 原型。当前状态以 [能力总表](capabilities.md) 和各领域 `current.md` 为准；历史实验数字保存在编年记录中。

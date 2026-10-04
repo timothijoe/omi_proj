@@ -1,5 +1,39 @@
 # 本地资源定位
 
+六点审核项目：`local/keypoint_review/six_point_examples/`（原图副本、来源、标注、候选报告）；操作见[教程](../../../tutorials/six_keypoint_review.md)。`ui_test_only/`与`browser_qa/qa-only-export.npz`为合成测试，不是人工真值。
+
+当前帧独立＋过去9帧拼接的正式实验位于`local/eef_history/oct04_current9stack_run2/`，
+复用`local/pretrained/serl_resnet10/`权重；`oct04_current9stack_run1/`为因CPU吞吐停止的短跑，
+不作为正式结果。恢复与重训见[教程](../../../tutorials/current_stack_history.md)。
+
+## ResNet-10预训练与实验（2026-10-04）
+
+官方原始权重、转换后的backbone.pt、Flax参考输出、来源和验证报告位于
+`local/pretrained/serl_resnet10/`；新实验位于`local/eef_history/oct04_resnet10_run1/`。
+转换核验专用环境为`local/resnet10-validation-env/`，正常训练不依赖JAX。
+这些资源全部Git忽略；换机复制权重/产物或按[教程](../../../tutorials/resnet10_history.md)恢复。
+
+## 历史实验数据归档（2026-10-03）
+
+历史数据的移动硬盘归档根目录：
+`/media/zhoutong/zt-think-d1/legion_data/legion_omi_proj/local/oct_02/`，分别保留
+`tactile/`、`bc/`、`eef_bc/` 子目录。`oct_02` 是用户指定的归档分组名，并不表示内容仅来自10月2日。
+**`local/tactile/` 和 `local/bc/` 已完成迁移，本地源目录已移除，不留软链接。**
+再次内容校验153个文件、8,007,932,419字节，无缺失或差异；历史产物需从归档路径读取，
+或按需复制回原相对路径。本机释放约7.46 GiB。
+**`local/eef_bc/` 保留不动。** 此前因 `oct3_formal_v3_run1/` 并行写入而暂停迁移，
+用户随后明确要求保留该目录；移动盘 `eef_bc/` 仅为首批副本，不能替代本地当前完整数据。
+
+当前开发以最新bag的原生topic为准，不要求恢复旧record010零载基准或历史训练结果。
+但旧图像重建入口仍依赖其基准，不能把“当前流程不需要”解释为“旧入口不需要”。
+新训练输出应另选目录，不覆盖归档；旧报告内嵌路径未重写，重跑前需核对输入、缓存和权重路径。
+程序、SDK、运行模型、机器人资产、消息构建环境以及原始bag均未包含在这次迁移中。
+操作说明见[迁移清单](../../../tutorials/machine_transfer_checklist.md#历史实验数据的归档位置)，
+阶段记录见[首次复制](../training/chronicles/2026-10-03-experiment-data-archive.md)
+及[完成两个目录迁移](../training/chronicles/2026-10-03-tactile-bc-archive-complete.md)。
+
+## 程序工作目录与运行资源
+
 末端实验数据/模型/报告位于 `local/eef_bc/`，消息包构建位于 `local/action_ros/`，均Git忽略。
 需原bag和匹配Marvin消息；不需要机器人mesh或触觉SDK。新机器按
 [末端教程](../../../tutorials/eef_action_space.md)重建消息包并重新导出。

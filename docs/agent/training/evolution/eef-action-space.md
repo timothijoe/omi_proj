@@ -1,5 +1,7 @@
 # 左臂末端增量动作与录包代理标签
 
+硬件接口的新参考见[axis_test 对齐方案](axis-controller-interface.md)：该脚本使用mm/度，而本文训练契约仍为m/rad。**实机后三维暂按基坐标系旋转向量解释，这是用户指定的假设，尚未经接收端核实。** 单位换算与跨坐标系/TCP变换详见该对齐方案。
+
 入口：`scripts/eef_bc.sh {export|train|shadow}`。操作见[教程](../../../../tutorials/eef_action_space.md)，
 验证过程见[编年](../chronicles/2026-10-03-eef-action-space.md)。
 本轮以左臂6D基座系增量作为可修改的试验默认，不代表用户已冻结最终硬件动作契约。
@@ -7,6 +9,13 @@
 按保存的契约选择网络；数据/检查点版本和输入源模式必须精确匹配。
 
 ## 动作定义
+
+新增离线版本 `bag-eef-bc-v3-grid-receive`，用于oct3正式小矩阵录包：
+双视觉shape与v2一致；触觉已池化、腕部已裁剪，不重复处理；无wrench，state为14维。
+跨设备header时钟不一致，统一按接收时间选择观测和未来EEF代理标签，原header另存；
+这与下文v1/v2的源header对齐规则不同，不能混用版本或运行现有在线shadow。
+源消息入口时差超过250ms（EEF50ms）或header超前100ms以上时拒绝；不自动估计时钟偏移。
+详细约束与本轮训练确认状态见[正式录包教程](../../../../tutorials/oct3_formal_dataset.md)。
 
 契约 `bag-eef-bc-v1` / `left-eef-base-delta-v1`：
 

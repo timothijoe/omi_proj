@@ -1,5 +1,40 @@
 schema_version: 1
+# tactile and bc migrated on 2026-10-03; local sources removed after checksum verification.
+# eef_bc remains local by user request; its archive copy is not a complete current snapshot.
+# Resource path fields below retain logical working paths for reproducible commands.
+historical_data_archive:
+  status: tactile_and_bc_completed_eef_retained_locally
+  root: /media/zhoutong/zt-think-d1/legion_data/legion_omi_proj/local/oct_02
+  planned_directory_mapping:
+    local/tactile: tactile
+    local/bc: bc
+    local/eef_bc: eef_bc
+  completed_source_removals: [local/tactile, local/bc]
+  retained_local_directories: [local/eef_bc]
+  restore: For tactile and bc pass archive paths explicitly or copy needed experiments back; no symlinks remain. Continue using local/eef_bc, whose archive is incomplete. New outputs belong in separate directories. Latest native-field bags do not require historical tactile baselines or BC artifacts.
 resources:
+  - id: six-keypoint-review-examples
+    path: local/keypoint_review/six_point_examples
+    tracked: false
+    required_for: local_six_keypoint_annotation
+    source: /tmp/omi_six_keypoint_handoff_20261004
+    purpose: Twelve original ROI copies, provenance, proposals, annotation master and diagnostic report; no human truth yet
+    restore: Copy this whole project directory including images and annotations.json. Follow tutorials/six_keypoint_review.md. Never train on ui_test_only or browser_qa synthetic coordinates.
+  - id: current9stack-history-experiment
+    path: local/eef_history/oct04_current9stack_run2
+    tracked: false
+    required_for: current_frame_plus_stacked_history_comparison
+    source: Original oct03_split2 v3 datasets and local/pretrained/serl_resnet10/backbone.pt
+    purpose: Current RGB3 plus past9 RGB27 without GRU; best/last weights, predictions, comparisons and CPU latency
+    restore: Follow tutorials/current_stack_history.md. Run1 is an interrupted CPU throughput pilot, not the completed experiment. No online model replacement.
+  - id: serl-resnet10-pretrained
+    path: local/pretrained/serl_resnet10
+    tracked: false
+    required_for: frozen_resnet10_history_experiment
+    source: https://github.com/rail-berkeley/serl/releases/download/resnet10/resnet10_params.pkl
+    source_sha256: 175745d43d30233eb01b5369465d1c24c11b8ee71ccb734cc1c1bca13e07f57b
+    purpose: Original ImageNet weights, PyTorch backbone, conversion provenance and Flax numerical references
+    restore: Follow tutorials/resnet10_history.md; runtime requires only backbone.pt and PyTorch. New experiment outputs in local/eef_history/oct04_resnet10_run1, old models retained.
   - id: omi-marvin-stand-axis-corrected-v1
     path: local/models/omi_marvin_stand_axis_corrected_v1
     tracked: false

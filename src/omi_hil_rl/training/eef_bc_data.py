@@ -98,6 +98,17 @@ def profile_for(contract):
     if contract == CONTRACT:
         import sys
         return sys.modules[__name__]
+    if contract.get('version') == 'bag-eef-bc-v4-wrench':
+        from .eef_bc_wrench import WrenchProfile
+        profile=WrenchProfile(contract.get('wrist_camera'))
+        if contract != profile.CONTRACT:raise ValueError('Unknown wrench observation contract')
+        return profile
+    if contract.get("version") == "bag-eef-bc-v3-grid-receive":
+        from .eef_bc_grid import GridProfile
+        profile = GridProfile(contract.get("wrist_camera"))
+        if contract != profile.CONTRACT:
+            raise ValueError("Unknown or modified grid observation contract")
+        return profile
     from .eef_bc_sources import CameraProfile
     profile = CameraProfile(contract.get("wrist_camera"))
     if contract != profile.CONTRACT:
@@ -131,10 +142,20 @@ def write_selected_replay(source, output, selected):
     return dict(Counter(topic for topic, _ in copied))
 
 
-def export(source,output,*,accept_proxy=False,wrist_camera=None):
+def export(source,output,*,accept_proxy=False,wrist_camera=None,input_profile="legacy",wrench_enabled=(0,0)):
     if not accept_proxy:
         raise ValueError("Explicit --accept-future-state-proxy required")
-    if wrist_camera is None:
+    if input_profile == 'grid-wrench':
+        from .eef_bc_wrench import WrenchProfile
+        profile=WrenchProfile(wrist_camera or 'optional',wrench_enabled)
+    elif any(wrench_enabled):
+        raise ValueError('Wrench input requires grid-wrench profile')
+    elif input_profile == "grid-receive":
+        from .eef_bc_grid import GridProfile
+        profile = GridProfile(wrist_camera or "optional")
+    elif input_profile != "legacy":
+        raise ValueError("Unknown input profile")
+    elif wrist_camera is None:
         profile = profile_for(CONTRACT)
     else:
         from .eef_bc_sources import CameraProfile
@@ -142,7 +163,8 @@ def export(source,output,*,accept_proxy=False,wrist_camera=None):
     contract, topics, keys = profile.CONTRACT, profile.TOPICS, profile.KEYS
     arrays_keys = profile.ARRAYS
     required_topics = set(getattr(profile, "REQUIRED_TOPICS", topics))
-    selected_replay = contract["version"] == "bag-eef-bc-v2"
+    receive_clock = input_profile in ('grid-receive','grid-wrench')
+    selected_replay = contract["version"] != "bag-eef-bc-v1"
     import rosbag2_py
     from rclpy.serialization import deserialize_message
     from rosidl_runtime_py.utilities import get_message
@@ -158,10 +180,11 @@ def export(source,output,*,accept_proxy=False,wrist_camera=None):
             if end<=start:
                 raise ValueError("Empty bag")
             buf=profile.ObservationBuffer(); samples=[]; refs=[]; poses=[]; pose_stamps=[]
-            counts,dropped=Counter(),Counter(); episode_hash=hashlib.sha256()
+            counts,dropped=Counter(),Counter(); rejected_sources=Counter(); episode_hash=hashlib.sha256()
             ref,previous=start,start
             raw_replay = work/"all_observations" if selected_replay else build/"observations"
             source_receptions = {k: {} for k in keys}
+            original_headers = {k: {} for k in keys}
             topic_for_key = {value: name for name, value in topics.items()}
             selected_events = set()
             writer=rosbag2_py.SequentialWriter()
@@ -177,6 +200,9 @@ def export(source,output,*,accept_proxy=False,wrist_camera=None):
                                                for key, timestamp in stamps.items() if timestamp > 0)
                     if "camera_mask" in obs:
                         row["camera_mask"] = obs["camera_mask"].tolist()
+                    if 'wrench_mask' in obs:
+                        row['wrench_mask']=obs['wrench_mask'].tolist()
+                        row['wrench_enabled']=obs['wrench_enabled'].tolist()
                     row.update(valid=True,source_stamps=stamps,observation_sha256=profile.digest(obs))
                 except NotReady as exc:
                     dropped[str(exc)]+=1
@@ -199,17 +225,34 @@ def export(source,output,*,accept_proxy=False,wrist_camera=None):
                         capture(ref); ref+=CONTRACT["label_horizon_ns"]
                     key=topics[topic]
                     timestamp,value=profile.decode(key,deserialize_message(data,classes[topic]))
+                    original_timestamp = timestamp
+                    if receive_clock:
+                        timestamp = received
+                        delay = received-original_timestamp
+                        limit = contract['eef_max_age_ns'] if key == 'eef' else contract['max_age_ns']
+                        if delay > limit or delay < -contract['ingress_max_header_ahead_ns']:
+                            if key.endswith('_wrench'):
+                                buf.add(key,received,np.zeros(7,np.float32))
+                                source_receptions[key][received]=received
+                                original_headers[key][received]=original_timestamp
+                            rejected_sources[key + ':header_clock_guard'] += 1
+                            counts[topic] += 1
+                            delays[key].append(delay/1e6)
+                            episode_hash.update(topic.encode()+b"\0"+str(received).encode()+b"\0"+data)
+                            writer.write(topic,data,received)
+                            continue
                     if timestamp>received:
                         raise ValueError("Header later than reception; investigate clocks")
                     buf.add(key,timestamp,value)
                     if selected_replay:
                         source_receptions[key][timestamp] = received
+                    original_headers[key][timestamp] = original_timestamp
                     if key=="eef":
                         if pose_stamps and timestamp==pose_stamps[-1]:
                             raise ValueError("Duplicate EEF timestamp is ambiguous")
                         pose_stamps.append(timestamp); poses.append(value)
-                    counts[topic]+=1; delays[key].append((received-timestamp)/1e6)
-                    if topic in TOPICS:
+                    counts[topic]+=1; delays[key].append((received-original_timestamp)/1e6)
+                    if topic in TOPICS or receive_clock:
                         episode_hash.update(topic.encode()+b"\0"+str(received).encode()+b"\0"+data)
                     writer.write(topic,data,received)
                 del rd
@@ -237,12 +280,23 @@ def export(source,output,*,accept_proxy=False,wrist_camera=None):
                           label_ns=np.array(label_stamps,dtype=np.int64),
                           source_ns=np.array([[r[2][k] for k in keys] for r in rows],dtype=np.int64))
             arrays["actual_horizon_ns"]=arrays["label_ns"]-arrays["source_ns"][:,keys.index("eef")]
+            if receive_clock:
+                arrays["original_source_ns"] = np.array([[original_headers[k].get(r[2][k], 0)
+                    for k in keys] for r in rows], dtype=np.int64)
+                arrays["original_label_ns"] = np.array([original_headers["eef"][t] for t in label_stamps], dtype=np.int64)
             np.savez_compressed(build/"samples.npz",**arrays)
+            if input_profile == 'grid-wrench':
+                pool={k:np.stack([r[1][k] for r in samples]) for k in arrays_keys}
+                pool['reference_ns']=np.array([r[0] for r in samples],np.int64)
+                pool['source_ns']=np.array([[r[2][k] for k in keys] for r in samples],np.int64)
+                np.savez_compressed(build/'history_observations.npz',**pool)
             (build/"references.json").write_text(json.dumps(refs))
             a=arrays["action"]; r=np.asarray(residual)
             report=dict(contract=contract,source=provenance,episode_id=episode_hash.hexdigest(),
                 interpretation="future state change proxy; one bag one episode; outcome unknown",
                 start_ns=start,end_ns=end,input_counts=dict(counts),dropped=dict(dropped),
+                rejected_source_messages=dict(rejected_sources),
+                alignment_clock=contract.get('alignment_clock', 'source_header_with_receive_causality'),
                 replay_mode="selected_causal_source_frames" if selected_replay else "all_observation_messages",
                 replay_counts=replay_counts,
                 samples=len(rows),reference_count=len(refs),valid_observations=len(samples),source_order=list(keys),replay_topics=sorted(registered),
@@ -259,6 +313,11 @@ def export(source,output,*,accept_proxy=False,wrist_camera=None):
             if "camera_mask" in arrays:
                 report["camera_mask_counts"] = dict(Counter(
                     ",".join(str(int(x)) for x in row) for row in arrays["camera_mask"]))
+            if 'wrench_mask' in arrays:
+                report['history_observations_sha256']=sha256(build/'history_observations.npz')
+                report['history_source']='all causal valid inputs, independent of future label validity'
+                report['wrench_enabled']=list(map(int,wrench_enabled))
+                report['wrench_mask_counts']=dict(Counter(','.join(str(int(x)) for x in row) for row in arrays['wrench_mask']))
             (build/"manifest.json").write_text(json.dumps(report,indent=2))
         build.rename(output)
     return report
@@ -270,9 +329,12 @@ def main():
     p.add_argument("--accept-future-state-proxy",action="store_true")
     p.add_argument("--wrist-camera",choices=("off","required","optional"),default=None,
                    help="Select v2 camera profile; omitted preserves v1 single-camera export")
+    p.add_argument("--input-profile", choices=("legacy", "grid-receive", "grid-wrench"), default="legacy",
+                   help="grid-receive: v3; grid-wrench: v4 optional masked wrench + full causal history pool")
+    p.add_argument('--wrench-enabled',nargs=2,type=int,choices=(0,1),default=(0,0),metavar=('A','B'))
     a=p.parse_args()
     print(json.dumps(export(a.source,a.output,accept_proxy=a.accept_future_state_proxy,
-                            wrist_camera=a.wrist_camera),indent=2))
+                            wrist_camera=a.wrist_camera,input_profile=a.input_profile,wrench_enabled=a.wrench_enabled),indent=2))
 
 if __name__=="__main__":
     main()
