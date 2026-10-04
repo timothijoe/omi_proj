@@ -72,3 +72,5 @@
 - [本地 marvin_msgs 消息包：加载、迁移与重建](marvin_messages.md)
 
 - [手柄六维控制与 RB 接管](gamepad_control.md)：摇杆/十字键映射、预览和真机发布、策略候选接口。
+
+- [其他电脑复现手柄控制（Agent手册）](gamepad_reproduce_on_other_pc.md)：固定提交、最小文件包、环境、跨机ROS和验收。
