@@ -1,5 +1,9 @@
 # Training 当前摘要
 
+手柄输出 wrapper 已支持显式 `--output-convention sdk-x-forward-z-left`：按假设安装方向 `(x,y,z)→(x,-z,y)` 并将旋转向量转 SDK ABC；默认 legacy 不转换。终端现同时显示原始值、转换状态和最终值，67项相关测试通过。接收端 FRAME_BASE/UserFrame 与实际安装方向仍待核对，用户曾报告旧映射左推导致上下移动，尚未完成换轴后的现场验收。详见[手柄教程](../../../tutorials/gamepad_control.md)。
+
+新增[独立手柄动作选择节点](../hardware/chronicles/2026-10-04-gamepad-intervention.md)：六维映射、RB 按住接管、带时间戳的策略候选选择已实现。现有 `stack_shadow` 仍只读，尚无候选发布者接入；真人干预的真机 transition、经验池和在线训练闭环尚未实现。相关测试 37 通过、1 跳过，实际机械臂动作尚未验证。下文早期“ROS 人工接管尚未实现”记录应结合本次阶段更新阅读。
+
 新增[无关节模型实时影子入口](chronicles/2026-10-04-stack-live-shadow.md)：`run_stack_shadow.sh`读取现场双相机/双指三场/EEF，CUDA计算，仅写本地文件，无动作发布者。19项测试及GPU离线一致性通过；现场strict30秒受EEF时间戳影响，随后诊断30+60秒EEF发布中断，实际推理0次。**实时输入尚未跑通，待EEF恢复及时间问题排查**；末端几何对齐遗留保留。见[操作教程](../../../tutorials/stack_shadow.md)。
 
 新增[不使用关节反馈的GPU历史拼接模型](evolution/nojoint-stack.md)：2000步完成，best1300步验证0.790943mm/0.00321688rad；joint_enabled/mask固定0，末端位姿保留。相对原模型平移高2.48%、旋转低0.44%；单seed、CPU/GPU条件不同。后续影子接入进展见上文，未接执行器。

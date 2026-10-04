@@ -19,6 +19,15 @@ TOPICS = dict(grid.TOPICS)
 TOPICS.update({f'/omi/tactile/{s}/raw': f'{s}_raw' for s in 'ab'})
 REQUIRED = {'camera', 'wrist_roi', 'eef'} | {f'{s}_{k}' for s in 'ab' for k in ('deformation','shear','depth')}
 MODEL_NS = NS + '/model'
+# Temporary display-only fit to oct3_022/bag_001, in base_link metres.
+TEMP_EEF_OFFSET = (-0.062159, -0.171229, 0.000024)
+BAG_L7_EEF_OFFSET = (0.000267515811, -0.232966801599, -0.000120682911)
+
+
+def shifted_eef(value, offset):
+    result = np.array(value, dtype=float, copy=True)
+    result[:3] += np.asarray(offset, dtype=float)
+    return result
 
 
 def model_sample(monitor, report, key):
@@ -36,10 +45,11 @@ def model_sample(monitor, report, key):
 
 class CorrectedModelView:
     """Original replay conventions, isolated from the robot's TF/control graph."""
-    def __init__(self, node, hz):
+    def __init__(self, node, hz, offset=TEMP_EEF_OFFSET):
         from sensor_msgs.msg import JointState
         from visualization_msgs.msg import MarkerArray
         self.node, self.hz = node, hz
+        self.offset = np.asarray(offset,dtype=float)
         import xml.etree.ElementTree as ET
         path = Path(os.environ['OMI_PROJECT_ROOT'])/'local/models/omi_marvin_stand_axis_corrected_v1/urdf/omi_marvin_stand_axis_corrected_v1.urdf'
         robot = ET.parse(path).getroot()
@@ -54,7 +64,8 @@ class CorrectedModelView:
         from scipy.spatial.transform import Rotation
         from .robot_replay_3d import JOINTS
         joints = model_sample(monitor, report, 'joints')
-        eef = model_sample(monitor, report, 'eef')
+        raw_eef = model_sample(monitor, report, 'eef')
+        eef = shifted_eef(raw_eef,self.offset) if raw_eef is not None else None
         if joints is not None:
             msg = JointState()
             msg.header.stamp = self.node.get_clock().now().to_msg()
@@ -89,7 +100,14 @@ class CorrectedModelView:
             axes(4, 'omi_replay_robot_base', eef[:3], Rotation.from_quat(eef[3:]).as_matrix(), .12)
             m = marker(7, Marker.TEXT_VIEW_FACING, 'omi_replay_robot_base')
             m.pose.position = Point(x=float(eef[0]), y=float(eef[1]), z=float(eef[2]+.1))
-            m.scale.z = .025; m.text = 'ROS EEF: '+report['eef']['state']
+            m.scale.z = .025; m.text = 'EEF + TEMP OFFSET: '+report['eef']['state']
+            m = marker(13,Marker.SPHERE,'omi_replay_robot_base')
+            m.pose.position = Point(x=float(raw_eef[0]),y=float(raw_eef[1]),z=float(raw_eef[2]))
+            m.scale.x = m.scale.y = m.scale.z = .02
+            m.color.r = m.color.g = m.color.b = .6
+            m = marker(14,Marker.TEXT_VIEW_FACING,'omi_replay_robot_base')
+            m.pose.position = Point(x=float(raw_eef[0]),y=float(raw_eef[1]),z=float(raw_eef[2]+.06))
+            m.scale.z = .022; m.text = 'RAW EEF'
         if joints is not None and eef is not None:
             transform = left_l7_transform(self.left_chain,joints[:7])
             start, end = transform[:3,3], eef[:3]
@@ -109,7 +127,9 @@ class CorrectedModelView:
             m.scale.z = .027
             angle=Rotation.from_matrix(transform[:3,:3].T@Rotation.from_quat(eef[3:]).as_matrix()).magnitude()*180/np.pi
             gap=abs(monitor.latest['joints']['stamp']-monitor.latest['eef']['stamp'])/1e6
-            m.text=(f'L7 -> EEF: {np.linalg.norm(end-start)*100:.1f} cm | axes: {angle:.1f} deg\n'
+            target=start+transform[:3,:3]@np.asarray(BAG_L7_EEF_OFFSET)
+            m.text=(f'L7 -> shifted EEF: {np.linalg.norm(end-start)*100:.1f} cm | axes: {angle:.1f} deg\n'
+                    f'Bag relation residual: {np.linalg.norm(end-target)*1000:.2f} mm\n'
                     f'Latest samples, dt={gap:.0f} ms | NOT calibrated TCP error')
         m = marker(8, Marker.TEXT_VIEW_FACING, 'omi_replay_world')
         m.pose.position.z = 1.65; m.scale.z = .028
@@ -117,7 +137,8 @@ class CorrectedModelView:
                   'Assume base_link = model root; no fitted TCP\n'
                   'joint_feedback: '+report['joints']['state']+' (original radians convention)\n'
                   + ('Robot pose received' if joints is not None else 'NO FRESH JOINTS: model absent or FROZEN')
-                  +' | EEF: '+report['eef']['state'])
+                  +' | EEF: '+report['eef']['state']
+                  +'\nTEMP base offset [mm]: '+', '.join(f'{v*1000:+.3f}' for v in self.offset))
         self.markers.publish(array)
 
 
@@ -217,7 +238,7 @@ def render(monitor, report, now_ns, elapsed, domain):
         else:draw.text((x+5,748),report[s+'_raw']['state'],font=font,fill='#f1c46b')
     draw.rectangle((0,1030,1535,1539),fill=(18,22,28))
     eef=monitor.latest.get('eef')
-    text='EEF '+report['eef']['state']+' xyz / xyzw: '+('WAITING' if not eef else ' '.join(f'{v:+.5f}' for v in eef['value']))
+    text='RAW EEF '+report['eef']['state']+' xyz / xyzw: '+('WAITING' if not eef else ' '.join(f'{v:+.5f}' for v in eef['value']))
     draw.text((10,1034),text,font=font,fill='white')
     draw.text((10,1056),'EEF frame: '+(eef['frame'] if eef else '?')+' | 3D model mode: '+getattr(monitor,'model_mode','none')+'; see 3D assumptions. TCP/base unverified.',font=font,fill='#f1c46b')
     draw.text((10,1084),'Topic                                                     State         Hz     RX age   Header age   Pub   Role',font=font,fill='white')
@@ -226,6 +247,46 @@ def render(monitor, report, now_ns, elapsed, domain):
         line=f"{r['topic']:<57} {r['state']:<12} {r['hz']:5.1f} {fmt(r['receive_age_ms'])}ms {fmt(r['header_age_ms'])}ms {r['publishers']:3d}   {'REQ' if r['required'] else 'optional'}"
         draw.text((10,1110+row*24),line,font=font,fill='#8aefae' if r['state']=='LIVE' else '#ffb36b')
     return canvas
+
+
+def run_model_node(args):
+    """Keep pose subscriptions and 3D updates independent of PNG rendering."""
+    import rclpy
+    from rclpy.executors import ExternalShutdownException
+    from rclpy.qos import qos_profile_sensor_data
+    from geometry_msgs.msg import PoseStamped
+    from marvin_msgs.msg import Jointfeedback
+    rclpy.init();node=rclpy.create_node('omi_live_model_monitor');monitor=Monitor()
+    view=CorrectedModelView(node,args.model_hz,args.eef_offset_base_m)
+    for topic,key,cls in (('/tj/info/eef_left','eef',PoseStamped),('/tj/info/joint_feedback','joints',Jointfeedback)):
+        node.create_subscription(cls,topic,lambda msg,k=key:monitor.receive(k,msg,node.get_clock().now().nanoseconds,time.monotonic_ns()),qos_profile_sensor_data)
+    last_clock=None;last_report=0.
+    def tick():
+        nonlocal last_clock,last_report
+        now=node.get_clock().now().nanoseconds
+        if last_clock is not None and now<last_clock:monitor.latest.clear();monitor.errors.clear()
+        last_clock=now
+        if time.monotonic()-last_report>=1:
+            for key in ('joints','eef'):
+                topic=next(t for t,k in TOPICS.items() if k==key)
+                monitor.publishers[key]=node.count_publishers(topic)
+        report=monitor.report(now,time.monotonic_ns())
+        view.publish(monitor,report)
+        if time.monotonic()-last_report>=1:
+            output=Path(args.output)
+            status={k:report[k] for k in ('joints','eef')}
+            raw=model_sample(monitor,report,'eef')
+            status['display']=dict(offset_base_m=list(args.eef_offset_base_m),raw_eef=None if raw is None else raw.tolist(),
+                shifted_eef=None if raw is None else shifted_eef(raw,args.eef_offset_base_m).tolist(),scope='RViz only; source topic and policy unchanged')
+            (output/'model_status.tmp').write_text(json.dumps(status,indent=2)+'\n')
+            (output/'model_status.tmp').replace(output/'model_status.json')
+            last_report=time.monotonic()
+    node.create_timer(1/args.model_hz,tick)
+    try:rclpy.spin(node)
+    except (KeyboardInterrupt,ExternalShutdownException):pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():rclpy.shutdown()
 
 
 def run_node(args):
@@ -238,7 +299,6 @@ def run_node(args):
     from .tactile_live import image_message
     rclpy.init();node=rclpy.create_node('omi_live_grid_monitor');monitor=Monitor()
     monitor.model_mode = args.model_mode
-    model_view = CorrectedModelView(node,args.hz) if args.model_mode == 'corrected' else None
     try:
         from marvin_msgs.msg import Jointfeedback
     except ImportError:
@@ -263,7 +323,6 @@ def run_node(args):
             for topic,key in TOPICS.items():monitor.publishers[key]=node.count_publishers(topic)
             last_graph=time.monotonic()
         report=monitor.report(now,time.monotonic_ns())
-        if model_view:model_view.publish(monitor,report)
         image=render(monitor,report,now,time.monotonic()-started,args.domain)
         header=Header();header.stamp=node.get_clock().now().to_msg();header.frame_id='live_dashboard'
         pubs[0].publish(image_message(np.asarray(image),header,'rgb8'))
@@ -290,19 +349,26 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--domain',type=int,default=13)
     p.add_argument('--hz',type=grid.positive,default=2.,help='dashboard refresh, default2Hz; sensor subscriptions independent')
+    p.add_argument('--model-hz',type=grid.positive,default=30.,help='independent 3D update rate, default30Hz')
     p.add_argument('--fixed-frame',help='RViz fixed frame; default depends on model mode')
     p.add_argument('--model-mode',choices=('corrected','existing','none'),default='corrected',help='default: original corrected Stand review model')
+    p.add_argument('--eef-offset-base-m',nargs=3,type=float,default=TEMP_EEF_OFFSET,metavar=('X','Y','Z'),
+        help='temporary EEF translation for corrected-model display only; use 0 0 0 to disable')
     p.add_argument('--no-rviz',action='store_true')
     p.add_argument('--robot-model',action='store_true',help='enable existing RobotModel; requires matching local mesh package and complete live TF')
     p.add_argument('--duration',type=grid.positive)
     p.add_argument('--output',type=Path,help='new session output directory; defaults to local/grid_live_review/session-*')
     p.add_argument('--node',action='store_true',help=argparse.SUPPRESS)
+    p.add_argument('--model-node',action='store_true',help=argparse.SUPPRESS)
     args=p.parse_args()
     if args.robot_model:args.model_mode='existing'
     if args.fixed_frame is None:args.fixed_frame='omi_replay_world' if args.model_mode=='corrected' else 'base_link'
     if not 0<=args.domain<=232:p.error('domain must be 0..232')
     if args.hz>10:p.error('dashboard hz must be <=10')
+    if args.model_hz>60:p.error('model hz must be <=60')
+    if not np.isfinite(args.eef_offset_base_m).all():p.error('EEF offset must be finite')
     root=Path(os.environ['OMI_PROJECT_ROOT'])
+    if args.model_node:return run_model_node(args)
     if args.node:return run_node(args)
     runtime=root/'local/grid_live_review';runtime.mkdir(parents=True,exist_ok=True)
     with (runtime/f'domain-{args.domain}.lock').open('a') as lock:
@@ -311,9 +377,14 @@ def main():
         if args.output:
             args.output=args.output.resolve();args.output.mkdir(parents=True,exist_ok=False)
         else:args.output=Path(tempfile.mkdtemp(prefix='session-',dir=runtime))
+        (args.output/'eef_display_config.json').write_text(json.dumps(dict(
+            offset_base_m=args.eef_offset_base_m,applied=args.model_mode=='corrected',
+            reference_bag='/home/zhoutong/Downloads/oct03/oct3_022/bag_001.zip',
+            reference_L7_EEF_local_m=BAG_L7_EEF_OFFSET,scope='temporary fixed-base RViz translation only; orientation unchanged'),indent=2)+'\n')
         import yaml
         config=yaml.safe_load((root/'scripts/grid_live_observation.rviz').read_text())
         config['Visualization Manager']['Global Options']['Fixed Frame']=args.fixed_frame
+        config['Visualization Manager']['Global Options']['Frame Rate']=30
         config['Visualization Manager']['Displays'][1]['Enabled']=args.model_mode!='none'
         config['Visualization Manager']['Displays'][1]['Value']=args.model_mode!='none'
         config['Visualization Manager']['Views']['Current']['Target Frame']=args.fixed_frame
@@ -332,6 +403,10 @@ def main():
                  FASTRTPS_DEFAULT_PROFILES_FILE=str(root/'ros2/omi_sensors/config/live_dashboard_network.xml'))
         command=[sys.executable,'-m','omi_hil_rl.real.grid_live_review','--node','--domain',str(args.domain),'--hz',str(args.hz),'--output',str(args.output),'--model-mode',args.model_mode]
         commands=[command]
+        if model:
+            commands.append([sys.executable,'-m','omi_hil_rl.real.grid_live_review','--model-node',
+                '--domain',str(args.domain),'--model-hz',str(args.model_hz),'--output',str(args.output),
+                '--eef-offset-base-m',*map(str,args.eef_offset_base_m)])
         tf_remaps=['--ros-args','-r','/tf:='+MODEL_NS+'/tf','-r','/tf_static:='+MODEL_NS+'/tf_static']
         if model:
             commands.append(['ros2','run','robot_state_publisher','robot_state_publisher',

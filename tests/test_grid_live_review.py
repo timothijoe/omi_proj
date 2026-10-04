@@ -74,3 +74,13 @@ def test_live_joint_schema_validation():
         m.receive('joints',NS(positions=values,header=header),10**9,10**9)
         assert m.report(10**9,10**9)['joints']['state']=='BAD_DATA'
         assert 'joints' not in m.latest
+
+
+def test_display_offset_preserves_raw_pose_and_orientation():
+    from omi_hil_rl.real.grid_live_review import shifted_eef,TEMP_EEF_OFFSET
+    raw=np.array([.537833,.312462,.843373,0.,0.,0.,1.])
+    saved=raw.copy();display=shifted_eef(raw,TEMP_EEF_OFFSET)
+    np.testing.assert_array_equal(raw,saved)
+    np.testing.assert_allclose(display[:3],[.475674,.141233,.843397])
+    np.testing.assert_array_equal(display[3:],raw[3:])
+    np.testing.assert_array_equal(shifted_eef(raw,(0,0,0)),raw)

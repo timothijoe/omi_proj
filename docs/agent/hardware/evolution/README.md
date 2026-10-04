@@ -1,5 +1,7 @@
 # Hardware 纪传体
 
+- [手柄末端控制、SDK 换轴与开发记录](gamepad-control.md)
+
 - [实时小矩阵观测与topic状态看板](grid-live-review.md)
 
 

@@ -110,3 +110,39 @@ colcon --log-base local/live_feedback_ws/log build \
 
 三维对比增加青色L7球、品红色EEF球和黄色连线，实时显示两者距离、坐标轴相对转角及消息时间差。
 数值使用独立最新样本、原基座重合假设；L7不是TCP，因此连线距离不是已标定的TCP误差。
+
+## 三维刷新与图像看板分离
+
+`--model-hz 30`为独立三维进程的默认更新率，RViz渲染上限30Hz；`--hz 2`仅控制图像看板。
+原先10Hz大图绘制和PNG保存堵塞同进程订阅，实测EEF源约49Hz、显示更新约6.7Hz。
+现拆分`omi_live_model_monitor`仅订阅关节/EEF并发布三维标记与显示关节，
+不受看板渲染/落盘直接阻塞。`model_status.json`保存独立三维进程的接收统计，
+与`status.json`的图像看板统计区分。建议启动：
+
+```bash
+bash scripts/view_grid_observation_live.sh --hz 2 --model-hz 30
+```
+
+此修改不应用任何EEF平移补偿，原始坐标与模型假设不变。
+
+## 临时实时 EEF 显示补偿（用户授权，2026-10-04）
+
+corrected模型模式默认在实时EEF的base_link位置上加 `[-0.062159, -0.171229, +0.000024] m`，
+即 `[-62.159, -171.229, +0.024] mm`。方向为从原始EEF移向回放包基准所期望的位置。
+基准是当前播放的 `oct03/oct3_022/bag_001.zip` 的L7局部关系
+`[+0.000267516, -0.232966802, -0.000120683] m`，不是旧record001，也不是直接对齐L7原点。
+这是按此前实时姿态算出的固定基座平移，未做多姿态标定；姿态改变后残差可能增大。
+
+品红球和主EEF坐标轴显示补偿结果；灰球标为RAW EEF，保留原始位置对照。
+黄色线从L7指向补偿后EEF，文字额外显示相对回放包局部关系的残差。
+四元数不变，补偿仅用于实时RViz；原ROS话题、影子推理输入与录包回放均不修改。
+底部数值仍明确标为RAW EEF。每次会话保存 `eef_display_config.json`，
+`model_status.json` 中display字段同时记录原始和补偿后的位姿。
+
+取消临时补偿：
+
+```bash
+bash scripts/view_grid_observation_live.sh --eef-offset-base-m 0 0 0
+```
+
+也可通过该参数显式指定另一组以米为单位的显示补偿。existing/none模式不应用这个偏移。

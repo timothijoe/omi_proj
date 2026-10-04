@@ -70,3 +70,5 @@
 - [右臂六维增量画半径3cm圆](circle_test.md)
 
 - [本地 marvin_msgs 消息包：加载、迁移与重建](marvin_messages.md)
+
+- [手柄六维控制与 RB 接管](gamepad_control.md)：摇杆/十字键映射、预览和真机发布、策略候选接口。

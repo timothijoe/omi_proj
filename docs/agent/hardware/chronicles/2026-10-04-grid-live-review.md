@@ -32,3 +32,24 @@ float64[14] positions/velocities/efforts；旧录包定义含arm_*及躯干/头�
 新增独立live_feedback_interfaces消息包、实时脚本专用overlay和positions读取；
 不修改历史bag接口。新定义实测5秒250条，15项看板/录包回归通过。
 该时刻前7关节全零、后7非零，左右映射遵循注释但尚需现场确认。
+
+## EEF刷新卡顿排查与分进程修复
+
+EEF轻量订阅约48.6Hz，原10Hz看板订阅/三维更新仅约6.7Hz，渲染进程约占一个CPU核。
+将关节/EEF订阅及三维更新移入独立进程，默认30Hz；图像看板默认2Hz，RViz上限30Hz。
+15项回归通过。实测5秒源48.2Hz，TF与markers约29.2Hz；仍出现一次约0.33–0.35秒接收间隔，
+不能宣称完全消除所有卡顿。模型进程统计源约50Hz，EEF源header一度超前约109ms。
+未加任何坐标补偿；此时L7—EEF距离约33.6cm、转角约90度。
+证据：`local/grid_live_review/session-ecwim0v3/refresh_check.json`、`model_status.json`及`screen.png`。
+
+## 用户授权临时基座平移补偿
+
+以当前播放的oct3_022/bag_001为基准，实时corrected模式显示默认加
+[-62.159,-171.229,+0.024]mm；仅变换显示位置，保留灰色原始EEF，四元数不变。
+原topic、影子模型输入和回放入口不改。可用--eef-offset-base-m 0 0 0恢复无补偿显示。
+固定偏移源自单姿态对照，未当作标定。显示中新增对回放局部关系的残差。
+16项显示/回放回归通过，覆盖原始数组不变、姿态不变和零偏移恢复。
+
+补偿后实际标记检查：L7—EEF约23.3cm、姿态相对角90度，相对回放局部关系位置残差约2.14mm。
+这是当前姿态的观测，不能保证其它姿态残差相同；原始和补偿后位姿及检查保存在
+`local/grid_live_review/session-8kr8vxxh/offset_check.json`，截图为同目录screen.png。
