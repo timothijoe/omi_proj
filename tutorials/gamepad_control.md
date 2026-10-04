@@ -5,7 +5,7 @@
 ## 当前使用哪个程序
 
 现场直接控制末端用 **`scripts/gamepad_test.py`**。它读取手柄后直接发送六维增量，不订阅策略。
-`python -m omi_hil_rl.real.gamepad_node` 是另一个带策略候选选择的入口；目前 shadow 模型尚未接入它。
+`python -m omi_hil_rl.real.gamepad_node` 是另一个带策略候选选择的入口；现已通过 `scripts/run_policy_gamepad.sh` 接入实时模型，见[policy 联调教程](policy_gamepad.md)。
 两个入口共用手柄映射和输出 wrapper，不要同时开启动作发布。
 
 参考发送接口为 `/home/zhoutong/Downloads/oct04/robot_pose/circle_test.py` 的最新版本。

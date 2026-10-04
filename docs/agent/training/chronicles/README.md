@@ -1,5 +1,7 @@
 # Training 编年索引
 
+- [2026-10-04：实时policy、RB仲裁与SDK转换接通](2026-10-04-policy-gamepad-integration.md)
+
 - [2026-10-04：无关节模型实时影子入口与现场EEF阻塞](2026-10-04-stack-live-shadow.md)
 
 - [2026-10-04：无关节反馈版本GPU训练](2026-10-04-nojoint-gpu-training.md)

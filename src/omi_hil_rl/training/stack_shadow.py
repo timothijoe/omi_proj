@@ -1,4 +1,4 @@
-"""Live no-joint current+past9 inference audit. No ROS action publishers."""
+"""Live no-joint inference; optional policy candidates, never robot commands."""
 from __future__ import annotations
 
 import argparse
@@ -18,14 +18,19 @@ from .eef_bc_history import PERIOD_NS, SLOTS
 from .eef_bc_policy import inputs, validate_cameras
 from .eef_bc_data import NotReady, sha256
 from .eef_action import check_increment
+from omi_hil_rl.real.eef_reference import EEF_REFERENCES, reference_pose, reference_offset
+from omi_hil_rl.real.policy_action import policy_trace, candidate_reason, POLICY_FRAME, SDK_CONVENTION
+from omi_hil_rl.real.sdk_action import format_action_trace
 
 
 class StackObservations:
     """Receiver-clock alignment, original ingress guards, explicit disabled q7."""
-    def __init__(self, contract, header_mode='strict'):
+    def __init__(self, contract, header_mode='strict', eef_reference='raw'):
         if header_mode not in ('strict','receive-only-diagnostic'):
             raise ValueError('Unknown header mode')
         self.header_mode=header_mode
+        reference_offset(eef_reference)
+        self.eef_reference=eef_reference
         self.profile = GridProfile(contract['wrist_camera'])
         if self.profile.CONTRACT != contract:
             raise ValueError('Unsupported checkpoint observation contract')
@@ -52,10 +57,14 @@ class StackObservations:
         metadata={}
         try:
             stamp,value = self.profile.decode(key,msg)
+            if key=='eef':
+                metadata['raw_eef_xyz_xyzw']=value.tolist()
+                value=reference_pose(value,self.eef_reference)
+                metadata['policy_eef_xyz_xyzw']=value.tolist()
             if key == 'rgb' and (value.shape != (3,128,128) or value.dtype != np.uint8):
                 raise ValueError('Expected uint8 external RGB')
             age = receive_ns-stamp
-            metadata=dict(header_ns=stamp,header_age_ms=age/1e6)
+            metadata.update(header_ns=stamp,header_age_ms=age/1e6)
             limit = self.contract['eef_max_age_ns'] if key=='eef' else self.contract['max_age_ns']
             if self.header_mode=='strict' and age < -self.contract['ingress_max_header_ahead_ns']:
                 raise ValueError('header_ahead')
@@ -69,7 +78,7 @@ class StackObservations:
             self.latest[key]=dict(receive_ns=receive_ns,accepted=False,reason=reason,**metadata)
             return False
         self.accepted[key] += 1
-        self.latest[key]=dict(receive_ns=receive_ns,header_ns=stamp,header_age_ms=age/1e6,accepted=True)
+        self.latest[key]=dict(receive_ns=receive_ns,accepted=True,**metadata)
         return True
 
     def window(self, reference_ns):
@@ -87,6 +96,7 @@ class StackObservations:
                     epoch=self.epoch,inferred=False,reason='missing_current',action=None,
                     joint_enabled=0,execution_allowed=False,header_mode=self.header_mode,
                     training_header_guards_enforced=self.header_mode=='strict')
+        status['eef_reference']=self.eef_reference
         try:
             obs,stamps=self.buffer.at(reference_ns)
         except NotReady as exc:
@@ -126,8 +136,20 @@ def main():
     p.add_argument('--device',choices=('cuda','cpu'),default='cuda')
     p.add_argument('--header-mode',choices=('strict','receive-only-diagnostic'),default='strict',
                    help='diagnostic bypasses source-header age only; receive freshness/shape/frame checks remain')
+    p.add_argument('--eef-reference',choices=EEF_REFERENCES,default='raw',help='explicit observation translation; never added to action')
+    p.add_argument('--publish-candidates',action='store_true',help='publish unconverted SI increments to arbiter, not robot commands')
+    p.add_argument('--candidate-topic',default='/omi/policy/candidate')
+    p.add_argument('--policy-scale',type=float,default=1.)
+    p.add_argument('--speed-mm-s',type=float,default=10.)
+    p.add_argument('--rotation-deg-s',type=float,default=10.)
     args=p.parse_args()
     if not np.isfinite(args.duration) or args.duration<=0:p.error('duration must be positive and finite')
+    try:policy_trace(np.zeros(6),args.policy_scale)
+    except ValueError as exc:p.error(str(exc))
+    if not all(np.isfinite(v) and v>0 for v in (args.speed_mm_s,args.rotation_deg_s)):p.error('speeds must be finite and positive')
+    if args.publish_candidates and args.header_mode!='strict':p.error('Diagnostic header mode cannot publish candidates')
+    if args.publish_candidates and not args.candidate_topic.startswith('/omi/policy/'):
+        p.error('Candidate topic must be under /omi/policy/; robot command topics are forbidden')
     args.output.mkdir(parents=True,exist_ok=False)
     device=torch.device(args.device)
     if device.type=='cuda' and not torch.cuda.is_available():raise RuntimeError('CUDA unavailable; no implicit fallback')
@@ -137,7 +159,7 @@ def main():
     torch.use_deterministic_algorithms(True)
     model,norm,checkpoint=load_stack_policy(args.checkpoint,device)
     if checkpoint['config']['version']!=NO_JOINT_VERSION:raise ValueError('This live runner requires the no-joint checkpoint')
-    runtime=StackObservations(model.contract,args.header_mode)
+    runtime=StackObservations(model.contract,args.header_mode,args.eef_reference)
     manifest=dict(checkpoint=str(args.checkpoint.resolve()),checkpoint_sha256=sha256(args.checkpoint),
                   version=checkpoint['config']['version'],step=checkpoint['step'],device=str(device),
                   gpu=torch.cuda.get_device_name() if device.type=='cuda' else None,
@@ -148,13 +170,23 @@ def main():
                   header_mode=args.header_mode,
                   timing='receiver ROS clock; source-header age guards per header_mode; no clock offset correction',
                   inference_timing='normalization + tensor transfer + forward + denormalization; excludes decode and transport')
+    manifest.update(candidate_publisher=args.candidate_topic if args.publish_candidates else None,
+        candidate_frame=POLICY_FRAME,candidate_wire='TwistStamped per-step m/rad rotvec; not velocities or SDK ABC',
+        sdk_output_convention=SDK_CONVENTION,sdk_conversion_owner='gamepad_node after arbitration',
+        eef_reference=args.eef_reference,eef_input_offset_base_m=reference_offset(args.eef_reference).tolist(),
+        policy_scale=args.policy_scale,policy_speed_mm_s=args.speed_mm_s,policy_rotation_deg_s=args.rotation_deg_s,
+        policy_limit_mode='independent_translation_rotvec_norm_scaling_after_policy_scale',
+        receiver='User confirms left arm FRAME_BASE=0; UserFrame/TCP equivalence unverified')
+    if args.publish_candidates:manifest['deployment']='policy candidate producer only; gamepad arbiter owns final robot output'
     (args.output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     import rclpy
     from rclpy.executors import SingleThreadedExecutor
     from rclpy.qos import qos_profile_sensor_data
     from sensor_msgs.msg import Image
-    from geometry_msgs.msg import PoseStamped
+    from geometry_msgs.msg import PoseStamped, TwistStamped
+    from rclpy.qos import QoSProfile, DurabilityPolicy
     rclpy.init();node=rclpy.create_node('omi_stack_shadow',enable_rosout=False,start_parameter_services=False)
+    candidate_pub=node.create_publisher(TwistStamped,args.candidate_topic,QoSProfile(depth=1,durability=DurabilityPolicy.VOLATILE)) if args.publish_candidates else None
     lock=threading.Lock();stop=threading.Event();errors=[]
     def receive(key,msg):
         with lock:runtime.ingest(key,msg,node.get_clock().now().nanoseconds)
@@ -169,7 +201,7 @@ def main():
             errors.append(repr(exc));stop.set()
     thread=threading.Thread(target=spin,daemon=True);thread.start()
     rows=[];next_reference=None;last_clock=None;saved=False;started=time.monotonic();last_print=started-5
-    print(f'SHADOW ONLY: {manifest["version"]}, {device}, {args.header_mode}, no action publishers; output {args.output}',flush=True)
+    print(f'POLICY {manifest["version"]}, {device}, {args.header_mode}, robot action publishers=0, candidate={manifest["candidate_publisher"]}; output {args.output}',flush=True)
     try:
         with (args.output/'predictions.jsonl').open('w') as log:
             while time.monotonic()-started<args.duration and not stop.is_set() and rclpy.ok():
@@ -192,6 +224,8 @@ def main():
                     finite=bool(np.isfinite(action).all())
                     status.update(inferred=True,finite=finite,inference_ms=elapsed,
                                   action=action.tolist() if finite else None,reason='ok' if finite else 'nonfinite_output')
+                    if finite:status['policy_trace']=policy_trace(action,args.policy_scale,
+                        max_translation_m=args.speed_mm_s/1000/10,max_rotation_rad=np.deg2rad(args.rotation_deg_s)/10)
                     try:check_increment(action,model.contract['max_translation_m'],model.contract['max_rotation_rad'])
                     except ValueError as exc:status.update(within_experimental_bounds=False,bounds_reason=str(exc))
                     else:status['within_experimental_bounds']=True
@@ -205,12 +239,35 @@ def main():
                 status['step_wall_ms']=(time.perf_counter_ns()-begin)/1e6
                 status['deadline_met']=reference<=finished<reference+PERIOD_NS
                 status['reference_to_finish_ms']=(finished-reference)/1e6
+                status['candidate_gate']=candidate_reason(status,node.get_clock().now().nanoseconds,
+                    args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10)
+                status['candidate_published']=False
+                if candidate_pub and status['candidate_gate']=='ok':
+                    if node.count_publishers(args.candidate_topic)>1:raise RuntimeError('Another policy producer owns '+args.candidate_topic)
+                    msg=TwistStamped();msg.header.frame_id=POLICY_FRAME
+                    msg.header.stamp.sec,msg.header.stamp.nanosec=divmod(reference,10**9)
+                    a=status['policy_trace']['candidate_m_rad']
+                    msg.twist.linear.x,msg.twist.linear.y,msg.twist.linear.z=a[:3]
+                    msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z=a[3:]
+                    status['candidate_gate']=candidate_reason(status,node.get_clock().now().nanoseconds,
+                        args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10)
+                    if status['candidate_gate']=='ok':
+                        candidate_pub.publish(msg);status['candidate_published']=True
                 rows.append(status);log.write(json.dumps(status,allow_nan=False)+'\n');log.flush()
                 (args.output/'status.tmp').write_text(json.dumps(status,indent=2)+'\n')
                 (args.output/'status.tmp').replace(args.output/'status.json')
                 if time.monotonic()-last_print>=5:
                     print(f"t={time.monotonic()-started:.1f}s inferred={sum(r['inferred'] for r in rows)}/{len(rows)} last={status['reason']} history={sum(status.get('history_mask',[]))}/10",flush=True)
                     last_print=time.monotonic()
+                    if 'policy_trace' in status:
+                        trace=status['policy_trace']
+                        print('网络原始(m/rad)='+str(trace['network_action_m_rad'])+f' | policy_scale={args.policy_scale:g} | candidate_gate='+status['candidate_gate'],flush=True)
+                        print('网络反归一化(mm/deg旋转向量)='+str(trace['network_original_mm_rotvec_deg'])+
+                              ' | policy_scale后/限幅前(mm/deg旋转向量)='+str(trace['scaled_before_limit_mm_rotvec_deg'])+
+                              f' | 保方向限幅比例(平移/旋转)={trace["translation_limit_scale"]:.6g}/{trace["rotation_limit_scale"]:.6g}'+
+                              ' | 限幅后(mm/deg旋转向量)='+str(trace['original_mm_rotvec_deg'])+
+                              f' | 候选已发布={status["candidate_published"]}',flush=True)
+                        print(format_action_trace('policy_candidate',trace['candidate_m_rad'],SDK_CONVENTION,trace['sdk_preview_mm_abc_deg'],False),flush=True)
     except KeyboardInterrupt:pass
     finally:
         stop.set();thread.join(timeout=2)
@@ -230,6 +287,8 @@ def main():
             reference_to_finish_ms=stats([r['reference_to_finish_ms'] for r in inferred]),
             eef_max_abs_z=stats([r['eef_max_abs_z'] for r in inferred]),
             execution_allowed=False,action_publishers=[],worker_errors=errors,header_mode=args.header_mode)
+        report.update(candidate_published=sum(r.get('candidate_published',False) for r in rows),
+                      candidate_gates=dict(Counter(r.get('candidate_gate','unknown') for r in rows)),eef_reference=args.eef_reference)
         (args.output/'report.json').write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps(report,indent=2),flush=True)
     return 0 if inferred and not errors else 2

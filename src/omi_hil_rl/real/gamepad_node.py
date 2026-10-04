@@ -20,10 +20,14 @@ def main():
     p.add_argument('--frame', default='base', help='Required policy header frame_id')
     p.add_argument('--speed-mm-s', type=float, default=10.)
     p.add_argument('--rotation-deg-s', type=float, default=10.)
+    p.add_argument('--policy-timeout', type=float, default=.2)
+    p.add_argument('--duration',type=float,help='Optional bounded preview/run duration in seconds')
     p.add_argument('--deadzone', type=float, default=.15)
     p.add_argument('--signs', type=int, nargs=6, default=[1]*6, metavar='SIGN')
     p.add_argument('--log', type=Path, help='Optional JSONL of selected/sent commands, not measured motion')
     args = p.parse_args()
+    if args.duration is not None and (not math.isfinite(args.duration) or args.duration<=0):p.error('duration must be positive and finite')
+    if not math.isfinite(args.policy_timeout) or args.policy_timeout<=0:p.error('policy timeout must be positive and finite')
     if args.topic == args.policy_topic:
         p.error('Policy input and robot output must be different topics')
     try:
@@ -36,22 +40,26 @@ def main():
     from geometry_msgs.msg import TwistStamped
     from std_msgs.msg import Float64MultiArray
     from rclpy.qos import QoSProfile, DurabilityPolicy
-    rclpy.init()
+    from rclpy.signals import SignalHandlerOptions
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = rclpy.create_node('omi_gamepad_control')
     qos = QoSProfile(depth=1, durability=DurabilityPolicy.VOLATILE)
     publisher = node.create_publisher(Float64MultiArray, args.topic, qos) if args.publish else None
-    arbiter, pad = Arbiter(mapping), LinuxGamepad(args.device)
+    arbiter, pad = Arbiter(mapping,args.policy_timeout), LinuxGamepad(args.device)
     log = args.log.open('x') if args.log else None
     def now():
         return node.get_clock().now().nanoseconds/1e9
+    offered=accepted=0
     def receive(msg):
+        nonlocal offered,accepted
+        offered+=1
         if msg.header.frame_id != args.frame:
             arbiter.policy = None
             return
         t = msg.twist
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec/1e9
-        arbiter.offer([t.linear.x, t.linear.y, t.linear.z,
-                       t.angular.x, t.angular.y, t.angular.z], stamp, now())
+        accepted+=int(arbiter.offer([t.linear.x, t.linear.y, t.linear.z,
+                       t.angular.x, t.angular.y, t.angular.z], stamp, now()))
     node.create_subscription(TwistStamped, args.policy_topic, receive, qos)
     previous, last_print, last_clock = None, 0., None
     def tick():
@@ -75,11 +83,19 @@ def main():
                    action_m_rad=delta.tolist(), command_mm_deg=data, published=bool(publisher),
                    output_convention=args.output_convention,
                    conversion_enabled=args.output_convention != 'legacy',
-                   original_mm_rotvec_deg=wire_action(delta)))
+                   original_mm_rotvec_deg=wire_action(delta))
+        row.update(policy_frame=args.frame,policy_topic=args.policy_topic,policy_offered=offered,
+                   policy_accepted=accepted,selected_policy_reference_ns=None if arbiter.selected_policy_stamp is None else round(arbiter.selected_policy_stamp*1e9),
+                   gamepad_connected=connected,rb_held=bool(pad.buttons.get(BTN_TR,False)),
+                   gamepad_axes=dict(pad.axes),gamepad_buttons=dict(pad.buttons),
+                   axis_swap_enabled=args.output_convention=='sdk-x-forward-z-left',
+                   rotation_abc_enabled=args.output_convention!='legacy')
         if log:
             log.write(json.dumps(row)+'\n'); log.flush()
         if mode != previous or time.monotonic()-last_print >= 1:
             print(format_action_trace(mode, delta, args.output_convention, data, bool(publisher))+
+                  f' | 手柄连接={connected} | RB={bool(pad.buttons.get(BTN_TR,False))}'+
+                  f' | 按下按钮={[k for k,v in pad.buttons.items() if v]}'+
                   (f' | 错误={pad.error}' if pad.error else ''), flush=True)
             previous, last_print = mode, time.monotonic()
     # Wall/steady timer: use_sim_time or clock jumps must not stall input polling.
@@ -88,7 +104,9 @@ def main():
     print(('PUBLISH '+args.topic if publisher else 'PREVIEW: no robot publisher')+
           '; units mm/deg; hold RB to intervene; output='+args.output_convention, flush=True)
     try:
-        rclpy.spin(node)
+        started=time.monotonic()
+        while rclpy.ok() and (args.duration is None or time.monotonic()-started<args.duration):
+            rclpy.spin_once(node,timeout_sec=.05)
     except KeyboardInterrupt:
         pass
     finally:

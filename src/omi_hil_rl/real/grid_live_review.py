@@ -20,7 +20,7 @@ TOPICS.update({f'/omi/tactile/{s}/raw': f'{s}_raw' for s in 'ab'})
 REQUIRED = {'camera', 'wrist_roi', 'eef'} | {f'{s}_{k}' for s in 'ab' for k in ('deformation','shear','depth')}
 MODEL_NS = NS + '/model'
 # Temporary display-only fit to oct3_022/bag_001, in base_link metres.
-TEMP_EEF_OFFSET = (-0.062159, -0.171229, 0.000024)
+from .eef_reference import TEMP_EEF_OFFSET
 BAG_L7_EEF_OFFSET = (0.000267515811, -0.232966801599, -0.000120682911)
 
 

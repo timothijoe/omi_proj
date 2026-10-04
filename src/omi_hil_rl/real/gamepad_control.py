@@ -62,6 +62,7 @@ class Arbiter:
         self.last_stamp = float('-inf')
         self.held = False
         self.connected = False
+        self.selected_policy_stamp = None
 
     def offer(self, action, stamp, now):
         d = np.asarray(action, dtype=float)
@@ -78,6 +79,7 @@ class Arbiter:
         return True
 
     def select(self, connected, held, axes, now):
+        self.selected_policy_stamp = None
         if not connected or connected != self.connected or held != self.held:
             self.barrier = now
             self.policy = None
@@ -89,5 +91,6 @@ class Arbiter:
             return 'human', self.mapping.action(axes)
         candidate, self.policy = self.policy, None  # never replay a delta twice
         if candidate is not None and candidate[0] > self.barrier and 0 <= now-candidate[0] <= self.timeout:
+            self.selected_policy_stamp = candidate[0]
             return 'policy', candidate[1]
         return 'paused_no_policy', np.zeros(6)
