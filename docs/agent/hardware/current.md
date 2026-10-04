@@ -1,5 +1,8 @@
 # Hardware 当前摘要
 
+当前保留[实时 RViz 阶段版本](chronicles/2026-10-04-live-rviz-checkpoint.md)：`bash scripts/view_grid_observation_live.sh`默认domain13，显示双相机/双指三场/EEF及topic状态，默认启用原方向修正版双臂模型。现场Jointfeedback已通过独立消息包修复，关节与EEF轻量订阅约50Hz，15项回归通过。**end effector与模型尚未完全对应**：本次L7—EEF约33.5cm、相对转角120°，基座/TCP关系仍待核对；已用球、坐标轴与连线可视化。保留当前实现，暂不拟合补偿。详细工具说明见[实时看板](evolution/grid-live-review.md)。
+
+
 最新开关规则：grid默认deformation/shear/depth；raw通过`--publish-raw`、wrench通过
 `--tactile-wrench`显式开启。raw沿用`/omi/tactile/{a,b}/raw`，不改变小矩阵场话题。
 见[操作教程](../../../tutorials/tactile_grid_transport.md)。可选raw发布已实现，grid回放显示raw尚未适配。

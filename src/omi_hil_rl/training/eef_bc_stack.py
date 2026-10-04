@@ -19,11 +19,15 @@ from .eef_bc_resnet import projection
 from .serl_resnet10 import SerlResNet10, same_pad
 
 VERSION = 'eef-current9stack-resnet10-v1'
+NO_JOINT_VERSION = 'eef-current9stack-no-joints-v1'
 
 
 class CurrentStackPolicy(nn.Module):
-    def __init__(self, contract):
+    def __init__(self, contract, *, joint_mode="required"):
         super().__init__()
+        if joint_mode not in ("required", "off"):
+            raise ValueError("joint_mode must be required or off")
+        self.joint_mode = joint_mode
         self.contract = profile_for(contract).CONTRACT
         if self.contract['version'] != 'bag-eef-bc-v3-grid-receive':
             raise ValueError('Current/stack experiment requires v3 data')
@@ -33,9 +37,11 @@ class CurrentStackPolicy(nn.Module):
         self.history_projection = nn.ModuleList([projection(), projection()])
         self.touch = nn.Sequential(nn.Conv2d(10, 16, 3, padding=1), nn.ReLU(),
                                    nn.Conv2d(16, 16, 3, stride=2, padding=1), nn.ReLU(),
-                                   nn.AdaptiveAvgPool2d((2, 3)), nn.Flatten())
+                                   # Fixed tactile grid: convolutions produce 8x12; 4x4 pooling gives 2x3.
+                                   # Equivalent to adaptive pooling here, with deterministic CUDA backward.
+                                   nn.AvgPool2d(4), nn.Flatten())
         # Four visual vectors, ten tactile/state vectors, history and camera masks.
-        self.head = nn.Sequential(nn.Linear(4*256 + 10*96 + 10*14 + 10 + 20, 128),
+        self.head = nn.Sequential(nn.Linear(4*256 + 10*96 + 10*(15 if joint_mode == "off" else 14) + 10 + 20, 128),
                                   nn.ReLU(), nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, 6))
 
     def initialize_pretrained(self, weights):
@@ -105,7 +111,13 @@ class CurrentStackPolicy(nn.Module):
             features.extend((now, past))
         touch = x[1].new_zeros((len(history_mask), 10, 96))
         touch[history_mask] = self.touch(x[1][history_mask])
-        state = torch.where(history_mask[:, :, None], x[2], 0.)
+        state = x[2]
+        if self.joint_mode == "off":
+            # Discard joints even if a caller supplies nonzero/NaN placeholders.
+            # The last channel is joint_mask=0, not an action supervision label.
+            state = torch.cat((torch.zeros_like(state[..., :7]), state[..., 7:],
+                               torch.zeros_like(state[..., :1])), dim=-1)
+        state = torch.where(history_mask[:, :, None], state, 0.)
         features.extend((touch.flatten(1), state.flatten(1), history_mask.float(), camera.flatten(1)))
         return self.head(torch.cat(features, dim=1))
 
@@ -121,27 +133,43 @@ class CurrentStackPolicy(nn.Module):
 def predict(model, x, index, norm, current_maps=None, batch_size=32):
     model.eval()
     with torch.no_grad():
-        values = [model(x, ix, current_maps).numpy() for ix in index.split(batch_size)]
+        values = [model(x, ix, current_maps).cpu().numpy() for ix in index.split(batch_size)]
     return (np.concatenate(values)*np.asarray(norm['delta_std'], np.float32)
             + np.asarray(norm['delta_mean'], np.float32))
 
 
-def load_stack_policy(path):
+def load_stack_policy(path, device='cpu'):
     c = torch.load(path, map_location='cpu', weights_only=True)
     cfg = c['config']
-    if cfg['version'] != VERSION or cfg['history_slots'] != SLOTS or cfg['period_ns'] != PERIOD_NS:
+    if cfg['version'] not in (VERSION, NO_JOINT_VERSION) or cfg['history_slots'] != SLOTS or cfg['period_ns'] != PERIOD_NS:
         raise ValueError('Incompatible current/stack checkpoint')
-    model = CurrentStackPolicy(cfg['base_contract'])
+    mode = 'off' if cfg['version'] == NO_JOINT_VERSION else 'required'
+    if cfg.get('joint_mode', mode) != mode:
+        raise ValueError('Joint mode/version mismatch')
+    if mode == 'off' and (cfg.get('joint_enabled') != 0 or cfg.get('joint_mask') != 0):
+        raise ValueError('No-joint checkpoint must keep joint flags disabled')
+    model = CurrentStackPolicy(cfg['base_contract'], joint_mode=mode)
     model.load_state_dict(c['state_dict'], strict=True)
-    return model.eval(), cfg['normalization'], c
+    return model.to(device).eval(), cfg['normalization'], c
 
 
-def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
+def run(plan_path, weights, output, steps=2000, seed=7, threads=2, device="cpu", joint_mode="required"):
     output = Path(output)
     if output.exists():
         raise FileExistsError(output)
     if steps < 1 or threads < 1:
         raise ValueError('Positive steps and threads required')
+    if device not in ("cpu", "cuda") or joint_mode not in ("required", "off"):
+        raise ValueError("Unsupported device or joint mode")
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA requested but unavailable; refusing CPU fallback")
+    if device == "cuda":
+        import os
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        torch.backends.cudnn.benchmark = False
+        torch.cuda.reset_peak_memory_stats()
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     torch.set_num_threads(threads); torch.use_deterministic_algorithms(True)
     plan = json.loads(Path(plan_path).read_text())
@@ -152,11 +180,20 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
         raise ValueError('Contract mismatch')
     if {m['episode_id'] for m in manifests} & {m['episode_id'] for m in vm}:
         raise ValueError('Episode leakage')
+    if joint_mode == "off":
+        # Work on copies; original datasets/hashes and label/index selection stay intact.
+        data = dict(data, state=data["state"].copy())
+        val = dict(val, state=val["state"].copy())
+        data["state"][:, :7] = 0
+        val["state"][:, :7] = 0
     norm = normalization(data)
-    x, vx = inputs(data, norm), inputs(val, norm)
-    index, vindex = torch.as_tensor(idx), torch.as_tensor(vi)
-    model = CurrentStackPolicy(contract)
+    if joint_mode == "off":
+        norm["state_std"][0][:7] = [1.] * 7
+    x, vx = (tuple(t.to(device) for t in inputs(d, norm)) for d in (data, val))
+    index, vindex = torch.as_tensor(idx, device=device), torch.as_tensor(vi, device=device)
+    model = CurrentStackPolicy(contract, joint_mode=joint_mode)
     model.initialize_pretrained(torch.load(weights, map_location='cpu', weights_only=True))
+    model.to(device)
     before = {k: v.clone() for k, v in model.backbone.state_dict().items()}
     stem_before = model.history_stem.weight.detach().clone()
     trainable = [p for p in model.parameters() if p.requires_grad]
@@ -164,8 +201,12 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
         dict(params=list(model.history_stem.parameters()), lr=1e-4),
         dict(params=[p for n, p in model.named_parameters() if p.requires_grad and not n.startswith('history_stem.')], lr=1e-3)])
     output.mkdir(parents=True)
-    config = dict(version=VERSION, base_contract=contract, normalization=norm, history_slots=10,
-                  period_ns=PERIOD_NS, seed=seed, steps=steps, batch_size=32, device='cpu', cpu_threads=threads,
+    config = dict(version=NO_JOINT_VERSION if joint_mode == "off" else VERSION, base_contract=contract, normalization=norm, history_slots=10,
+                  period_ns=PERIOD_NS, seed=seed, steps=steps, batch_size=32, device=device, cpu_threads=threads,
+                  joint_mode=joint_mode, joint_enabled=0 if joint_mode == 'off' else 1,
+                  joint_mask=0 if joint_mode == 'off' else 1,
+                  torch_version=str(torch.__version__), cuda_runtime=torch.version.cuda,
+                  gpu_name=torch.cuda.get_device_name() if device == 'cuda' else None,
                   learning_rate=.001, history_stem_learning_rate=.0001,
                   train_episode_ids=[m['episode_id'] for m in manifests],
                   validation_episode_ids=[m['episode_id'] for m in vm],
@@ -183,6 +224,14 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
                   cache='only frozen current image features cached; past9 stem/residual outputs recomputed every update',
                   selection='lowest validation normalized MSE among trained evaluations every100 steps',
                   objective='normalized action MSE; no keypoint auxiliary loss')
+    if joint_mode == 'off':
+        config.update(tactile_state='ten tactile96 + state14 with q7 forced zero + joint_mask0 per slot',
+                      fusion='2164 -> 128 -> 64 -> 6; adds ten zero joint-mask labels',
+                      runtime_state='EEF xyz/xyzw required; q7 ignored; joint enabling requires another trained version',
+                      source_selection='original v3 retained samples and history; no recovery of samples previously rejected for joints')
+        np.savez_compressed(output/'joint_labels.npz',
+                            train_enabled=np.zeros(len(idx), np.uint8), train_mask=np.zeros(len(idx), np.uint8),
+                            validation_enabled=np.zeros(len(vi), np.uint8), validation_mask=np.zeros(len(vi), np.uint8))
     (output/'config.json').write_text(json.dumps(config, indent=2)+'\n')
     (output/'plan.json').write_text(json.dumps(plan, indent=2)+'\n')
     np.savez_compressed(output/'history_index.npz', train_index=idx, validation_index=vi,
@@ -191,7 +240,7 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
     print('Preparing frozen current-frame cache; historical stem remains trainable.', flush=True)
     cx, cv = model.cache_current(x), model.cache_current(vx)
     target, vtarget = data['action'], val['action']
-    y = torch.from_numpy((target-np.asarray(norm['delta_mean'], np.float32))/np.asarray(norm['delta_std'], np.float32))
+    y = torch.from_numpy((target-np.asarray(norm['delta_mean'], np.float32))/np.asarray(norm['delta_std'], np.float32)).to(device)
     history, losses = [], []
     best, best_step = float('inf'), None
 
@@ -211,7 +260,7 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
     evaluate(0)
     for step in range(1, steps+1):
         model.train()
-        batch = torch.randint(len(target), (min(32, len(target)),))
+        batch = torch.randint(len(target), (min(32, len(target)),), device=device)
         loss = F.mse_loss(model(x, index[batch], cx), y[batch])
         if not torch.isfinite(loss):
             raise ValueError('Nonfinite loss')
@@ -228,7 +277,7 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
     assert all(torch.equal(v, before[k]) for k, v in model.backbone.state_dict().items()), 'Frozen backbone changed'
     assert not torch.equal(stem_before, model.history_stem.weight), 'Historical stem did not learn'
     final_stem_change = float((model.history_stem.weight.detach()-stem_before).abs().max())
-    model, reloaded_norm, _ = load_stack_policy(output/'best.pt')
+    model, reloaded_norm, _ = load_stack_policy(output/'best.pt', device=device)
     assert reloaded_norm == norm
     bp = predict(model, vx, vindex, norm, cv)
     best_row = next(h for h in history if h['step'] == best_step)
@@ -238,7 +287,7 @@ def run(plan_path, weights, output, steps=2000, seed=7, threads=2):
     np.testing.assert_allclose(raw, bp[check_ids], atol=1e-7, rtol=1e-5)
     np.savez_compressed(output/'best_validation_predictions.npz', prediction=bp, target=vtarget, episode=ve, reference_ns=vt)
     mean = target.mean(0)
-    report = dict(config=config, seconds=time.monotonic()-started, samples=len(target), validation_samples=len(vtarget),
+    report = dict(config=config, cuda_peak_allocated_bytes=torch.cuda.max_memory_allocated() if device == 'cuda' else None, seconds=time.monotonic()-started, samples=len(target), validation_samples=len(vtarget),
                   parameters=sum(p.numel() for p in model.parameters()), trainable_parameters=sum(p.numel() for p in trainable),
                   frozen_parameters=sum(p.numel() for p in model.backbone.parameters()), history=history, losses=losses,
                   best_step=best_step, best_validation=scores(bp, vtarget, norm), last_validation=history[-1]['validation'],
@@ -261,8 +310,10 @@ def main():
     p.add_argument('--steps', type=int, default=2000)
     p.add_argument('--seed', type=int, default=7)
     p.add_argument('--threads', type=int, default=2)
+    p.add_argument('--device', choices=('cpu', 'cuda'), default='cpu')
+    p.add_argument('--joint-mode', choices=('required', 'off'), default='required')
     a = p.parse_args()
-    run(a.plan, a.weights, a.output, a.steps, a.seed, a.threads)
+    run(a.plan, a.weights, a.output, a.steps, a.seed, a.threads, a.device, a.joint_mode)
 
 
 if __name__ == '__main__':

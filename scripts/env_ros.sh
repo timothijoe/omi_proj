@@ -11,6 +11,12 @@ if [[ ! -f "$omi_ros_setup" ]]; then
 fi
 source "$omi_ros_setup"
 
+omi_marvin_local="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/local/ros2/marvin_msgs_ws/install/local_setup.bash"
+if [[ -z "${OMI_MARVIN_MSGS_SETUP:-}" && -f "$omi_marvin_local" ]]; then
+    export OMI_MARVIN_MSGS_SETUP="$omi_marvin_local"
+fi
+unset omi_marvin_local
+
 if [[ -n "${OMI_MARVIN_MSGS_SETUP:-}" ]]; then
     if [[ ! -f "$OMI_MARVIN_MSGS_SETUP" ]]; then
         printf 'Missing marvin_msgs setup: %s\n' "$OMI_MARVIN_MSGS_SETUP" >&2

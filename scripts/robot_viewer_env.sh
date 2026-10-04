@@ -3,6 +3,9 @@
 omi_viewer_root="$1"
 omi_viewer_config="${OMI_ROBOT_VIEWER_CONFIG:-$omi_viewer_root/local/robot_state/viewer.env}"
 omi_viewer_marvin_setup=""
+if [[ -f "$omi_viewer_root/local/ros2/marvin_msgs_ws/install/local_setup.bash" ]]; then
+    omi_viewer_marvin_setup="$omi_viewer_root/local/ros2/marvin_msgs_ws/install/local_setup.bash"
+fi
 omi_viewer_sdk_root="$omi_viewer_root/local/vendor/daimon_tactile"
 if [[ -f "$omi_viewer_config" ]]; then
     source "$omi_viewer_config"

@@ -113,3 +113,40 @@ Adam、batch32、seed7、2000步；历史首层lr=0.0001，其余可训练参数
 即使结果改善或下降，也只能比较这两个完整配置，不能单独归因于“去掉GRU”。
 同一采集环境、单种子、两个验证包，未来EEF变化仍是代理标签。
 未接入在线节点、未连接或控制真机。
+
+## 2026-10-04 CUDA 推理对照
+
+独立环境 `local/cuda-env/`：Python 3.12、PyTorch 2.14.0+cu130、CUDA runtime 13.0，
+RTX 5060 Laptop GPU（8GB、compute capability 12.0），驱动595.84。
+原 `.venv` 保持CPU版2.14.1，未修改；正式CPU/GPU比较均使用新环境中的2.14.0。
+复用本地缓存安装发行版wheel，缺失依赖通过pip补齐；版本清单在产物requirements.txt。
+官方安装入口：https://pytorch.org/get-started/locally/ 。
+
+均为原best权重、同32个完整真实验证窗口、batch1、float32、CPU2线程/interop1、
+每路径预热20次后测300次；五条路径随机交错。启用确定性算法，关闭TF32和cuDNN benchmark。
+包含CPU归一化、张量创建、CUDA输入传输、前向、输出回CPU及动作反归一化；GPU前后同步。
+缓存GRU模式将历史融合特征保留在对应设备，当前图像每次重新编码。
+不含相机采集、解码、ROI、ROS、对齐、执行；不是闭环时延。
+桌面和播放器等应用共用显卡，没有停止用户进程、锁频或调功耗；小规模短时结果不代表实时最坏上界。
+
+| 模型 / 模式 | CPU平均 / P95（ms） | CUDA平均 / P95（ms） | 平均加速比 |
+|---|---:|---:|---:|
+| cnn / cached_history | 0.814 / 0.936 | 1.170 / 1.327 | 0.70× |
+| resnet10 / cached_history | 10.130 / 11.284 | 3.884 / 4.541 | 2.61× |
+| current9stack / current_and_history | 27.741 / 29.837 | 7.224 / 9.147 | 3.84× |
+| resnet10 / full_history | 87.159 / 91.269 | 5.661 / 6.793 | 15.40× |
+| cnn / full_history | 2.510 / 3.409 | 1.818 / 2.204 | 1.38× |
+
+当前拼接模型CPU/CUDA最大归一化输出差8.5831e-6，最大动作平移分量差9.5766e-9 m、
+旋转分量差1.6202e-8 rad。三模型均通过32窗口CPU/GPU一致性检查（atol=rtol=1e-4），
+两个GRU模型各自的缓存/整窗输出也通过检查。该数值差是运行设备浮点差异，不是任务精度。
+既有ResNet/stack测试在原CPU环境及新环境各9通过；pip check通过。
+
+当前拼接方案约3.84倍加速；小CNN缓存方案GPU反而较慢。
+未重训、未启用半精度/编译/合批优化，未修改policy网络或在线执行节点。
+下一步应测相机到命令的整链路延迟、帧龄和长时P95/P99，不能仅据7ms宣称闭环频率。
+
+产物：`local/eef_history/oct04_cuda_benchmark/`：
+`cpu.json`为原2.14.1 CPU复测；`cpu_same_env.json`、`cuda.json`为同版本对照；
+含逐次计时、权重/样本哈希、参考索引及CPU/GPU误差。
+`requirements.txt`、`nvidia-smi-before.txt`、`run.sh`供复现。

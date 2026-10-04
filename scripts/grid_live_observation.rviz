@@ -1,0 +1,86 @@
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+- Class: rviz_common/Views
+  Name: Views
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Alpha: 0.35
+    Cell Size: 0.1
+    Class: rviz_default_plugins/Grid
+    Color: 100; 110; 120
+    Enabled: true
+    Name: Ground
+    Plane Cell Count: 30
+    Reference Frame: <Fixed Frame>
+    Value: true
+  - Alpha: 1
+    Class: rviz_default_plugins/RobotModel
+    Collision Enabled: false
+    Description Source: Topic
+    Description Topic:
+      Depth: 1
+      Durability Policy: Transient Local
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /robot_description
+    Enabled: false
+    Name: Live Robot - Existing TF
+    TF Prefix: ''
+    Update Interval: 0
+    Value: false
+    Visual Enabled: true
+  - Axes Length: 0.12
+    Axes Radius: 0.008
+    Class: rviz_default_plugins/Pose
+    Enabled: true
+    Name: Live EEF Pose
+    Shape: Axes
+    Topic:
+      Depth: 1
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /tj/info/eef_left
+    Value: true
+  - Class: rviz_default_plugins/Image
+    Enabled: true
+    Name: Cameras Tactile and Robot State
+    Normalize Range: false
+    Topic:
+      Depth: 1
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /omi/live_grid/dashboard
+    Transport Hint: raw
+    Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 30; 34; 40
+    Fixed Frame: base_link
+    Frame Rate: 15
+  Name: root
+  Tools:
+  - Class: rviz_default_plugins/Interact
+  - Class: rviz_default_plugins/MoveCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 2.8
+      Focal Point:
+        X: 0.2
+        Y: 0
+        Z: 0.65
+      Name: Live observations
+      Pitch: 0.32
+      Target Frame: base_link
+      Yaw: 0.8
+    Saved: null
+Window Geometry:
+  Height: 1150
+  Hide Left Dock: false
+  QMainWindow State: 000000ff00000000fd0000000200000000000001f400000503fc0200000002fb000000100044006900730070006c0061007900730100000011000003890000001a00fffffffb0000000a0056006900650077007301000003a0000001740000001a00ffffff000000010000044c00000503fc0200000001fb0000003e00430061006d0065007200610073002000540061006300740069006c006500200061006e006400200052006f0062006f00740020005300740061007400650100000011000005030000001a00ffffff000003dc0000050300000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Width: 2200

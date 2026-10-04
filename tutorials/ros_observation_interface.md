@@ -36,7 +36,7 @@ Wrist 原图为 `1920×1080`，ROI 固定为 `389×389`：横向居中，左上�
 需要 ROS 2 Jazzy、MCAP 插件及已构建的 `marvin_msgs`。当前机器可这样配置自定义消息路径：
 
 ```bash
-export OMI_MARVIN_MSGS_SETUP=/home/zhoutong/Downloads/img/record001/bag_001_jazzy_tools/install/setup.bash
+source scripts/env_marvin.sh  # 项目 local/ 下的消息包，详见 marvin_messages.md
 source scripts/env_ros.sh
 python -m omi_hil_rl.real.ros_bag_preflight \
   /home/zhoutong/Downloads/img/record010/bag_001

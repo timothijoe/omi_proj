@@ -1,5 +1,11 @@
 # 本地资源定位
 
+实时grid看板会话：`local/grid_live_review/session-*`，每次保存RViz配置与最新dashboard.png/status.json；本次GUI证据在`local/grid_live_review/live_user/`，见[教程](../../../tutorials/grid_live_review.md)。
+
+
+无关节GPU训练：`local/eef_history/oct04_nojoints_cuda_run1/`，含权重、输入标记、预测及对照曲线；重训见[教程](../../../tutorials/nojoint_stack_training.md)。
+
+
 六点审核项目：`local/keypoint_review/six_point_examples/`（原图副本、来源、标注、候选报告）；操作见[教程](../../../tutorials/six_keypoint_review.md)。`ui_test_only/`与`browser_qa/qa-only-export.npz`为合成测试，不是人工真值。
 
 当前帧独立＋过去9帧拼接的正式实验位于`local/eef_history/oct04_current9stack_run2/`，
@@ -72,3 +78,7 @@ Stand派生模型固定归档为 `local/models/omi_marvin_stand_axis_corrected_v
 辅助工具保留原始单进程 `view_camera_clip_original.sh`，以及带 `observation`、`512`、
 `both` 三种模式的 `view_camera_clip.sh`。后两种放大相关模式由独立进程订阅 128 clip；
 生成 topic 只用于 RViz，不是 OMI observation 的依赖。
+
+## marvin_msgs 本地化（2026-10-04）
+
+现用历史消息包源码与本机Jazzy构建迁入`local/ros2/marvin_msgs_ws/`，源码哈希与原Downloads一致。CLI用`source scripts/env_marvin.sh`，回放配置默认使用local overlay；不更改显式环境覆盖。原Downloads保留，构建不再引用它。见[加载与重建](../../../tutorials/marvin_messages.md)。

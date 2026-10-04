@@ -1,5 +1,8 @@
 # Training 纪传体
 
+- [禁用关节输入的GPU历史拼接训练](nojoint-stack.md)
+
+
 - [六关键点自动预标注与人工审核工具](six-keypoint-review.md)：独立专题，维护点定义、算法、界面与标注契约。
 
 - [当前帧独立＋历史通道拼接，无GRU对照](current-stack-history.md)

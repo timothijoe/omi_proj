@@ -1,5 +1,8 @@
 # OMI 文档总目录
 
+实时检查现场topic：[实时小矩阵RViz看板](../tutorials/grid_live_review.md)，独立于录包回放。
+
+
 新增[六关键点自动候选与人工审核工具](../tutorials/six_keypoint_review.md)，用于独立关键点标注，不改变policy。
 
 末端动作开发：[bag_004操作教程](../tutorials/eef_action_space.md) → [版本契约与验证边界](agent/training/evolution/eef-action-space.md)。

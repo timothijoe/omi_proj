@@ -1,5 +1,13 @@
 # 操作教程
 
+- [无关节模型实时 ROS 影子推理](stack_shadow.md)
+
+- [实时相机、触觉与末端位姿RViz看板](grid_live_review.md)
+
+
+- [不使用关节反馈的GPU训练](nojoint_stack_training.md)
+
+
 - [六关键点候选与人工审核工具](six_keypoint_review.md)
 
 - [当前帧独立＋过去9帧通道拼接训练](current_stack_history.md)
@@ -56,3 +64,9 @@
 
 所有命令从 `omi_proj/` 执行。`SCENE` 需由操作者改为自己机器上完整的 MJCF 路径。
 - [触觉24×16低带宽发布](tactile_grid_transport.md)：独立可选数值场，不改变旧看板默认流程。
+
+- [录制末端位姿→动作增量→右臂回放与比较](eef_pose_replay.md)
+
+- [右臂六维增量画半径3cm圆](circle_test.md)
+
+- [本地 marvin_msgs 消息包：加载、迁移与重建](marvin_messages.md)

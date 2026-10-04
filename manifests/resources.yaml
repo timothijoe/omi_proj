@@ -13,6 +13,24 @@ historical_data_archive:
   retained_local_directories: [local/eef_bc]
   restore: For tactile and bc pass archive paths explicitly or copy needed experiments back; no symlinks remain. Continue using local/eef_bc, whose archive is incomplete. New outputs belong in separate directories. Latest native-field bags do not require historical tactile baselines or BC artifacts.
 resources:
+  - id: live-grid-viewer-sessions
+    path: local/grid_live_review
+    tracked: false
+    source: Live read-only ROS domain13 observations
+    purpose: Session RViz configurations, latest dashboard/status, GUI verification screenshots
+    restore: Run scripts/view_grid_observation_live.sh; historical live snapshots cannot be regenerated without the original streams
+  - id: oct04-nojoints-cuda-training
+    path: local/eef_history/oct04_nojoints_cuda_run1
+    tracked: false
+    source: oct03_split2 v3 retained samples and local/pretrained/serl_resnet10/backbone.pt
+    purpose: Independent no-joint current9stack CUDA training; joint_enabled and joint_mask fixed zero; weights and validation evidence
+    restore: Follow tutorials/nojoint_stack_training.md with CUDA environment and a new output directory
+  - id: oct04-right-pose-replay
+    path: local/eef_replay
+    tracked: false
+    source: /home/zhoutong/Downloads/oct04/robot_pose/bag_002
+    purpose: Right-arm recorded pose to mm/degree base-rotvec increments; offline exports and isolated mock evidence, no hardware run
+    restore: Follow tutorials/eef_pose_replay.md; retain source MCAP and metadata, standalone script and exported trajectory/manifest together for transfer
   - id: six-keypoint-review-examples
     path: local/keypoint_review/six_point_examples
     tracked: false
@@ -149,12 +167,12 @@ resources:
     purpose: Import the local protected Daimon SDK and run CPU FlowTracker without constructing a Sensor.
     restore: Recreate a Python 3.12 environment with matching system/CPU SDK dependencies; h5py and gymnasium were additions to this host, not a complete dependency lock. The tested offline venv lacks grpc and is not qualified for live Flux acquisition. See tutorials/machine_transfer_checklist.md.
   - id: marvin-ros-message-source
-    path: /home/zhoutong/Downloads/img/record001/bag_001_jazzy_tools/src/marvin_msgs
+    path: local/ros2/marvin_msgs_ws/src/marvin_msgs
     tracked: false
     required_for: legacy_full_observation_joint_feedback_not_sdk_native_viewer
-    source: Local reference ROS message source defining Jointfeedback
+    source: Unchanged message sources copied from Downloads/img/record001/bag_001_jazzy_tools/src/marvin_msgs; source hashes in local/ros2/marvin_msgs_ws/source_provenance.json
     purpose: Deserialize and subscribe to custom Tianji arm feedback; message definitions must match producer/bag
-    restore: Obtain matching source and rebuild with the target ROS/Python; source that workspace overlay. Do not copy install/build between ROS distributions. No hardware feedback producer is supplied by this message package.
+    restore: Transfer local/ros2/marvin_msgs_ws/src and source_provenance.json, then rebuild with target ROS/Python following tutorials/marvin_messages.md. Source scripts/env_marvin.sh for CLI use. Do not copy install/build between ROS distributions. No hardware feedback producer is supplied by this message package.
   - id: native-sensor-sessions
     path: local
     tracked: false

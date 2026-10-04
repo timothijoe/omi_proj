@@ -1,5 +1,12 @@
 # Training 当前摘要
 
+新增[无关节模型实时影子入口](chronicles/2026-10-04-stack-live-shadow.md)：`run_stack_shadow.sh`读取现场双相机/双指三场/EEF，CUDA计算，仅写本地文件，无动作发布者。19项测试及GPU离线一致性通过；现场strict30秒受EEF时间戳影响，随后诊断30+60秒EEF发布中断，实际推理0次。**实时输入尚未跑通，待EEF恢复及时间问题排查**；末端几何对齐遗留保留。见[操作教程](../../../tutorials/stack_shadow.md)。
+
+新增[不使用关节反馈的GPU历史拼接模型](evolution/nojoint-stack.md)：2000步完成，best1300步验证0.790943mm/0.00321688rad；joint_enabled/mask固定0，末端位姿保留。相对原模型平移高2.48%、旋转低0.44%；单seed、CPU/GPU条件不同。后续影子接入进展见上文，未接执行器。
+
+
+新增CUDA离线测速：独立`local/cuda-env`，同版本PyTorch2.14.0下当前拼接模型CPU平均27.74ms、CUDA平均7.22ms/P95 9.15ms，约3.84倍加速。FP32、包含输入输出传输、CPU/GPU数值核对通过；未接入在线。见[实验记录](evolution/current-stack-history.md#2026-10-04-cuda-推理对照)。
+
 新增[六关键点候选与人工审核工具](evolution/six-keypoint-review.md)：12图已导入，29个几何候选；真实目标身份尚未确认，0/72命名建议、无人工真值。22项测试和浏览器交互回归通过，不修改policy或启动训练。
 
 新增[当前帧独立＋过去9帧通道拼接、去掉GRU](evolution/current-stack-history.md)：

@@ -1,5 +1,10 @@
 # Hardware 编年索引
 
+- [2026-10-04：实时 RViz 保留版本与 EEF 对齐遗留](2026-10-04-live-rviz-checkpoint.md)
+
+- [2026-10-04：实时小矩阵RViz观测看板](2026-10-04-grid-live-review.md)
+
+
 - [2026-10-03：当天阶段性版本检查点](2026-10-03-day-checkpoint.md)
 
 - [2026-10-03：腕部/触觉/速查教程三件套](2026-10-03-sensor-tutorial-triad.md)

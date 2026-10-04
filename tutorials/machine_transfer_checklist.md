@@ -68,7 +68,7 @@ export OMI_TACTILE_BASELINE="/media/zhoutong/zt-think-d1/legion_data/legion_omi_
 | record010零载荷基准 | `omi_proj/local/tactile/record010_zero_load_25_26_confirmed_v2/` | 同项目相对路径 | 1.2 MiB |
 | 六组历史参考及图片 | `omi_proj/local/tactile/record010_offline_fields_confirmed_v3/` | 同项目相对路径；回归至少保留6个NPZ | 完整目录13 MiB |
 | record010原始bag | `/home/zhoutong/Downloads/img/record010/bag_001/` | 自选数据盘，例如 `omi_proj/local/bags/record010/bag_001/` | 5.3 GiB |
-| marvin_msgs源码 | `/home/zhoutong/Downloads/img/record001/bag_001_jazzy_tools/src/marvin_msgs/` | 新ROS工作区的 `src/marvin_msgs/` | 按需 |
+| marvin_msgs源码 | `local/ros2/marvin_msgs_ws/src/marvin_msgs/` | 新ROS工作区的 `src/marvin_msgs/` | 按需 |
 | 机器人模型 | `omi_proj/local/assets/robot_assets/`、`omi_proj/local/assets/MarvinCCS/` | 两目录保持相邻，连同provenance.json保留 | 按需 |
 | Stand原始归档 | 用户提供的 `Marvin_Stand_2026.2.2.rar` | 自选本地资源目录，命令显式传入 | 按需 |
 | OMI方向修正版模型 | `omi_proj/local/models/omi_marvin_stand_axis_corrected_v1/` | 同项目相对路径，整个目录 | 含15个STL，不随Git迁移 |
@@ -141,7 +141,7 @@ bash scripts/view_observation_bag.sh /YOUR_DATA_DISK/record010/bag_001
 `pc_host`必须是设备能访问的新机器网卡地址，不能照抄旧IP。图像分辨率/标定、ROS domain也需核对。
 
 恢复旧机器人观测时，source目标机重建的marvin_msgs overlay；主项目的
-`scripts/env_ros.sh` 支持 `OMI_MARVIN_MSGS_SETUP=/YOUR_WS/install/setup.bash`。
+`scripts/env_ros.sh` 默认加载已构建的 `local/ros2/marvin_msgs_ws/install/local_setup.bash`，支持 `OMI_MARVIN_MSGS_SETUP=/YOUR_WS/install/setup.bash` 覆盖。仅运行 ROS CLI 可 `source scripts/env_marvin.sh`；迁移与重建见 [消息包说明](marvin_messages.md)。
 这是消息依赖，不提供关节反馈生产者；要取得真实反馈还需现场已有的机器人ROS节点，OMI采集包未集成它。
 
 无需整体复制 `daimong_ws`、`record_data`、`ros2_camera_clip_tools` 或 `cooking_proj`：
