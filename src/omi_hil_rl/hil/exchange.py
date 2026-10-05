@@ -71,28 +71,38 @@ class EpisodeSpool:
             terminated=bool(terminated), truncated=bool(truncated),
             observation_time_ns=int(info["observation_time_ns"]), next_observation_time_ns=int(info["next_observation_time_ns"]),
             action_source=info["action_source"], command_status=info["command_status"], episode_success=bool(terminated))
+        metadata['command_audit'] = info.get('command_audit', {})
         arrays = {"observation__" + k: v for k, v in observation.items()}
         arrays.update({"next_observation__" + k: v for k, v in next_observation.items()})
         arrays.update(executed_action=info["executed_action"], metadata=np.asarray(json.dumps(metadata)))
         destination = self.directory / f"{self.count:06d}.npz"
         with destination.with_suffix(".tmp").open("wb") as stream:
             np.savez_compressed(stream, **arrays)
+            stream.flush()
+            os.fsync(stream.fileno())
         destination.with_suffix(".tmp").replace(destination)
         self.count += 1
         self.last = metadata
 
     def truncate_valid_prefix(self):
         """Timeout between commands: relabel the existing final step, add no action."""
+        self.finish_valid_prefix(success=False)
+
+    def finish_valid_prefix(self, *, success):
+        """Attach a between-command operator outcome to the last valid transition."""
         if self.last is None or self.last["terminated"] or self.last["truncated"]:
             raise ValueError("an unfinished nonempty valid prefix is required")
         destination = self.directory / f"{self.count - 1:06d}.npz"
         with np.load(destination, allow_pickle=False) as archive:
             arrays = {key: archive[key].copy() for key in archive.files}
         metadata = json.loads(str(arrays["metadata"]))
-        metadata.update(truncated=True, episode_success=False, timeout_between_commands=True)
+        metadata.update(reward=float(success), terminated=success, truncated=not success,
+                        episode_success=success, outcome_between_commands=True)
         arrays["metadata"] = np.asarray(json.dumps(metadata))
         with destination.with_suffix(".tmp").open("wb") as stream:
             np.savez_compressed(stream, **arrays)
+            stream.flush()
+            os.fsync(stream.fileno())
         destination.with_suffix(".tmp").replace(destination)
         self.last = metadata
 

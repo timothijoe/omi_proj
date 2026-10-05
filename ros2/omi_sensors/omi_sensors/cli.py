@@ -30,7 +30,7 @@ def environment(config):
     return env
 
 
-def supervise(commands, env, duration=None):
+def supervise(commands, env, duration=None, *, shutdown_grace=10):
     children = []
     previous = {}
     started = time.monotonic()
@@ -54,8 +54,10 @@ def supervise(commands, env, duration=None):
     except KeyboardInterrupt:
         return 130
     finally:
+        # Repeated Ctrl+C must not interrupt child cleanup/recording flush.
+        for sig in previous:signal.signal(sig, signal.SIG_IGN)
         # SIGINT lets rosbag flush its index. Escalate only after a bounded grace period.
-        for sig, timeout in ((signal.SIGINT, 10), (signal.SIGTERM, 3), (signal.SIGKILL, 2)):
+        for sig, timeout in ((signal.SIGINT, shutdown_grace), (signal.SIGTERM, 3), (signal.SIGKILL, 2)):
             for child in children:
                 try:
                     os.killpg(child.pid, sig)

@@ -10,12 +10,6 @@
   2. OMI 默认不连接；显式授权连接后沿用原版 start_mode=3（关节阻抗）
   3. 订阅 /omi/action/decision (std_msgs/Float64MultiArray,
      data = [X, Y, Z, RX, RY, RZ])
-  4. 控制源切换: 服务 /delta_ctrl_node/set_keyboard_control (std_srvs/SetBool)
-     - data=true: 切到键盘控制 (不改变机械臂模式, pynput 监听按键,
-       按住方向键 200Hz 增量移动, 空格退出并切回话题控制)
-     - data=false: 切回话题控制
-     键盘控制键位 (沿 TCP 自身轴): q/w=±X  a/s=±Y  z/e=±Z
-     r/f=±Rx  t/g=±Ry  y/h=±Rz
   话题控制: 手柄和策略分别将增量乘以各自的 command_rate 换算为速度。
   200Hz 每周期按速度 / ctrl_rate 做一次 IK、限幅与包络检查后立即下发。
   持续保持最近速度, 直到新速度、零指令、断流超时或运动保护触发。
@@ -38,7 +32,7 @@ from rclpy.node import Node
 from rclpy.clock import Clock, ClockType
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from std_msgs.msg import Float64MultiArray, String
-from std_srvs.srv import SetBool, Trigger
+from std_srvs.srv import Trigger
 from marvin_msgs.msg import Jointfeedback
 from geometry_msgs.msg import PoseStamped, WrenchStamped
 from .tactile_guard import TactileGuard
@@ -62,87 +56,6 @@ CMD_FB_ERR_STRIKES = 10
 STATE_POSITION = 1      # 位置跟随
 STATE_TORQUE = 3        # 扭矩 (关节阻抗需在此状态 + imp_type=1)
 
-# 控制源枚举
-CTRL_SOURCE_TOPIC = 'topic'
-CTRL_SOURCE_KEYBOARD = 'keyboard'
-
-# 键盘控制参数 (与 verify_tcp_force_impedance.py 一致)
-KEY_STEP_MM = 0.1       # 每控制周期平移增量 mm
-KEY_STEP_DEG = 0.1      # 每控制周期旋转增量 deg
-# 键位 -> (平移方向, 旋转方向) (TCP 系)
-KEY_MOVES = {
-    'q': ([+1, 0, 0], [0, 0, 0]), 'w': ([-1, 0, 0], [0, 0, 0]),
-    'a': ([0, +1, 0], [0, 0, 0]), 's': ([0, -1, 0], [0, 0, 0]),
-    'z': ([0, 0, +1], [0, 0, 0]), 'e': ([0, 0, -1], [0, 0, 0]),
-    'r': ([0, 0, 0], [+1, 0, 0]), 'f': ([0, 0, 0], [-1, 0, 0]),
-    't': ([0, 0, 0], [0, +1, 0]), 'g': ([0, 0, 0], [0, -1, 0]),
-    'y': ([0, 0, 0], [0, 0, +1]), 'h': ([0, 0, 0], [0, 0, -1]),
-}
-
-
-class KeyState:
-    """pynput 后台线程维护的按键按下集合 (小写字符键 + 空格)。
-
-    read() 返回 (按下键集合, 自上次调用以来是否有状态变化)。
-    """
-
-    def __init__(self, log=None):
-        import pynput
-        self._pressed = set()
-        self._changed = False
-        self._lock = threading.Lock()
-        self._listener = pynput.keyboard.Listener(
-            on_press=self._on_press, on_release=self._on_release)
-        self._listener.daemon = True
-        self._log = log
-        try:
-            self._listener.start()
-        except Exception as e:
-            self._listener = None
-            if self._log is not None:
-                self._log(f'pynput 监听启动失败 (键盘控制不可用): {e}')
-
-    def _norm(self, key):
-        try:
-            ch = key.char
-            return ch.lower() if ch else None
-        except AttributeError:
-            return None  # 特殊键 (Shift 等) 不参与控制
-
-    def _on_press(self, key):
-        ch = self._norm(key)
-        if ch is None:
-            return
-        with self._lock:
-            if ch not in self._pressed:
-                self._pressed.add(ch)
-                self._changed = True
-
-    def _on_release(self, key):
-        ch = self._norm(key)
-        if ch is None:
-            return
-        with self._lock:
-            if ch in self._pressed:
-                self._pressed.discard(ch)
-                self._changed = True
-
-    def read(self):
-        with self._lock:
-            pressed = set(self._pressed)
-            changed = self._changed
-            self._changed = False
-        return pressed, changed
-
-    @property
-    def ok(self):
-        return self._listener is not None
-
-    def close(self):
-        if self._listener is not None:
-            self._listener.stop()
-            self._listener = None
-
 
 class DeltaCtrlNode(Node):
     def __init__(self):
@@ -153,6 +66,7 @@ class DeltaCtrlNode(Node):
         self.declare_parameter('arm', 'A')              # A / B
         self.declare_parameter('delta_topic', '/omi/action/decision')
         self.declare_parameter('manual_delta_topic', '/omi/action/manual_decision')
+        self.declare_parameter('hil_manual_receipts', True)  # tagged human-collection protocol
         self.declare_parameter('ctrl_rate', 200.0)      # Hz
         self.declare_parameter('policy_command_rate', 10.0)  # Hz, 策略增量对应的输入周期
         self.declare_parameter('manual_command_rate', 10.0)  # Hz, 手柄增量对应的输入周期
@@ -294,10 +208,6 @@ class DeltaCtrlNode(Node):
         # 重置为机械臂真实反馈, 这里只是未连接 (connect_on_start:=false) 时的占位
         self.cur_joints = [0.0] * 7
 
-        # ---------- 控制源状态 ----------
-        self.control_source = CTRL_SOURCE_TOPIC
-        self.keys = None                # KeyState, 进入键盘控制时创建
-
         # ---------- 机械臂 SDK ----------
         self.robot = None
         self.dcss = None
@@ -328,9 +238,6 @@ class DeltaCtrlNode(Node):
         self.manual_sub = self.create_subscription(
             Float64MultiArray, self.manual_delta_topic, self.manual_delta_callback, qos)
 
-        # 控制源切换: std_srvs/SetBool, true=键盘控制, false=话题控制
-        self.kb_srv = self.create_service(
-            SetBool, '/delta_ctrl_node/set_keyboard_control', self.keyboard_control_callback)
         self.home_srv = self.create_service(
             Trigger, '/delta_ctrl_node/home_poses', self.home_poses_callback)
         if self.tactile_guard.enabled:
@@ -385,7 +292,7 @@ class DeltaCtrlNode(Node):
         """Called with self.lock held; watchdog also runs without new actions."""
         state = self.tactile_guard.evaluate(time.monotonic())
         new_trip = self.guard_generation != self.tactile_guard.generation
-        policy_queue = self.queue_source == 'policy' and self.control_source == CTRL_SOURCE_TOPIC
+        policy_queue = self.queue_source == 'policy'
         blocked_queue = (policy_queue and self.have_goal and state not in ('clear', 'disabled') and
                          not (state == 'latched' and self.queue_is_retreat))
         self.guard_generation = self.tactile_guard.generation
@@ -409,8 +316,8 @@ class DeltaCtrlNode(Node):
 
     def guard_baseline_callback(self, request, response):
         with self.lock:
-            if self.have_goal or self.control_source == CTRL_SOURCE_KEYBOARD or self.pending_guard_hold:
-                response.success, response.message = False, 'stop motion/keyboard before baseline capture'
+            if self.have_goal or self.pending_guard_hold:
+                response.success, response.message = False, 'stop motion before baseline capture'
             else:
                 response.success, response.message = self.tactile_guard.capture_baseline(time.monotonic())
                 self.guard_generation = self.tactile_guard.generation
@@ -418,7 +325,7 @@ class DeltaCtrlNode(Node):
 
     def guard_reset_callback(self, request, response):
         with self.lock:
-            if self.have_goal or self.pending_guard_hold or self.control_source == CTRL_SOURCE_KEYBOARD:
+            if self.have_goal or self.pending_guard_hold:
                 response.success, response.message = False, 'stop retreat/hold before reset'
             else:
                 response.success, response.message = self.tactile_guard.reset(time.monotonic())
@@ -627,160 +534,6 @@ class DeltaCtrlNode(Node):
         self.get_logger().info(f'已切换到 {self._mode_name(state)} (state={state})')
         return True
 
-    # ---------------- 控制源切换 ----------------
-    def keyboard_control_callback(self, request, response):
-        """std_srvs/SetBool: true=切到键盘控制, false=切回话题控制。"""
-        want_kb = bool(request.data)
-        with self.lock:
-            current = self.control_source
-        if want_kb and current == CTRL_SOURCE_KEYBOARD:
-            response.success = True
-            response.message = 'already in keyboard control'
-            return response
-        if not want_kb and current == CTRL_SOURCE_TOPIC:
-            response.success = True
-            response.message = 'already in topic control'
-            return response
-
-        if want_kb:
-            if not self._enter_keyboard():
-                response.success = False
-                response.message = 'enter keyboard control failed'
-            else:
-                response.success = True
-                response.message = 'keyboard control enabled'
-        else:
-            self._exit_keyboard()
-            response.success = True
-            response.message = 'topic control enabled'
-        return response
-
-    def _enter_keyboard(self) -> bool:
-        """进入键盘控制: 清空增量队列, 启动 pynput 监听。
-
-        不改变机械臂控制模式: 位置跟随模式下键盘增量走位置指令;
-        关节阻抗模式下指令是阻抗参考位置 (手推仍可柔顺偏离)。
-        """
-        if self.robot is None:
-            self.get_logger().error('未连接机械臂, 无法进入键盘控制')
-            return False
-
-        with self.lock:
-            self.traj_queue = []
-            self.have_goal = False
-            self.control_source = CTRL_SOURCE_KEYBOARD
-            self.queue_source = 'manual'
-            self.pending_guard_hold = False
-
-        if self.keys is None:
-            self.keys = KeyState(log=self.get_logger().error)
-            if not self.keys.ok:
-                self._exit_keyboard_internal()
-                return False
-
-        self.get_logger().info(
-            '已进入键盘控制 (保持当前机械臂模式)。键位 (沿 TCP 自身轴, 按住才动): '
-            'q/w=±X  a/s=±Y  z/e=±Z  r/f=±Rx  t/g=±Ry  y/h=±Rz, 空格=退出')
-
-        # 以当前反馈为键盘移动的 IK 迭代起点
-        sub = self.robot.subscribe(self.dcss)
-        if sub is not None:
-            with self.lock:
-                self.cur_joints = list(
-                    sub['outputs'][self.arm_idx]['fb_joint_pos'])
-        return True
-
-    def _exit_keyboard(self):
-        """退出键盘控制, 切回话题控制 (机械臂模式保持不变)。"""
-        self._exit_keyboard_internal()
-        self.get_logger().info('已退出键盘控制, 切回话题控制')
-
-    def _exit_keyboard_internal(self):
-        with self.lock:
-            self.traj_queue = []
-            self.have_goal = False
-            self.control_source = CTRL_SOURCE_TOPIC
-        if self.keys is not None:
-            self.keys.close()
-            self.keys = None
-
-    # ---------------- 键盘控制 (200Hz 定时器内) ----------------
-    def keyboard_ctrl(self):
-        """键盘控制的增量移动: 读按键 -> 合成各方向键增量 -> TCP 系增量 IK
-        -> 安全检查 -> 下发。
-
-        按住方向键才动 (每键 KEY_STEP_MM/KEY_STEP_DEG 每周期), 松开即停。
-        多键同按时把各键增量矢量相加 (如 q+z = ±X±Z 同时移动), 合成一条
-        增量做一次 IK。空格退出并切回话题控制。
-        复用 delta_callback 同款保护: 包络检查由增量 IK + max_step_deg 限幅 +
-        envelope_radius_mm 包络承担 (键盘单周期 0.1mm/0.1° 远小于限幅, 安全)。
-        """
-        pressed, _ = self.keys.read()
-
-        if ' ' in pressed:
-            self.get_logger().info('键盘控制: 空格, 退出键盘控制')
-            self._exit_keyboard()
-            return
-
-        dir_keys = pressed & set(KEY_MOVES)
-        if not dir_keys:
-            return
-
-        # 合成所有按下方向键的增量矢量 (TCP 系)
-        delta_t = [0.0, 0.0, 0.0]
-        delta_r = [0.0, 0.0, 0.0]
-        for key in sorted(dir_keys):
-            d_t, d_r = KEY_MOVES[key]
-            for i in range(3):
-                delta_t[i] += d_t[i] * KEY_STEP_MM
-                delta_r[i] += d_r[i] * KEY_STEP_DEG
-
-        with self.lock:
-            # Local keyboard is manual input, outside tactile protection.
-            self.pending_guard_hold = False
-            q_ref = list(self.cur_joints)
-
-        # 增量 IK (TCP 系; cur_joints 是最近指令, 比反馈更平滑)
-        ok, q_target, _ = self.tk.solve_tcp_delta_ik(
-            q_ref, delta_t, delta_r, FRAME_TCP)
-        if not ok:
-            self.get_logger().warn(
-                f'键盘控制: {"".join(sorted(dir_keys))} 组合 IK 失败, 停止',
-                throttle_duration_sec=1.0)
-            return
-
-        # 安全限幅 (与 delta_callback 同款)
-        for j in range(7):
-            d = q_target[j] - q_ref[j]
-            if abs(d) > self.max_step_deg:
-                q_target[j] = q_ref[j] + math.copysign(self.max_step_deg, d)
-
-        # 工作空间包络检查 (与 delta_callback 同款)
-        if self.tcp_anchor is not None:
-            t_end = self.kine.fk(q_target)
-            if t_end:
-                p = [t_end[r][3] for r in range(3)]
-                dist = math.sqrt(sum(
-                    (p[i] - self.tcp_anchor[i]) ** 2 for i in range(3)))
-                if dist > self.envelope_radius_mm:
-                    self.get_logger().warn(
-                        f'键盘控制: TCP 目标距锚点 {dist:.1f} mm 超出包络 '
-                        f'{self.envelope_radius_mm} mm, 拒绝该方向',
-                        throttle_duration_sec=1.0)
-                    return
-
-        # SDK 三件套 (clear_set → set_joint_cmd_pose → send_cmd), 锁外执行
-        self.robot.clear_set()
-        if not self.robot.set_joint_cmd_pose(
-                arm=self.arm, joints=[float(v) for v in q_target]):
-            self.get_logger().error('set_joint_cmd_pose 失败', throttle_duration_sec=1.0)
-            return
-        self.robot.send_cmd()
-
-        with self.lock:
-            self.cur_joints = q_target  # 下个周期从本指令值继续
-            self.cmd_fb_err_strikes = 0
-
     def hil_finish(self, status, *, accepted):
         """Report terminal command outcome; SDK delivery is not measured completion."""
         pending, self.hil_pending = getattr(self, 'hil_pending', None), None
@@ -789,7 +542,7 @@ class DeltaCtrlNode(Node):
                 accepted=accepted, finished=True, velocity_hold_continues=(status == 'velocity_window_sent'),
                 timestamp_ns=self.get_clock().now().nanoseconds))))
 
-    def hil_delta_callback(self, msg):
+    def hil_delta_callback(self, msg, *, manual=False):
         """Optional tagged HIL receipt: queue acceptance, not measured execution."""
         dims = msg.layout.dim
         command_id = dims[0].label if dims and dims[0].label.startswith('hil:') else None
@@ -799,7 +552,7 @@ class DeltaCtrlNode(Node):
                             accepted=not command_id and not any(msg.data))
         try:
             if not command_id or (self.delta_frame == 'base' and self.arm == 'A'):
-                result = self.delta_callback(msg)
+                result = self._delta_callback(msg, manual=True) if manual else self.delta_callback(msg)
         finally:
             if command_id:
                 receipt = dict(command_id=command_id, accepted=bool(result and result['accepted']),
@@ -808,7 +561,8 @@ class DeltaCtrlNode(Node):
                                timestamp_ns=self.get_clock().now().nanoseconds,
                                execution_confirmed=False, finished=not bool(result and result["accepted"]),
                                control_mode='velocity_hold',
-                               nominal_duration_s=1.0 / self.policy_command_rate,
+                               action_source='human' if manual else 'policy',
+                               nominal_duration_s=1.0 / (self.manual_command_rate if manual else self.policy_command_rate),
                                velocity_hold_continues=bool(result and result['accepted'] and self.have_goal))
                 if receipt["accepted"] and not self.have_goal:
                     receipt.update(status="velocity_zero_stopped", finished=True)
@@ -821,6 +575,12 @@ class DeltaCtrlNode(Node):
         return self._delta_callback(msg, manual=False)
 
     def manual_delta_callback(self, msg: Float64MultiArray):
+        dims = msg.layout.dim
+        if dims and dims[0].label.startswith('hil:'):
+            return self.hil_delta_callback(msg, manual=True)
+        if (getattr(self, 'hil_pending', None) and self.hil_pending.get('action_source') == 'human'
+                and len(msg.data) == 6 and not any(msg.data)):
+            self.hil_finish('queue_cancelled', accepted=True)
         self.hil_finish("external_manual_takeover", accepted=False)
         return self._delta_callback(msg, manual=True)
 
@@ -849,15 +609,6 @@ class DeltaCtrlNode(Node):
             self.get_logger().warn('未连接机械臂 (connect_on_start:=false), 丢弃增量',
                                    throttle_duration_sec=5.0)
             return
-
-        # 键盘控制期间忽略话题增量
-        with self.lock:
-            if self.control_source != CTRL_SOURCE_TOPIC:
-                self.get_logger().warn(
-                    '当前为键盘控制, 忽略话题增量 (调用 '
-                    '/delta_ctrl_node/set_keyboard_control data:=false 切回话题控制)',
-                    throttle_duration_sec=5.0)
-                return
 
         with self.lock:
             if manual:
@@ -943,14 +694,6 @@ class DeltaCtrlNode(Node):
             needs_hold = self.pending_guard_hold
         if needs_hold:
             self._apply_guard_hold()
-            return
-
-        # 键盘控制分支 (200Hz 增量移动; 话题队列逻辑不参与)
-        with self.lock:
-            kb = self.control_source == CTRL_SOURCE_KEYBOARD
-        if kb:
-            if self.keys is not None and self.keys.ok:
-                self.keyboard_ctrl()
             return
 
         with self.lock:
@@ -1079,8 +822,10 @@ class DeltaCtrlNode(Node):
         if stop:
             self.hil_finish('feedback_error', accepted=False)
             return
-        if not manual and getattr(self, 'hil_pending', None):
-            if time.monotonic() - self.last_policy_time >= 1.0 / self.policy_command_rate:
+        if getattr(self, 'hil_pending', None):
+            last_time = self.last_manual_time if manual else self.last_policy_time
+            rate = self.manual_command_rate if manual else self.policy_command_rate
+            if time.monotonic() - last_time >= 1.0 / rate:
                 self.hil_finish('velocity_window_sent', accepted=True)
 
     # ---------------- 关节状态发布 ----------------
@@ -1220,7 +965,7 @@ class DeltaCtrlNode(Node):
         try:
             if self.arm != 'A' or self.robot is None or self.kine is None or self.dcss is None:
                 raise ValueError('需要已连接的左臂 A')
-            if self.delta_frame != 'base' or self.control_source != CTRL_SOURCE_TOPIC:
+            if self.delta_frame != 'base':
                 raise ValueError('返回需要 BASE 话题控制模式')
             sub = self.robot.subscribe(self.dcss)
             if sub is None:
@@ -1286,7 +1031,6 @@ class DeltaCtrlNode(Node):
         self.eef_pub.publish(msg)
 
     def shutdown(self):
-        self._exit_keyboard_internal()   # 停 pynput 监听 (若在跑)
         if self.robot is not None:
             try:
                 self.robot.release_robot()

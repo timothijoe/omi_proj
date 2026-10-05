@@ -46,8 +46,8 @@ def command(pad, mapping, convention='legacy'):
 def build_parser():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--execute', action='store_true')
-    ap.add_argument('--topic', default='/omi/action/manual_decision',
-                    help='Trusted manual receiver input; bypasses policy tactile protection')
+    ap.add_argument('--topic', default='auto',
+                    help='Manual receiver input; auto reads the receiver configuration before publishing')
     ap.add_argument('--output-convention', choices=OUTPUT_CONVENTIONS, default='legacy',
                     help='Final wire frame/rotation format; SDK preset requires FRAME_BASE')
     ap.add_argument('--device', default='/dev/input/js0')
@@ -98,6 +98,12 @@ def main():
     node = pub = ros = None
     try:
         if args.execute:
+            from omi_hil_rl.real.receiver_preflight import inspect_receiver
+            try:
+                route = inspect_receiver(args.topic, require_connected=True)
+            except ValueError as exc:
+                ap.error(f'接收端预检失败：{exc}')
+            args.topic = route['manual_topic']
             import rclpy as ros
             from std_msgs.msg import Float64MultiArray
             from rclpy.signals import SignalHandlerOptions
@@ -105,7 +111,8 @@ def main():
             ros.init(signal_handler_options=SignalHandlerOptions.NO)
             node = ros.create_node('eef_gamepad_test')
             pub = node.create_publisher(Float64MultiArray, args.topic, 1)
-            print('发送话题:', args.topic, '；请确认接收端选择的机械臂，并停止其他动作发布程序。')
+            print('接收端已发现，发送话题:', args.topic,
+                  '；请确认接收端选择的机械臂，并停止其他动作发布程序。')
             input('按回车开始；随后按住 RB 才移动，Ctrl+C 退出：')
         else:
             print('仅手柄预览，无 ROS 发布；加 --execute 发送。Ctrl+C 退出。')

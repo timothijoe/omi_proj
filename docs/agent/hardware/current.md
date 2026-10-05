@@ -1,5 +1,9 @@
 # Hardware 当前摘要
 
+2026-10-05：已补齐[采集解耦实现纪传体](evolution/sensor-decoupling.md)，包含独立字段读取、力调度、腕部FIFO与双路发布、元数据及离线对齐。外部RGB的header年龄与本机接收年龄是两项检查，源时钟仍未确认；“接收新鲜但源时间不确定”不能等同无延迟。外部RGB专用接收时间策略尚未实施，见[时间基准说明](evolution/sensor-time-alignment.md)和[排查编年](chronicles/2026-10-05-rgb-clock-and-receive-age.md)。
+
+2026-10-05：[当前grid触觉与腕部采集已解耦](chronicles/2026-10-05-sensor-decoupling.md)。字段独立发布、六维力不再被其他字段拒绝连带丢弃；腕部增加有限FIFO可靠录制topic。短测三场约30 Hz、力约29.6 Hz，仍不保证设备端无丢帧或力源时间已知。操作见[教程](../../../tutorials/sensor_decoupling.md)。
+
 2026-10-05：[手柄与策略速度保持](evolution/robot-controller.md#速度保持参数与停止边界)已实现并构建。
 10Hz名义增量换算为速度，200Hz每周期IK后立即下发；零指令、保护或默认0.25秒断流停止。
 `delta_splits`不再决定话题执行；输入频率参数须匹配各发送端。网络scale与权重未修改。
@@ -10,7 +14,7 @@
 
 2026-10-05新增[USB 插入触觉保护](../../../tutorials/tactile_guard.md)：
 `arm_delta_cmd` 接收端按用户最新要求默认关闭、显式开启，**只约束模型**；
-手柄/返回走 `/omi/action/manual_decision`，接收端键盘也不受触觉保护影响。
+手柄/返回走 `/omi/action/manual_decision`，不受触觉保护影响。接收端键盘控制及其切换服务已移除。
 模型走 `/omi/action/decision`；显式固定夹持基线后，任一指 `‖ΔF‖≥2.0` 或
 `‖ΔT‖≥0.5` 即锁定并清插补队列、尝试当前关节反馈位置保持。
 锁定且双侧健康时只保留 Base `dx<0`，其他分量归零，撤退每条≤0.2mm、名义≤2mm/s；

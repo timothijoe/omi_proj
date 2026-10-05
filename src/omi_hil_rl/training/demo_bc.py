@@ -203,20 +203,27 @@ def metrics(actor, dataset, *, device="cpu", batch_size=32, baseline=None):
 
 
 def train(plan_path, output, *, pretrained=None, steps=500, batch_size=32, learning_rate=1e-3,
-          evaluate_every=50, seed=7, device="cpu"):
+          evaluate_every=50, seed=7, device="cpu", without_wrench=False):
     if min(steps, batch_size, evaluate_every) < 1 or not np.isfinite(learning_rate) or learning_rate <= 0:
         raise ValueError("invalid BC training parameters")
     plan = json.loads(Path(plan_path).read_text())
     train_data, validation_data = dataset_for_plan(plan, "training"), dataset_for_plan(plan, "validation")
     norm, action_mean = statistics(train_data)
+    if without_wrench:
+        if 'wrench' not in plan['contract']['observations']:
+            raise ValueError('without-wrench requires a wrench dataset for the controlled ablation')
+        norm = {k:v for k,v in norm.items() if not k.startswith('wrench_')}
     synthetic = plan["contract"]["config"]["transport"] == "fake"
     if not synthetic and pretrained is None:
         raise ValueError("real BC requires official --pretrained backbone weights")
     recipe = dict(encoder="synthetic-test" if synthetic else "current9stack", normalization=norm,
                   training_objective="bc_deterministic_normalized_command_mse", std_head="fixed_log_std_minus5")
     if 'wrench' in plan['contract']['observations']:
-        recipe['wrench_history'] = True
+        recipe['wrench_history'] = not without_wrench
         recipe['wrench_contract'] = plan['contract']['wrench']
+        if without_wrench:
+            recipe['observation_inputs'] = sorted(k for k in plan['contract']['observations'] if k not in ('wrench','wrench_mask'))
+            recipe['ablation'] = 'without_wrench_retrained'
     recipe['action_semantics'] = plan['contract']['action_semantics']
     if not synthetic:
         recipe.update(base_contract=GridProfile(plan["contract"]["config"]["wrist_camera"]).CONTRACT,
@@ -236,6 +243,7 @@ def train(plan_path, output, *, pretrained=None, steps=500, batch_size=32, learn
     atomic_json(output / "plan.json", plan)
     atomic_json(output / "recipe.json", recipe)
     atomic_json(output / 'training_config.json', dict(steps=steps, batch_size=batch_size,
+        without_wrench=without_wrench,
         learning_rate=learning_rate, evaluate_every=evaluate_every, seed=seed, device=device,
         train_samples=len(train_data), validation_samples=len(validation_data),
         source_plan=str(Path(plan_path).resolve()), source_plan_sha256=sha256(plan_path),
@@ -318,6 +326,7 @@ def main():
     fit.add_argument("--seed", type=int, default=7)
     fit.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     fit.add_argument("--threads", type=int, default=2)
+    fit.add_argument('--without-wrench',action='store_true',help='Retrain with no wrench encoder; retain dataset provenance')
     test = sub.add_parser("evaluate")
     test.add_argument("--plan", type=Path, required=True)
     test.add_argument("--checkpoint", type=Path, required=True)
@@ -335,7 +344,7 @@ def main():
         if args.operation == "train":
             print(json.dumps(train(args.plan, args.output, pretrained=args.pretrained, steps=args.steps,
                 batch_size=args.batch_size, learning_rate=args.learning_rate, evaluate_every=args.evaluate_every,
-                seed=args.seed, device=args.device), indent=2))
+                seed=args.seed, device=args.device, without_wrench=args.without_wrench), indent=2))
         else:
             plan = json.loads(args.plan.read_text())
             dataset = dataset_for_plan(plan, args.split)

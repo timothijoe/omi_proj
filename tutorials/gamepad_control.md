@@ -9,15 +9,15 @@
 两个入口共用手柄映射和输出 wrapper，不要同时开启动作发布。
 
 参考发送接口为 `/home/zhoutong/Downloads/oct04/robot_pose/circle_test.py` 的最新版本。
-直接手柄最终话题 `/omi/action/manual_decision`；策略选择入口将手动/RB+X 动作发到
+直接手柄最终话题 `/omi/action/manual_decision`；策略选择入口将手动/RB+回位键动作发到
 该话题，将模型动作发到 `/omi/action/decision`。消息均为 `std_msgs/msg/Float64MultiArray`，
 空 layout，默认 10 Hz。接收端触觉保护默认关闭；显式开启后只影响模型，不影响手柄。
 接收端 `manual_delta_topic` 必须与手柄 `--topic`（仲裁器 `--manual-topic`）一致。
 接收端决定控制哪只机械臂，消息里没有左右臂字段。
 
-## RB + X 返回初始末端位姿
+## RB + 按键314返回初始末端位姿
 
-按住 RB，再按一次 X，两个入口都会读取接收端当前左臂关节反馈，并用
+本机使用 `--home-button-code 314`：按住 RB，再按一次键码314对应的按键，两个入口都会读取接收端当前左臂关节反馈，并用
 `eef_left` 相同的标定后 SDK FK 计算当前及以下目标关节对应的 TCP 位姿：
 
 ```text
@@ -29,13 +29,14 @@
 沿直线平移并插值到目标姿态，10 Hz 每步平移最多 1 mm、旋转最多 1°；
 末步仅发送剩余增量，姿态限速时平移也相应减小。返回增量固定使用 SDK BASE
 坐标及 ABC 度格式，不受手柄换轴、`--signs`、`--scale` 或速度选项影响。
-返回期间覆盖摇杆输入；松开 RB 或断开手柄取消，重新按 X 从最新反馈重新计算。
-X 一直按住不会重复触发。直接控制脚本需保持 `--rate 10`。
+返回期间覆盖摇杆输入；松开 RB 或断开手柄取消，重新按回位键从最新反馈重新计算。
+回位键一直按住不会重复触发。直接控制脚本需保持 `--rate 10`。
 
-默认 X 使用 Linux 位置映射 `BTN_WEST=308`。终端会在按钮变化时立即显示
-`RB=`、`X=`、`按下按钮=` 和 `返回=`。先在预览模式单独按 X：如果实际显示
-`按下按钮=[307]`，在原启动命令中加 `--home-button-code 307`；三个手柄入口
-都支持该参数。不要根据 Linux 头文件中的历史 `BTN_X` 名称推断物理 X 的键码。
+程序未指定参数时仍默认使用 Linux 键码308；本机已通过 `--home-button-code 314`
+将回位键设为314。终端会在按钮变化时显示 `RB=`、`X=`、`按下按钮=` 和 `返回=`；
+其中 `X=` 是程序对当前配置的回位键的显示名称。预览时单独按回位键，确认出现
+`按下按钮=[314]`，再按住 RB 并按一次该键触发返回。各手柄入口均需在启动命令中
+传入 `--home-button-code 314`；不要根据面板字母或 Linux 按钮名称推断键码。
 
 接收端需使用本仓库更新后的 `arm_delta_cmd`，先在接收电脑运行
 `bash scripts/robot_controller.sh build` 并重启接收节点，提供只读服务
@@ -59,14 +60,16 @@ export ROS_LOCALHOST_ONLY=0
 export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 
 # 预览：读取真实手柄、显示换轴前后值，不发送动作
-python scripts/gamepad_test.py --scale 0.5 --output-convention sdk-x-forward-z-left
+python scripts/gamepad_test.py --scale 0.5 --output-convention sdk-x-forward-z-left \
+  --home-button-code 314
 ```
 
 退出预览后实际发送：
 
 ```bash
 python scripts/gamepad_test.py --execute --scale 0.5 \
-  --output-convention sdk-x-forward-z-left
+  --output-convention sdk-x-forward-z-left \
+  --home-button-code 314
 ```
 
 按回车启动发送；按住 RB 才移动，松开输出零增量，Ctrl+C 退出。
@@ -101,7 +104,7 @@ ros2 topic echo /omi/action/manual_decision std_msgs/msg/Float64MultiArray
 摇杆死区默认 0.15，死区外线性变速，十字键固定速度。多轴同时操作限制合速度。
 RB 松开或设备断连输出六个零；按住 RB 但所有控制回中也是零增量。
 启用夹爪 SDK 后，A 关闭、B 张开，无需按 RB；按键设置见下节。
-LB、LT/RT、X/Y、摇杆按下及 Start/Back 暂未分配。
+LB、LT/RT、摇杆按下等其他未绑定的按键暂未分配。
 Linux 通过内核轴/按钮语义识别当前 Xbox 手柄，默认设备 `/dev/input/js0`。
 
 - `--scale` 同时缩放平移和旋转速度，默认 1。它**不启用坐标转换**。
@@ -214,7 +217,8 @@ ok, q_target, target = tk.solve_tcp_delta_ik(
 
 ```bash
 python -m omi_hil_rl.real.gamepad_node --publish \
-  --output-convention sdk-x-forward-z-left
+  --output-convention sdk-x-forward-z-left \
+  --home-button-code 314
 ```
 
 该入口默认 10 Hz、10 mm/s、10 degree/s，调速使用 --speed-mm-s 和 --rotation-deg-s，不支持 --scale。

@@ -1,5 +1,11 @@
 # 操作教程
 
+- [真机RL人工回合：按钮成功、超时停止、手柄复位和连续采集](rl_episode_collection.md)
+
+- [当前无wrench模型：推理、RB接管、Ctrl+C观测保存](no_wrench_policy_record.md)
+
+- [独立传感器采集、腕部可靠录制与时间审计](sensor_decoupling.md)
+
 - [新wrench BC模型真机入口：默认预览、RB手柄优先](wrench_policy_gamepad.md)
 
 - [本次日期bag转训练集：双指六维力/力矩BC训练](passive_bag_bc_wrench.md)

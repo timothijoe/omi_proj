@@ -19,6 +19,10 @@ def test_passive_topics_and_clean_ctrl_c(tmp_path,monkeypatch):
     assert '/omi/controller_test/decision' in calls[0][1]
     assert '/omi/tactile_grid24x16/a/wrench' in calls[0][1]
     assert '/omi/tactile_grid24x16/b/wrench' in calls[0][1]
+    assert '/omi/tactile_grid24x16/a/metadata' in calls[0][1]
+    assert '/omi/tactile_grid24x16/b/status' in calls[0][1]
+    assert '/omi/wrist/color/image_roi/record' in calls[0][1]
+    assert '/omi/wrist/metadata' in calls[0][1]
     assert not calls[0][2] and calls[-1]=='closed'
     assert json.loads((tmp_path/'capture/session.json').read_text())==result
 

@@ -56,6 +56,7 @@ class GridProfile:
 class GridBuffer:
     def __init__(self, profile):
         self.profile = profile
+        self.max_age_overrides = {}
         self.clear()
 
     def clear(self):
@@ -74,6 +75,7 @@ class GridBuffer:
             wanted = None if expected is None else expected[key]
             item = next((x for x in reversed(items) if x[0] <= reference and (wanted is None or x[0] == wanted)), None)
             age = self.profile.CONTRACT['eef_max_age_ns'] if key == 'eef' else self.profile.CONTRACT['max_age_ns']
+            age = self.max_age_overrides.get(key, age)
             if key == 'wrist_rgb' and (self.profile.mode == 'off' or wanted == 0): item = None
             if item is not None and reference-item[0] > age: item = None
             if item is None:

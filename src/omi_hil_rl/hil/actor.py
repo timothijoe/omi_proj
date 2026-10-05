@@ -7,7 +7,7 @@ import time
 import torch
 
 from .config import HILConfig, load_config
-from .environment import FakeTransport, RealHILEnv, InteractionUnavailable, EpisodeTimeout
+from .environment import FakeTransport, RealHILEnv, InteractionUnavailable, EpisodeTimeout, EpisodeSuccess
 from .exchange import EpisodeSpool, owner_lock
 from .networks import load_actor
 
@@ -33,6 +33,7 @@ def run_actor(run, config, *, episodes=1, device="cpu", execute=False,
                                      convention=recipe["sdk_convention"])
         if offline_demo:
             transport.human_only = True
+        transport.allow_manual_reset = True
         env = RealHILEnv(transport, config)
         results = []
         try:
@@ -71,12 +72,14 @@ def run_actor(run, config, *, episodes=1, device="cpu", execute=False,
                                 keep = False
                             result = spool.finish(keep, reason=info["reason"])
                             break
-                except EpisodeTimeout as exc:
+                except (EpisodeTimeout, EpisodeSuccess) as exc:
                     transport.stop()
                     if spool.count:
-                        spool.truncate_valid_prefix()
+                        success = isinstance(exc, EpisodeSuccess)
+                        spool.finish_valid_prefix(success=success)
                         keep = env.review()
-                        result = spool.finish(keep and not offline_demo, reason="timeout_between_commands")
+                        result = spool.finish(keep and (success or not offline_demo),
+                            reason="success_between_commands" if success else "timeout_between_commands")
                     else:
                         result = spool.finish(False, reason=str(exc))
                         env.phase = "idle"

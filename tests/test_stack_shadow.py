@@ -76,3 +76,26 @@ def test_diagnostic_mode_bypasses_header_age_only():
     assert r.latest['eef']['header_age_ms']==-500
     w,s=r.window(t+100_000_000)
     assert w is None and s['reason']=='missing_or_stale:eef'
+
+
+def test_rgb_age_override_is_local_persists_reset_and_preserves_other_guards():
+    contract=GridProfile('required').CONTRACT
+    r=StackObservations(contract,rgb_max_age_ms=500.)
+    r.profile.decode=lambda k,m:(m.stamp,m.value)
+    t=2_000_000_000
+    image=np.zeros((3,128,128),np.uint8)
+    assert r.ingest('rgb',NS(stamp=t-400_000_000,value=image),t)
+    assert not r.ingest('rgb',NS(stamp=t-501_000_000,value=image),t)
+    assert not r.ingest('rgb',NS(stamp=t+101_000_000,value=image),t)
+    assert not r.ingest('wrist_rgb',NS(stamp=t-400_000_000,value=image),t)
+    assert contract==GridProfile('required').CONTRACT
+    r.reset();feed(r,t)
+    saved=r.topics;r.topics={k:v for k,v in saved.items() if v!='rgb'}
+    feed(r,t+400_000_000);r.topics=saved
+    assert r.window(t+400_000_000)[0] is not None
+    r.topics={k:v for k,v in saved.items() if v!='rgb'}
+    feed(r,t+600_000_000);r.topics=saved
+    window,status=r.window(t+600_000_000)
+    assert window is None and status['reason']=='missing_or_stale:rgb'
+    for value in [0,-1,float('nan'),float('inf')]:
+        with pytest.raises(ValueError):StackObservations(contract,rgb_max_age_ms=value)

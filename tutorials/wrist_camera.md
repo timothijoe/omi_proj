@@ -1,5 +1,7 @@
 # 腕部相机：采集、ROI/full与查看
 
+2026-10-05更新：默认新增有限FIFO与可靠 `/record` topic；原topic仍用于实时显示。参数、丢帧计数及兼容说明见[独立采集教程](sensor_decoupling.md)。
+
 配套：[常用命令速查](sensor_commands.md) · [触觉专项](tactile_grid_transport.md)。
 三个文件共同维护默认参数、topic和操作约定；旧集成看板与依赖详见[原实时教程](daimon_live.md)。
 

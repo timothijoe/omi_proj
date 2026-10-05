@@ -25,6 +25,10 @@ def test_existing_start_command_enables_project_gripper_without_extra_flags():
     assert not args.no_gripper
 
 
+def test_execute_uses_receiver_manual_topic_by_default():
+    assert entry.build_parser().parse_args(['--execute']).topic == 'auto'
+
+
 def test_explicit_gripper_configuration_still_overrides_defaults(tmp_path):
     args = entry.build_parser().parse_args(['--gripper-server', 'custom:1234',
         '--gripper-sdk-root', str(tmp_path), '--gripper-calibration', str(tmp_path / 'limits.json')])

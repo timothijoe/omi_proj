@@ -25,7 +25,7 @@
 
 接收端[USB 插入触觉保护](tactile_guard.md)默认关闭，显式开启后只约束模型通道。
 模型超限锁定后只允许限速 Base -X 撤退，断流/无效触觉时禁止全部模型动作。
-手柄发送独立 `manual_delta_topic`（默认 `/omi/action/manual_decision`），键盘也不受
+手柄发送独立 `manual_delta_topic`（默认 `/omi/action/manual_decision`），不受
 触觉保护影响；原有 IK/包络/关节限制仍保留。启用保护要求 `delta_frame=base` 并显式采集基线。
 
 使用安装了 ROS Jazzy、colcon、rosidl、rclpy、std_msgs、std_srvs、geometry_msgs、tf2_ros
@@ -90,7 +90,7 @@ python3 scripts/import_optical_module.py verify
 两个断流期限均使用单调时钟，控制定时器也不依赖ROS时间跳变。
 IK失败、SDK点位拒绝、包络越界、非有限输入及持续反馈偏差会停止当前保持。
 策略仍受显式启用的触觉保护约束，锁定后允许的Base -X撤退速度默认不超过2mm/s。
-手柄与键盘沿用原有触觉保护旁路；更换输入源时速度状态相应替换。
+手柄沿用原有触觉保护旁路；更换输入源时速度状态相应替换。
 
 ### 更新安装版本并重启
 

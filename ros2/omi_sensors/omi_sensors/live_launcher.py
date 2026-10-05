@@ -44,6 +44,10 @@ def main():
     parser.add_argument('--no-rviz', action='store_true')
     parser.add_argument('--duration', type=float, help='bounded test in seconds')
     parser.add_argument('--camera-fps', type=int, default=30)
+    parser.add_argument('--camera-buffer', choices=['latest', 'record'], default='record',
+                        help='record: bounded FIFO plus reliable /record topic; latest: low-latency only')
+    parser.add_argument('--camera-buffer-frames', type=int, default=60)
+    parser.add_argument('--camera-buffer-mib', type=int, default=64)
     parser.add_argument('--image-mode', choices=['full', 'roi'], default='full',
                         help='publish original BGR image or policy-compatible 128x128 ROI')
     parser.add_argument('--sdk-root', type=Path)
@@ -72,7 +76,7 @@ def main():
     if args.tactile_mode != 'full' and args.component != 'tactile':
         parser.error('grid24x16 currently requires component tactile; legacy dashboard needs full fields/images')
     ipaddress.IPv4Address(args.host)
-    if not 0 <= args.domain <= 232 or args.camera_fps <= 0 or (args.duration is not None and args.duration <= 0):
+    if not 0 <= args.domain <= 232 or min(args.camera_fps, args.camera_buffer_frames, args.camera_buffer_mib) <= 0 or (args.duration is not None and args.duration <= 0):
         parser.error('invalid domain/fps/duration')
     if not args.pc_host:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
@@ -108,7 +112,9 @@ def main():
                 commands.append(base+['live', *mode_args])
             if args.component in ('all', 'camera'):
                 commands.append([sys.executable, '-m', 'omi_sensors.wrist_live', '--host', args.host,
-                    '--pc-host', args.pc_host, '--fps', str(args.camera_fps), '--image-mode', args.image_mode])
+                    '--pc-host', args.pc_host, '--fps', str(args.camera_fps), '--image-mode', args.image_mode,
+                    '--buffer-mode', args.camera_buffer, '--buffer-frames', str(args.camera_buffer_frames),
+                    '--buffer-mib', str(args.camera_buffer_mib)])
             if args.component in ('all', 'view') and not args.no_rviz:
                 import yaml
                 rviz = yaml.safe_load((root/'ros2/omi_sensors/config/daimon_live.rviz').read_text())

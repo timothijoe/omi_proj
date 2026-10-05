@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from .eef_bc_grid import GridProfile
-from .stack_shadow import StackObservations
+from .sensor_alignment import AuditedObservations, read_sensor_metadata, prefer_record_topic, add_wrench_alignment
 from .demo_wrench import read_wrenches, align_history, MAX_AGE_NS
 from omi_hil_rl.hil.demo import save_npz
 from omi_hil_rl.hil.config import HILConfig
@@ -40,7 +40,7 @@ def load_step(directory,index,manifest):
     return obs,nxt,wire,meta
 
 
-def convert(session,output):
+def convert(session,output,max_tactile_skew_ms=None):
     import rosbag2_py
     from rclpy.serialization import deserialize_message
     from rosidl_runtime_py.utilities import get_message
@@ -61,7 +61,9 @@ def convert(session,output):
     if not commands:raise ValueError('no recorded commands')
     commands.sort(key=lambda r:r['bag_receive_ns']);del reader
     wrenches=read_wrenches(bag)
-    runtime=StackObservations(GridProfile('required').CONTRACT,'strict','raw')
+    runtime=AuditedObservations(GridProfile('required').CONTRACT,'strict','raw',
+        provenance=read_sensor_metadata(bag), max_tactile_skew_ms=max_tactile_skew_ms)
+    prefer_record_topic(runtime, types)
     reader=reader_for(list(runtime.topics));classes={t:get_message(types[t]) for t in runtime.topics if t in types}
     output.mkdir(parents=True,exist_ok=False);atomic_json(output/'conversion_pending.json',dict(session=str(session)))
     directory=output/'episodes'/session.name;directory.mkdir(parents=True)
@@ -73,6 +75,7 @@ def convert(session,output):
             counts[status['reason'] if window is None else 'history_warmup']+=1;previous=None;return
         data,mask=window;obs=dict(data,history_mask=mask.astype(np.uint8))
         aligned,frames=align_history(wrenches,reference);obs.update(aligned)
+        add_wrench_alignment(status, aligned, runtime.provenance, reference)
         if previous is not None and reference-previous[1]==PERIOD:
             current,stamp,audit,old_frames=previous
             candidates=commands_between(commands,stamp,reference)
@@ -105,6 +108,7 @@ def convert(session,output):
     report=dict(version=VERSION,source_bag=str(bag),samples=count,command_messages=len(commands),
                 excluded=dict(counts),strict_rejections=dict(runtime.rejected),training_allowed=False,
                 alignment='strict 10-frame observations; exact one received command per 100ms pair; post-command received EEF',
+                max_tactile_host_header_skew_ms=max_tactile_skew_ms,
                 limitations=['command receive time is not source send time','no sender mode or command ID/receipt',
                              'no success/failure or episode annotations','wire coordinates not converted into policy coordinates'],
                 selected=selected)
@@ -123,7 +127,8 @@ def convert(session,output):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--session',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
-    args=p.parse_args();r=convert(args.session,args.output)
+    p.add_argument('--max-tactile-skew-ms',type=float,help='optional host-header skew bound; not device exposure skew')
+    args=p.parse_args();r=convert(args.session,args.output,args.max_tactile_skew_ms)
     print(json.dumps({k:v for k,v in r.items() if k!='selected'},indent=2))
 
 

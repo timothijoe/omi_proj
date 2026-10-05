@@ -1,5 +1,8 @@
 # Hardware 纪传体
 
+- [触觉与腕部采集解耦：实现方法、数据流与验证边界](sensor-decoupling.md)
+- [RGB与触觉时间基准、接收新鲜度和策略检查](sensor-time-alignment.md)
+
 - [双指wrench实时显示与持久历史](wrench-live.md)
 
 - [OpticalModule控制接收端、架构与迁移](robot-controller.md)

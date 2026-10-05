@@ -1,5 +1,9 @@
 # Hardware 编年索引
 
+- [2026-10-05 外部RGB时钟与接收年龄排查](2026-10-05-rgb-clock-and-receive-age.md)
+
+- [2026-10-05 触觉独立字段、腕部录制队列与实测](2026-10-05-sensor-decoupling.md)
+
 - [2026-10-05 手柄、策略速度保持与夹爪启用修复](2026-10-05-control-velocity-hold.md)
 
 - [2026-10-05 双指wrench实时显示与历史记录](2026-10-05-wrench-live-recording.md)

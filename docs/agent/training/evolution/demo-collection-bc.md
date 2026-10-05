@@ -1,6 +1,6 @@
 # 手柄示范录包、动作语义与 BC 数据入口
 
-最新进展：[四个真实日期包已转换并开始含wrench的BC训练](../../../../tutorials/passive_bag_bc_wrench.md)。
+最新进展：[四个真实日期包已转换并完成首轮含wrench的BC训练](../../../../tutorials/passive_bag_bc_wrench.md)。后续其他agent的重训与现场诊断见[最新编年](../chronicles/2026-10-05-policy-input-audit-no-wrench.md)，不将这些工作归于本窗口。
 新schema明确采用recorded-command监督，1005条样本按完整bag划分844/161；
 不复用review-only预览的schema，也不提升为accepted-command RL经验。
 `hil.networks.Encoder`新增可选双指六维wrench十帧分支，旧recipe仍不含该分支。
@@ -40,7 +40,7 @@ strict规则目前拒绝EEF header年龄超过50ms、其它所用传感器超过
 网络的三场触觉输入为 `[B,10,10,16,24]`：10时间槽、每槽双指合计10通道。
 每帧共享触觉CNN提取96维，十帧按时间顺序拼接，再与视觉、EEF、mask融合；不是只用当前帧，也不是该分支的GRU。
 
-六维wrench目前是辅助观测，尚未进入网络：`wrench[10,2,6]`、`wrench_mask[10,2]`、原始header/接收时间和frame_id。
+本窗口最初为查看器添加的六维wrench是辅助观测：`wrench[10,2,6]`、`wrench_mask[10,2]`、原始header/接收时间和frame_id。后续正式passive BC已新增可选wrench网络分支，不能再把“尚未进入网络”当作整个项目当前状态。
 各槽采用不晚于该槽时刻的最近消息，接收年龄上限250ms；mask=0不表示真实零力。保留SDK原单位，不声称已校准N/Nm，不擅自换坐标。
 
 查看器左列为双相机、动作和时间；右列最上方为六维力/力矩及曲线，下方为deformation/shear/depth。
@@ -57,11 +57,13 @@ strict规则目前拒绝EEF header年龄超过50ms、其它所用传感器超过
 
 采集文件的reward可用独立版本sidecar后补，BC不使用reward；没有RL的ready.json就不会自动流入learner。
 BC按完整episode划分，训练集统计独立计算，磁盘按需读取；复用current9stack六维Actor，冻结官方ResNet-10。
-软件合成闭环、真实多模态CPU/CUDA梯度与隔离ROS录包验证通过。当前四个真实包尚未进行BC训练或插入成功率评估。
+软件合成闭环、真实多模态CPU/CUDA梯度与隔离ROS录包验证通过。当时四包尚未训练；随后正式passive BC已完成训练，仍无插入成功率验收结论。
 集成demo、零动作诊断和未验证wire预览使用不同schema，避免误混标签；BC到SAC的自动权重初始化仍未实现。
 
 ## 待完成的实际训练准备
 
-补充各包成功/失败时刻，辨别普通示范、静止和自动返回段；明确选择和转换动作表示；选定BC所需对齐规则并按episode划分。
+补充各包成功/失败时刻，辨别普通示范、静止和自动返回段。正式passive BC的动作转换、因果对齐和整包训练/验证划分已另行实现，细节以上方教程为准。
 如需RL accepted-command数据，还需逐指令证据和完整reward/终止语义。
-新增wrench网络分支是后续模型改动，当前的显示和辅助存储不代表模型已经使用它。
+是否使用wrench取决于具体模型recipe/checkpoint；查看器能显示wrench本身不能证明所加载模型使用了它。
+
+采集端后续解耦、record优先与逐槽时间审计见[实现纪传体](../../hardware/evolution/sensor-decoupling.md)；外部RGB时钟与接收年龄见[时间基准专题](../../hardware/evolution/sensor-time-alignment.md)。

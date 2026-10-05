@@ -19,8 +19,11 @@ def load_wrench_policy(path, device):
     contract, recipe = checkpoint['contract'], checkpoint['recipe']
     expected = contract_for(dict(rate_hz=10, effective_translation_mm_s=5,
         effective_rotation_deg_s=5, output_convention='sdk-x-forward-z-left'))
+    no_wrench = (recipe.get('wrench_history') is False
+        and recipe.get('ablation') == 'without_wrench_retrained'
+        and recipe.get('observation_inputs') == sorted(k for k in expected['observations'] if k not in ('wrench','wrench_mask')))
     if (contract != expected or recipe.get('encoder') != 'current9stack'
-            or recipe.get('wrench_history') is not True
+            or not (recipe.get('wrench_history') is True or no_wrench)
             or recipe.get('base_contract') != GridProfile('required').CONTRACT
             or recipe.get('sdk_convention') != 'sdk-x-forward-z-left'
             or recipe.get('wrench_contract') != expected['wrench']
@@ -36,10 +39,10 @@ def load_wrench_policy(path, device):
 
 
 class WrenchObservations(StackObservations):
-    def __init__(self, contract, header_mode='strict', eef_reference='raw'):
+    def __init__(self, contract, header_mode='strict', eef_reference='raw', *, rgb_max_age_ms=None):
         if header_mode != 'strict' or eef_reference != 'raw':
             raise ValueError('wrench BC requires strict headers and raw EEF, matching training')
-        super().__init__(contract, header_mode, eef_reference)
+        super().__init__(contract, header_mode, eef_reference, rgb_max_age_ms=rgb_max_age_ms)
         self.topics.update({t: 'wrench_' + side for t, side in TOPICS.items()})
 
     def reset(self):

@@ -128,3 +128,21 @@ def test_wrench_changes_prediction_receives_gradient_and_mask_blocks_it():
         obs['wrench'] *= 10000
         second = actor.sample(obs, deterministic=True)[0]
     torch.testing.assert_close(first, second)
+
+
+def test_without_wrench_has_no_parameters_dependency_or_required_fields():
+    torch.set_num_threads(2)
+    norm=dict(tactile_mean=np.zeros(10).tolist(),tactile_std=np.ones(10).tolist(),
+              state_mean=np.zeros(14).tolist(),state_std=np.ones(14).tolist())
+    actor=Actor(dict(encoder='current9stack',base_contract=GridProfile('required').CONTRACT,
+                     normalization=norm,wrench_history=False)).eval()
+    obs={k:torch.as_tensor(v)[None] for k,v in observation(contract_for(provenance())).items()}
+    assert not any('wrench' in k for k in actor.state_dict())
+    with torch.inference_mode():
+        baseline=actor.sample(obs,deterministic=True)[0]
+        obs['wrench'].fill_(float('nan'))
+        changed=actor.sample(obs,deterministic=True)[0]
+        del obs['wrench'];del obs['wrench_mask']
+        absent=actor.sample(obs,deterministic=True)[0]
+    torch.testing.assert_close(baseline,changed,rtol=0,atol=0)
+    torch.testing.assert_close(baseline,absent,rtol=0,atol=0)

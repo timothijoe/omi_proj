@@ -22,6 +22,14 @@ class EpisodeTimeout(InteractionUnavailable):
     """Deadline passed between commands; retain/truncate the last valid prefix."""
 
 
+class EpisodeSuccess(InteractionUnavailable):
+    """Success pressed between commands; never send one more motion command."""
+
+
+class EpisodeManualStop(EpisodeTimeout):
+    """Operator ends a human collection episode without claiming success."""
+
+
 @dataclass
 class Interaction:
     observation: dict
@@ -39,7 +47,7 @@ class ButtonEvents:
     """Edges only; startup/reconnect requires release, held buttons never repeat."""
     def __init__(self, config):
         self.codes = dict(start=config.start_button, success=config.success_button,
-                          keep=config.keep_button, discard=config.discard_button)
+                          manual_stop=config.stop_button, keep=config.keep_button, discard=config.discard_button)
         self.previous = {key: True for key in self.codes}
 
     def poll(self, connected, buttons):
@@ -122,7 +130,8 @@ class RealHILEnv(gym.Env):
             executed = self.config.normalized_action(result.action_m_rad)
             success_time = result.event_times.get("success", self.clock())
             success = "success" in result.events and self.started <= success_time < self.deadline
-            timed_out = self.clock() >= self.deadline and not success
+            manual_stop = 'manual_stop' in result.events
+            timed_out = (self.clock() >= self.deadline or manual_stop) and not success
             cancelled = "disconnect" in result.events or "abort" in result.events
             if cancelled:
                 raise InteractionUnavailable("operator disconnected or aborted")
@@ -131,7 +140,7 @@ class RealHILEnv(gym.Env):
                 observation_time_ns=self.previous_stamp, next_observation_time_ns=result.observation_time_ns,
                 executed_action=executed, action_source=result.source, command_status=result.command_status,
                 policy_action=np.asarray(action).copy(), episode_success=success,
-                reason="success" if success else "timeout" if timed_out else "active",
+                reason="success" if success else "manual_stop" if manual_stop else "timeout" if timed_out else "active",
                 valid_transition=True, events=sorted(result.events), event_times=dict(result.event_times),
                 command_audit=dict(result.audit))
             self.previous, self.previous_stamp = result.observation, result.observation_time_ns
@@ -149,6 +158,7 @@ class RealHILEnv(gym.Env):
         if self.phase != "review":
             raise RuntimeError("review requires an ended episode")
         self.transport.stop()
+        self.transport.reset_requires_release = True
         keep = self.config.review == "auto" or self.transport.wait_review()
         self.phase = "idle"
         return bool(keep)

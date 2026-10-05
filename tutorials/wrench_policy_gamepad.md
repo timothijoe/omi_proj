@@ -1,5 +1,69 @@
 # 带六维力/力矩的 BC 模型：预览与真机手柄接管
 
+当前简明操作入口见[无wrench推理与录制教程](no_wrench_policy_record.md)，
+完整实验与诊断见[阶段记录](../docs/agent/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)。
+
+## 不使用六维wrench的对照模型
+
+用户要求关闭六维力/力矩输入。训练入口新增`--without-wrench`，重新建立不含wrench编码器/融合层的模型，
+不是把旧模型输入填零或修改推理mask。仍使用双相机、双侧触觉网格、EEF、10帧历史；触觉网格没有关闭。
+数据沿用排除第三包后的341训练/161验证，训练1000步、batch32、lr0.0003、seed7。
+输出`local/passive_bc_20261005_no_wrench_no_third_train_v1/`。
+归档数据契约保留原始wrench用于溯源；检查点recipe中的`observation_inputs`才是本轮实际网络输入，
+`ablation=without_wrench_retrained`、`wrench_history=false`，不含wrench归一化参数。
+实时入口从检查点识别该变体，不订阅wrench、不检查wrench历史；其余有效性检查保持不变。
+
+录制预览命令：
+
+```bash
+bash scripts/run_no_wrench_policy_record.sh \
+  --output local/policy_gamepad/no_wrench_record_01 \
+  --duration 3600
+```
+
+沿用用户上轮指定的训练集最佳选择：默认本轮第1000步`actor_train_best.pt`，保留Ctrl+C写完录制的流程；`--execute`才发送真机动作。
+本轮自动验证选择仍停在第0步，`actor.pt`不是完成BC更新的模型，不拿它作本轮测试入口。
+第1000步训练MSE=0.000583、验证MSE=0.131478；仍存在明显泛化差距。
+将`record_train_best_01`的215个完整现场窗口离线重放：不提供任何wrench字段也能推理，
+X预测仍全部为负，范围约-0.445至-0.127mm/步，中位数-0.434mm/步。
+原带wrench模型在相同窗口的中位数约-0.499mm/步；去掉wrench减轻部分幅度，但未解决后退。
+这些窗口来自旧模型的实际轨迹，不代表新模型的闭环轨迹；不据此声称真机成功或安全。
+新模型没有自动取代旧入口默认检查点。移除wrench不代表已经解决方向问题，先检查离线重放与预览。
+
+## 推理时连续保存观测，Ctrl+C收尾
+
+使用新入口（默认仍为预览，不发机器人动作）：
+
+```bash
+bash scripts/run_wrench_policy_record.sh \
+  --checkpoint local/passive_bc_20261005_wrench_no_third_train_v1/actor_train_best.pt \
+  --output local/policy_gamepad/record_train_best_01 \
+  --duration 3600
+```
+
+确认接管和运行条件后，换新的输出目录并显式加`--execute`才发真机动作。
+`--checkpoint`可选择原模型；不指定则继承wrench入口的原第200步模型。
+录制不会改善模型，训练集最佳模型依然有过拟合和方向不可靠风险。
+
+每次完成推理保存`policy/observations/<reference_ns>_<epoch>.npz`，含归一化前的
+双相机、触觉网格、EEF、wrench完整10槽数组、history/camera/wrench masks、未缩放m/rad模型输出，
+以及该次预测的状态、输入时效、候选门控与发布状态metadata。被门控拦截但完成推理的窗口也保存。
+没有有效窗口、未完成推理的时刻不伪造观测，原因保留在`policy/predictions.jsonl`。
+归一化参数、模型路径/哈希在`policy/manifest.json`。这是网络实际输入的裁剪/缩小后图像，不是原始全分辨率视频。
+最终动作与RB状态在`selected_actions.jsonl`，用`selected_policy_reference_ns`对应观测`reference_ns`；
+RB人工期间没有被选中的模型候选也可独立分析。完整复现还需保留对应checkpoint。
+
+后台单线程压缩写盘，待写队列上限16个窗口；满队列丢弃并在预测日志/终端报告，不等待磁盘。
+默认压缩文件容量上限10GiB，可用`--record-max-gb 20`调整；到上限/磁盘失败会停止保存新窗口，
+控制继续运行并报告错误。总结`complete=false`不可当作完整记录。
+
+按Ctrl+C后不再产生新候选，启动器通知仲裁器停止（独占时尝试发送最终零动作），
+录制线程写完已入队窗口，再生成`policy/observations/summary.json`（saved/dropped/errors/flushed）。
+每个窗口先写`.partial`、flush/fsync，再原子改名，部分文件不当作完整窗口。
+终端出现“观测保存结果”后退出；连续Ctrl+C不会中断这段收尾。
+启动器给录制60秒收尾时间，磁盘永久卡死会强制退出；SIGKILL、断电或磁盘故障无法保证全部保存。
+这是软件停止流程，不代替硬件急停。
+
 模型为 `local/passive_bc_20261005_wrench_train_v1/actor.pt`（最佳第200步）。
 这是记录指令的离线 BC，不是在线 RL；尚未验证真机插入成功率。
 新入口复用原来的独立手柄仲裁进程，默认预览，不发送机器人命令。
@@ -32,16 +96,21 @@ bash scripts/run_wrench_policy_gamepad.sh \
 ## 2. 配置接收端的两个话题
 
 接收端构建、SDK环境和TCP参数见[接收端启动教程](robot_gamepad_startup.md)。
-与之前直接手柄测试不同，本入口固定使用：
+模型话题固定，手动话题现在默认自动匹配接收端：
 
 | 来源 | 接收端参数 | 话题 |
 | --- | --- | --- |
 | 模型 | `delta_topic` | `/omi/action/decision` |
-| RB手柄、RB+X | `manual_delta_topic` | `/omi/action/manual_decision` |
+| RB手柄、RB+X | `manual_delta_topic` | 执行时读取接收端实际配置 |
 
-原来 `manual_delta_topic:=/omi/controller_test/decision` 不能直接沿用，否则接收不到本入口的手柄动作。
-停止旧直控/策略发布进程，不允许多个控制器竞争。按现场流程停止并重启接收端，保留已确认的
-机器人IP、A臂、base坐标系、TCP和控制参数，只将两个话题明确设置为：
+新入口默认`--manual-topic auto`。执行前只读查询`/delta_ctrl_node/get_parameters`，
+并核对两个实际订阅的节点名、类型和话题；原来的`/omi/controller_test/decision`可直接自动匹配，
+无需仅为改话题重启接收端。查询失败、订阅不匹配、手柄打不开或缺少所需轴/RB时拒绝启动动作发布进程。
+启动终端打印选中的手动话题，`session.json`记录检查结果。
+可显式指定`--manual-topic /omi/controller_test/decision`，但仍须通过与接收端的一致性检查。
+预览不要求接收端，auto使用常规手动话题且不发布；因此预览本身不能证明真机订阅一致。
+启动检查不是永久监控，不应在执行过程中重启或重配接收端。
+停止旧直控/策略发布进程，不允许多个控制器竞争。接收端也可以使用常规配置：
 
 ```text
 delta_topic:=/omi/action/decision
@@ -70,6 +139,11 @@ bash scripts/run_wrench_policy_gamepad.sh \
 仲裁器尝试发送零增量。此软件行为不是安全认证的硬件急停。
 
 ## 4. 优先级与参数
+
+外部RGB默认`--rgb-max-age-ms 500`，头时间年龄与接收后缓存年龄均单独按500ms限制。
+腕部RGB和触觉仍为250ms，EEF仍为50ms，完整10槽/未来时间戳等门槛保留。
+这是在线参数放宽，训练集和检查点契约没有修改；记录在session和policy manifest中。
+需要恢复旧限制可追加`--rgb-max-age-ms 250`。较旧图像可能造成滞后判断，这不修复相机延迟本身。
 
 - RB（311）按住：人工优先，即使摇杆居中也不执行模型。RB+X（现场键码307）仍可调用已有返回功能。
 - RB松开：丢弃接管期间的旧候选，只接收松开后的新模型候选。

@@ -62,6 +62,8 @@ def enrich(dataset, bag, output):
     if any(json.loads(p.read_text())['version']!=VERSION for p in manifests):
         raise ValueError('this enrichment is for diagnostic previews; policy input contracts are unchanged')
     records=read_wrenches(bag)
+    from .sensor_alignment import read_sensor_metadata, add_wrench_alignment
+    provenance=read_sensor_metadata(bag)
     output.mkdir(parents=True,exist_ok=False)
     atomic_json(output/'conversion_pending.json',dict(source=str(dataset.resolve())))
     specification=dict(version='dual-wrench-receive-history-v1',shape=[10,2,6],side_order=['a','b'],
@@ -80,6 +82,9 @@ def enrich(dataset, bag, output):
                 aligned,frames=align_history(records,metadata[clock])
                 arrays.update({prefix+'__'+key:value for key,value in aligned.items()})
                 metadata[prefix+'_wrench_frame_ids']=frames
+                audit = (metadata.get('current_observation_audit', {}) if prefix == 'observation'
+                         else metadata.get('command_audit', {}).get('next_observation_status', {}))
+                add_wrench_alignment(audit, aligned, provenance, metadata[clock])
                 if prefix=='observation':counts+=aligned['wrench_mask'][-1]
             arrays['metadata']=np.asarray(json.dumps(metadata))
             save_npz(target/f'{index:06d}.npz',arrays);samples+=1

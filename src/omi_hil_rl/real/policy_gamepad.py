@@ -24,10 +24,14 @@ def commands(args):
     actor.extend(['--model-kind', getattr(args, 'model_kind', 'stack')])
     expiry = getattr(args, 'candidate_expiry', 'on')
     actor.extend(['--candidate-expiry', expiry])
+    actor.extend(['--rgb-max-age-ms', str(getattr(args, 'rgb_max_age_ms', 250.))])
+    if getattr(args,'record_observations',False):
+        actor.extend(['--record-observations','--record-max-gb',str(args.record_max_gb)])
     arbiter=[sys.executable,'-m','omi_hil_rl.real.gamepad_node','--device',args.gamepad,
         '--policy-topic',topic,'--frame',POLICY_FRAME,'--output-convention',SDK_CONVENTION,
         '--policy-timeout','0.1','--log',str(args.output/'selected_actions.jsonl'),*common]
     arbiter.extend(['--candidate-expiry', expiry])
+    arbiter.extend(['--manual-topic', getattr(args, 'manual_topic', '/omi/action/manual_decision')])
     if getattr(args, 'gripper_server', None):
         for key in ('server', 'sdk_root', 'calibration', 'close_speed', 'close_position', 'close_torque', 'open_position'):
             value = getattr(args, 'gripper_' + key)
@@ -46,6 +50,10 @@ def main():
     p.add_argument('--duration',type=float,default=60.)
     p.add_argument('--device',choices=('cuda','cpu'),default='cuda')
     p.add_argument('--gamepad',default='/dev/input/js0')
+    p.add_argument('--manual-topic',default='auto',help='auto reads receiver topic in execute mode; preview uses the conventional topic')
+    p.add_argument('--rgb-max-age-ms',type=float,default=250.)
+    p.add_argument('--record-observations',action='store_true')
+    p.add_argument('--record-max-gb',type=float,default=10.)
     p.add_argument('--eef-reference',choices=EEF_REFERENCES,required=True,
                    help='Choose raw EEF or explicit temporary bag-baseline-v1 observation translation')
     p.add_argument('--policy-scale',type=float,default=1.)
@@ -58,6 +66,8 @@ def main():
     add_home_arguments(p)
     args=p.parse_args()
     calibration_from_args(args, p)
+    if not math.isfinite(args.record_max_gb) or args.record_max_gb<=0:p.error('record-max-gb must be positive and finite')
+    if not math.isfinite(args.rgb_max_age_ms) or args.rgb_max_age_ms<=0:p.error('RGB maximum age must be finite and positive')
     if not args.checkpoint.is_file():p.error('checkpoint missing')
     if args.model_kind == 'passive-wrench-bc':
         if args.eef_reference != 'raw':p.error('wrench BC was trained with raw EEF')
@@ -70,12 +80,29 @@ def main():
     with (runtime/('domain-'+os.environ.get('ROS_DOMAIN_ID','13')+'.lock')).open('a') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:p.error('policy/gamepad launcher already running in this domain')
+        receiver_check = None
+        if args.execute:
+            from .receiver_preflight import inspect_receiver
+            from .linux_gamepad import LinuxGamepad
+            pad = LinuxGamepad(args.gamepad)
+            try:
+                if not pad.poll():p.error('Gamepad preflight failed: '+pad.error)
+            finally:pad.close()
+            try:receiver_check = inspect_receiver(args.manual_topic)
+            except ValueError as exc:p.error(str(exc))
+            args.manual_topic = receiver_check['manual_topic']
+            print('Receiver subscriptions verified; manual topic='+args.manual_topic,flush=True)
+        elif args.manual_topic == 'auto':
+            args.manual_topic = '/omi/action/manual_decision'
+        if args.manual_topic in ('/omi/action/decision','/omi/policy/candidate') or not args.manual_topic.startswith('/'):
+            p.error('Manual topic must be a distinct absolute topic')
         args.output=args.output.resolve();args.output.mkdir(parents=True,exist_ok=False)
         children,topic=commands(args)
         (args.output/'session.json').write_text(json.dumps(dict(
             execute=args.execute,candidate_topic=topic,command_topic='/omi/action/decision',
             candidate_expiry=args.candidate_expiry,
-            manual_command_topic='/omi/action/manual_decision',tactile_guard_scope='receiver_policy_only_opt_in',
+            manual_command_topic=args.manual_topic,receiver_preflight=receiver_check,
+            rgb_max_age_ms=args.rgb_max_age_ms,tactile_guard_scope='receiver_policy_only_opt_in',
             policy_frame=POLICY_FRAME,sdk_output=SDK_CONVENTION,conversion_owner='arbiter after RB selection',
             eef_reference=args.eef_reference,eef_input_offset_base_m=reference_offset(args.eef_reference).tolist(),
             policy_scale=args.policy_scale,speed_mm_s=args.speed_mm_s,rotation_deg_s=args.rotation_deg_s,
@@ -89,7 +116,7 @@ def main():
         from omi_sensors.cli import supervise
         if args.candidate_expiry == 'off':
             print('WARNING: candidate expiry OFF; delayed candidates may execute once. RB priority and sensor ingress checks remain enabled.',flush=True)
-        return supervise(children,dict(os.environ),None)
+        return supervise(children,dict(os.environ),None,shutdown_grace=60 if args.record_observations else 10)
 
 
 if __name__=='__main__':raise SystemExit(main())

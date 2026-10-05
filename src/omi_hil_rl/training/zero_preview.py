@@ -10,7 +10,7 @@ from omi_hil_rl.hil.config import HILConfig
 from omi_hil_rl.hil.demo import save_npz
 from omi_hil_rl.hil.exchange import atomic_json
 from .eef_bc_grid import GridProfile
-from .stack_shadow import StackObservations
+from .sensor_alignment import AuditedObservations, read_sensor_metadata, prefer_record_topic
 
 VERSION = 'omi-real-observation-zero-preview-v1'
 PERIOD = 100_000_000
@@ -40,11 +40,14 @@ def convert(bag, output):
     output.mkdir(parents=True,exist_ok=False)
     atomic_json(output/'conversion_pending.json',{'source':str(bag)})
     profile=GridProfile('required')
-    strict=StackObservations(profile.CONTRACT,'strict','raw')
-    diagnostic=StackObservations(profile.CONTRACT,'receive-only-diagnostic','raw')
+    provenance=read_sensor_metadata(bag)
+    strict=AuditedObservations(profile.CONTRACT,'strict','raw',provenance=provenance)
+    diagnostic=AuditedObservations(profile.CONTRACT,'receive-only-diagnostic','raw',provenance=provenance)
     reader=rosbag2_py.SequentialReader()
     reader.open(rosbag2_py.StorageOptions(uri=str(bag),storage_id=''),rosbag2_py.ConverterOptions('',''))
     types={t.name:t.type for t in reader.get_all_topics_and_types()}
+    prefer_record_topic(strict, types)
+    prefer_record_topic(diagnostic, types)
     relevant={topic:key for topic,key in diagnostic.topics.items() if topic in types}
     classes={topic:get_message(types[topic]) for topic in relevant}
     reader.set_filter(rosbag2_py.StorageFilter(topics=list(relevant)))

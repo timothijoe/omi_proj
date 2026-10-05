@@ -27,6 +27,9 @@ def image_message(array, header):
 
 
 def run(config, side=None, fake=False, duration=None, tactile_mode='full', publish_raw=False):
+    if not fake and tactile_mode == 'grid24x16':
+        from .independent_tactile import run as run_independent
+        return run_independent(config, side, publish_raw)
     import rclpy
     from rclpy.executors import ExternalShutdownException
     from sensor_msgs.msg import Image, CameraInfo

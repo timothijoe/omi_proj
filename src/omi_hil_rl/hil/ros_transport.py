@@ -5,7 +5,7 @@ import uuid
 
 import numpy as np
 
-from .environment import ButtonEvents, Interaction, InteractionUnavailable, EpisodeTimeout
+from .environment import ButtonEvents, Interaction, InteractionUnavailable, EpisodeTimeout, EpisodeSuccess, EpisodeManualStop
 from omi_hil_rl.real.gamepad_control import Mapping, BTN_TR, wire_action
 from omi_hil_rl.real.linux_gamepad import LinuxGamepad
 from omi_hil_rl.training.stack_shadow import StackObservations
@@ -13,7 +13,7 @@ from omi_hil_rl.training.stack_shadow import StackObservations
 
 class RosTransport:
     def __init__(self, config, base_contract, *, execute=False, gamepad="/dev/input/js0",
-                 topic="/omi/action/decision", convention="sdk-x-forward-z-left"):
+                 topic="/omi/action/decision", convention="sdk-x-forward-z-left", rgb_max_age_ms=None):
         if config.transport != "ros":
             raise ValueError("ROS transport requires a ROS replay contract")
         if convention not in ("sdk-base-aligned", "sdk-x-forward-z-left"):
@@ -29,7 +29,8 @@ class RosTransport:
             rclpy.init()
         self.node = rclpy.create_node("omi_hil_actor", enable_rosout=False)
         self.config, self.topic, self.convention = config, topic, convention
-        self.runtime = StackObservations(base_contract, "strict", config.eef_reference)
+        self.runtime = StackObservations(base_contract, "strict", config.eef_reference,
+                                         rgb_max_age_ms=rgb_max_age_ms)
         self.pad, self.buttons = LinuxGamepad(gamepad), ButtonEvents(config)
         self.mapping = Mapping(hz=config.hz, translation_m_s=config.translation_step_m * config.hz,
                                rotation_rad_s=config.rotation_step_rad * config.hz)
@@ -67,6 +68,8 @@ class RosTransport:
         self.rclpy.spin_once(self.node, timeout_sec=.005)
         self.connected = self.pad.poll()
         events = self.buttons.poll(self.connected, self.pad.buttons)
+        if getattr(self, 'collect_human', False) and self.config.review == 'auto':
+            events.difference_update({'keep', 'discard'})
         self.events.update(events)
         for event in events:
             self.event_times.setdefault(event, time.monotonic())
@@ -80,6 +83,7 @@ class RosTransport:
             reference = self.next_reference + ((now - self.next_reference) // 100_000_000) * 100_000_000
             self.next_reference = reference + 100_000_000
             window, status = self.runtime.window(reference)
+            self.latest = None  # A failed window must not leave an old observation selectable.
             if window is not None and window[1].all():
                 data, mask = window
                 self.latest = (dict(data, history_mask=mask.astype(np.uint8)), reference)
@@ -89,10 +93,14 @@ class RosTransport:
             raise InteractionUnavailable("ROS clock moved backwards")
 
     def _manual_reset_tick(self):
-        """Collector-only manual positioning between episodes; never a BC label."""
+        """Manual positioning between episodes; never a training transition."""
         if not getattr(self, "allow_manual_reset", False) or self.publisher is None:
             return
         held = self.connected and self.pad.buttons.get(BTN_TR, False)
+        if getattr(self, 'reset_requires_release', False):
+            if not self.connected or held:
+                return
+            self.reset_requires_release = False
         now = time.monotonic()
         if held and now >= getattr(self, "next_reset_tick", 0.):
             self._publish(self.mapping.action(self.pad.axes).astype(np.float32))
@@ -102,7 +110,13 @@ class RosTransport:
         self.reset_held = held
 
     def wait_start(self):
-        print("等待开始按钮；请先人工复位任务。RB 接管，Y 成功，A 保留，B 丢弃（键位可配置）。", flush=True)
+        review_hint = ('有效回合自动保留；' if self.config.review == 'auto' else
+                       f'保留={self.config.keep_button}；丢弃={self.config.discard_button}；')
+        print(f"等待开始={self.config.start_button}；成功={self.config.success_button}；"
+              f"不成功结束={self.config.stop_button}；{review_hint}RB人工复位。", flush=True)
+        self.reset_held = False
+        self.reset_requires_release = True
+        self.next_reset_tick = 0.
         self.events.clear()
         self.event_times.clear()
         while True:
@@ -141,7 +155,8 @@ class RosTransport:
     def _publish(self, action, command_id=None):
         if self.publisher is None:
             raise InteractionUnavailable("preview cannot generate executed-action transitions; use --execute")
-        if self.node.count_publishers("/omi/action/manual_decision") > 0:
+        competitors = getattr(self, 'competing_topics', ["/omi/action/manual_decision"])
+        if any(self.node.count_publishers(t) > 0 for t in competitors if t != self.topic):
             raise InteractionUnavailable("another manual controller is active")
         if self.node.count_publishers(self.topic) != 1:
             raise InteractionUnavailable("another publisher owns final command topic")
@@ -173,16 +188,25 @@ class RosTransport:
         if not self.connected or "disconnect" in self.events:
             raise InteractionUnavailable("gamepad disconnected")
         now = self.node.get_clock().now().nanoseconds
+        if 'manual_stop' in self.events:
+            self.stop()
+            raise EpisodeManualStop('manual_stop_between_commands')
+        if "success" in self.events and self.event_times.get("success", float('inf')) < deadline:
+            self.stop()
+            raise EpisodeSuccess("success_between_commands")
         if time.monotonic() >= deadline:
             raise EpisodeTimeout("deadline passed before command")
         if not 0 <= now - anchor_stamp < 100_000_000:
             raise InteractionUnavailable("inference missed 100ms command freshness deadline")
-        source = "human" if self.pad.buttons.get(BTN_TR, False) else "policy"
+        rb = self.pad.buttons.get(BTN_TR, False)
+        collection = getattr(self, "collect_human", False)
+        source = "human" if rb or collection else "policy"
         if self.human_only and source != "human":
             raise InteractionUnavailable("offline demo requires RB before sending any command")
         # Each policy is computed for the current anchor; no queued candidate is reused.
         self.last_owner = source
-        adopted = self.mapping.action(self.pad.axes).astype(np.float32) if source == "human" else action.copy()
+        adopted = (self.mapping.action(self.pad.axes).astype(np.float32) if rb else
+                   np.zeros(6, np.float32) if collection else action.copy())
         if "discard" in self.events:
             raise InteractionUnavailable("operator aborted episode")
         command_id = "hil:" + uuid.uuid4().hex
@@ -196,7 +220,7 @@ class RosTransport:
         while time.monotonic() < end_wait:
             self._pump()
             receipt = self.receipts.get(command_id, receipt)
-            if not stopped and (time.monotonic() >= deadline or "success" in self.events):
+            if not stopped and (time.monotonic() >= deadline or "success" in self.events or 'manual_stop' in self.events):
                 self.stop()
                 stopped = True
             if "disconnect" in self.events or "discard" in self.events:
@@ -217,23 +241,35 @@ class RosTransport:
         raise InteractionUnavailable("missing command receipt or causal next observation")
 
     def wait_review(self):
+        self.reset_requires_release = True
         self.events.clear()
         self.event_times.clear()
-        print("回合结束：A 保留整段，B 丢弃整段。机器人保持停止发送。", flush=True)
+        print("回合结束：A 保留整段，B 丢弃整段；先松开再按RB可人工复位。", flush=True)
         while True:
             self._pump()
+            self._manual_reset_tick()
             if self.connected and "discard" in self.events:
                 self.events.clear()
+                self.stop()
                 return False
             if self.connected and "keep" in self.events:
                 self.events.clear()
+                self.stop()
                 return True
             self.events.clear()
+
+    def idle_tick(self):
+        """No episode restart during disk drain; RB positioning remains available."""
+        self._pump()
+        self._manual_reset_tick()
+        self.events.clear()
+        self.event_times.clear()
 
     def stop(self):
         # Zero delta requests a hold; no new motion delta while idle/review.
         if (self.publisher is not None and self.rclpy.ok() and self.node.count_publishers(self.topic) == 1
-                and self.node.count_publishers("/omi/action/manual_decision") == 0):
+                and all(self.node.count_publishers(t) == 0 for t in
+                        getattr(self, 'competing_topics', ["/omi/action/manual_decision"]) if t != self.topic)):
             self._publish(np.zeros(6))
 
     def close(self):

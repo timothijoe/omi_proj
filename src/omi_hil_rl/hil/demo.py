@@ -12,7 +12,7 @@ import numpy as np
 
 from .config import HILConfig, load_config
 from .demo_bag import SAMPLE_TOPIC, encode_sample
-from .environment import FakeTransport, RealHILEnv, InteractionUnavailable, EpisodeTimeout
+from .environment import FakeTransport, RealHILEnv, InteractionUnavailable, EpisodeTimeout, EpisodeSuccess
 from .exchange import atomic_json, owner_lock
 from omi_hil_rl.training.transition_replay import _spaces, _array
 
@@ -24,7 +24,10 @@ COMMAND_TOPICS = ("/omi/action/decision", "/omi/action/manual_decision",
 def recording_topics(observation_topics, *, command_topic="/omi/action/decision", extra_topics=()):
     return sorted(set([*observation_topics, command_topic, *COMMAND_TOPICS,
         "/tj/info/joint_feedback", "/omi/wrist/color/image_raw", "/omi/wrist/color/image_roi",
-        "/omi/tactile_grid24x16/a/wrench", "/omi/tactile_grid24x16/b/wrench", *extra_topics]))
+        "/omi/wrist/color/image_raw/record", "/omi/wrist/color/image_roi/record",
+        "/omi/wrist/metadata", "/omi/wrist/status",
+        *[f"/omi/tactile_grid24x16/{side}/{kind}" for side in 'ab'
+          for kind in ('wrench', 'metadata', 'status')], *extra_topics]))
 
 
 def save_npz(path, arrays):
@@ -312,6 +315,8 @@ def collect(directory, config, *, episodes=6, execute=False, gamepad="/dev/input
                                 break
                     except EpisodeTimeout:
                         outcome = "timeout"  # original raw data is unchanged; no reward or fictitious action
+                    except EpisodeSuccess:
+                        outcome = "success"
                     except InteractionUnavailable as exc:
                         transport.stop()
                         result = episode.finish(False, "invalid", valid=False, reason=str(exc))

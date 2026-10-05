@@ -14,7 +14,8 @@ class HILConfig:
     translation_step_m: float = .001 / math.sqrt(3.)
     rotation_step_rad: float = math.pi / 180 / math.sqrt(3.)
     start_button: int = 315
-    success_button: int = 307
+    success_button: int = 308
+    stop_button: int = 307
     keep_button: int = 304
     discard_button: int = 305
     review: str = "manual"
@@ -29,9 +30,9 @@ class HILConfig:
                 raise ValueError("rates, duration and action scales must be positive and finite")
         if self.hz != 10.:
             raise ValueError("the current history observation contract requires 10 Hz")
-        buttons = (self.start_button, self.success_button, self.keep_button, self.discard_button)
-        if any(type(v) is not int or v < 0 or v == 311 for v in buttons) or len(set(buttons)) != 4:
-            raise ValueError("four distinct event buttons, separate from RB, required")
+        buttons = (self.start_button, self.success_button, self.stop_button, self.keep_button, self.discard_button)
+        if any(type(v) is not int or v < 0 or v == 311 for v in buttons) or len(set(buttons)) != 5:
+            raise ValueError("five distinct event buttons, separate from RB, required")
         if self.review not in ("manual", "auto") or self.transport not in ("fake", "ros"):
             raise ValueError("unknown review or transport mode")
         if self.wrist_camera not in ("optional", "required", "off"):

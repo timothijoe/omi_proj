@@ -92,3 +92,21 @@ def test_tagged_zero_speed_finishes_without_sdk_motion(receiver):
     assert receipts[-1]['status'] == 'velocity_zero_stopped'
     assert not receipts[-1]['velocity_hold_continues']
     assert not node.have_goal
+
+
+def test_tagged_manual_receipts_keep_human_route(receiver):
+    node, receipts = receiver
+    node.robot = SimpleNamespace(clear_set=lambda: None, set_joint_cmd_pose=lambda **kw: True, send_cmd=lambda: None)
+    node.kine = object()
+    node.cur_joints = [0.] * 7
+    node.tk = SimpleNamespace(solve_tcp_delta_ik=lambda q, *a: (True, [x + .001 for x in q], None))
+    node.manual_delta_callback(tagged())
+    assert receipts[-1]['accepted'] and receipts[-1]['action_source'] == 'human'
+    assert node.queue_source == 'manual'
+    node.last_manual_time -= 1. / node.manual_command_rate
+    node.ctrl_loop()
+    assert receipts[-1]['status'] == 'velocity_window_sent' and receipts[-1]['finished']
+    node.manual_delta_callback(tagged())
+    node.manual_delta_callback(Float64MultiArray(data=[0.] * 6))
+    assert receipts[-1]['accepted'] and receipts[-1]['status'] == 'queue_cancelled'
+    assert not node.have_goal

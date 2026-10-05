@@ -21,7 +21,7 @@ from .demo_wrench import read_wrenches, align_history, MAX_AGE_NS
 from .eef_bc_data import sha256
 from .eef_bc_grid import GridProfile
 from .passive_preview import commands_between, PERIOD
-from .stack_shadow import StackObservations
+from .sensor_alignment import AuditedObservations, read_sensor_metadata, prefer_record_topic, add_wrench_alignment
 from .transition_replay import _array, _box
 
 VERSION = 'omi-passive-command-bc-wrench-v1'
@@ -64,7 +64,7 @@ def contract_for(provenance):
     return contract
 
 
-def convert_session(session, output, provenance, contract, exclusions=()):
+def convert_session(session, output, provenance, contract, exclusions=(), max_tactile_skew_ms=None):
     import rosbag2_py
     from rclpy.serialization import deserialize_message
     from rosidl_runtime_py.utilities import get_message
@@ -94,7 +94,9 @@ def convert_session(session, output, provenance, contract, exclusions=()):
     commands.sort(key=lambda row: row['bag_receive_ns'])
     del reader
     wrenches = read_wrenches(bag)
-    runtime = StackObservations(GridProfile('required').CONTRACT, 'strict', 'raw')
+    runtime = AuditedObservations(GridProfile('required').CONTRACT, 'strict', 'raw',
+        provenance=read_sensor_metadata(bag), max_tactile_skew_ms=max_tactile_skew_ms)
+    prefer_record_topic(runtime, types)
     reader = reader_for(list(runtime.topics))
     classes = {t: get_message(types[t]) for t in runtime.topics if t in types}
     if set(classes) != set(runtime.topics):
@@ -132,6 +134,7 @@ def convert_session(session, output, provenance, contract, exclusions=()):
         data, mask = window
         observation = dict(data, history_mask=mask.astype(np.uint8))
         aligned, frames = align_history(wrenches, reference)
+        add_wrench_alignment(audit, aligned, runtime.provenance, reference)
         if not aligned['wrench_mask'].all():
             reasons['incomplete_wrench_history'] += 1
             return
@@ -173,6 +176,7 @@ def convert_session(session, output, provenance, contract, exclusions=()):
         publisher_provenance=provenance, excluded=dict(reasons), ingress_rejections=dict(runtime.rejected),
         source_command_count=len(commands), source_wrench_count={s: len(r) for s, r in wrenches.items()},
         alignment='strict 100ms observation lattice -> single recorded command in [reference, reference+100ms)',
+        max_tactile_host_header_skew_ms=max_tactile_skew_ms,
         reward_used=False, success_annotation=None, sample_index=rows,
         limitations=['recorder timestamp pairing is not sender input timing or physical execution proof',
                      'gaps are independent BC samples, never stitched RL transitions',
@@ -284,13 +288,15 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--validation-session', required=True)
     parser.add_argument('--exclusions', type=Path, help='JSON: session -> excluded [start,end) seconds since first sensor')
+    parser.add_argument('--max-tactile-skew-ms', type=float, help='optional host-header skew bound')
     args = parser.parse_args()
     provenance = json.loads(args.provenance.read_text())
     contract = contract_for(provenance)
     exclusions = {} if args.exclusions is None else json.loads(args.exclusions.read_text())
     args.output.mkdir(parents=True, exist_ok=False)
     atomic_json(args.output / 'conversion_pending.json', dict(sessions=[str(p.resolve()) for p in args.sessions]))
-    reports = [convert_session(p, args.output, provenance, contract, exclusions.get(p.name, ())) for p in args.sessions]
+    reports = [convert_session(p, args.output, provenance, contract, exclusions.get(p.name, ()),
+                              args.max_tactile_skew_ms) for p in args.sessions]
     plan = make_plan(args.output, args.validation_session)
     atomic_json(args.output / 'report.json', dict(version=VERSION, episodes=reports,
         training_samples=sum(ep['count'] for ep in plan['training']),

@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import threading
+import signal
 import time
 
 import numpy as np
@@ -25,7 +26,7 @@ from omi_hil_rl.real.sdk_action import format_action_trace
 
 class StackObservations:
     """Receiver-clock alignment, original ingress guards, explicit disabled q7."""
-    def __init__(self, contract, header_mode='strict', eef_reference='raw'):
+    def __init__(self, contract, header_mode='strict', eef_reference='raw', *, rgb_max_age_ms=None):
         if header_mode not in ('strict','receive-only-diagnostic'):
             raise ValueError('Unknown header mode')
         self.header_mode=header_mode
@@ -35,6 +36,9 @@ class StackObservations:
         if self.profile.CONTRACT != contract:
             raise ValueError('Unsupported checkpoint observation contract')
         self.contract = contract
+        if rgb_max_age_ms is not None and (not np.isfinite(rgb_max_age_ms) or rgb_max_age_ms <= 0):
+            raise ValueError('rgb_max_age_ms must be finite and positive')
+        self.rgb_max_age_ns = contract['max_age_ns'] if rgb_max_age_ms is None else int(rgb_max_age_ms*1e6)
         self.topics = {t:k for t,k in self.profile.TOPICS.items() if k != 'q'}
         self.counts = Counter(); self.accepted = Counter(); self.rejected = Counter()
         self.latest = {}; self.epoch = -1
@@ -42,6 +46,7 @@ class StackObservations:
 
     def reset(self):
         self.buffer = self.profile.ObservationBuffer()
+        self.buffer.max_age_overrides['rgb'] = self.rgb_max_age_ns
         self.history = OrderedDict()
         self.last_receive = None; self.last_reference = None
         self.epoch += 1
@@ -66,6 +71,7 @@ class StackObservations:
             age = receive_ns-stamp
             metadata.update(header_ns=stamp,header_age_ms=age/1e6)
             limit = self.contract['eef_max_age_ns'] if key=='eef' else self.contract['max_age_ns']
+            if key == 'rgb':limit = self.rgb_max_age_ns
             if self.header_mode=='strict' and age < -self.contract['ingress_max_header_ahead_ns']:
                 raise ValueError('header_ahead')
             if self.header_mode=='strict' and age > limit:
@@ -133,6 +139,9 @@ def main():
     p.add_argument('--checkpoint',type=Path,required=True)
     p.add_argument('--model-kind',choices=('stack','passive-wrench-bc'),default='stack')
     p.add_argument('--candidate-expiry',choices=('on','off'),default='on')
+    p.add_argument('--rgb-max-age-ms',type=float,default=250.)
+    p.add_argument('--record-observations',action='store_true')
+    p.add_argument('--record-max-gb',type=float,default=10.)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--duration',type=float,default=60.,help='seconds of live observation after model loading')
     p.add_argument('--device',choices=('cuda','cpu'),default='cuda')
@@ -145,6 +154,7 @@ def main():
     p.add_argument('--speed-mm-s',type=float,default=10.)
     p.add_argument('--rotation-deg-s',type=float,default=10.)
     args=p.parse_args()
+    if not np.isfinite(args.record_max_gb) or args.record_max_gb<=0:p.error('record-max-gb must be positive and finite')
     if not np.isfinite(args.duration) or args.duration<=0:p.error('duration must be positive and finite')
     try:policy_trace(np.zeros(6),args.policy_scale)
     except ValueError as exc:p.error(str(exc))
@@ -163,12 +173,15 @@ def main():
     if args.model_kind == 'passive-wrench-bc':
         from .wrench_live import load_wrench_policy, WrenchObservations, infer_wrench_window
         model,norm,checkpoint=load_wrench_policy(args.checkpoint,device)
-        runtime=WrenchObservations(model.contract,args.header_mode,args.eef_reference)
+        if args.header_mode != 'strict' or args.eef_reference != 'raw':
+            raise ValueError('Passive BC requires strict input headers and raw EEF')
+        observation_type = WrenchObservations if model.encoder.use_wrench else StackObservations
+        runtime=observation_type(model.contract,args.header_mode,args.eef_reference,rgb_max_age_ms=args.rgb_max_age_ms)
         inference = infer_wrench_window
     else:
         model,norm,checkpoint=load_stack_policy(args.checkpoint,device)
         if checkpoint['config']['version']!=NO_JOINT_VERSION:raise ValueError('This live runner requires the no-joint checkpoint')
-        runtime=StackObservations(model.contract,args.header_mode,args.eef_reference)
+        runtime=StackObservations(model.contract,args.header_mode,args.eef_reference,rgb_max_age_ms=args.rgb_max_age_ms)
     manifest=dict(checkpoint=str(args.checkpoint.resolve()),checkpoint_sha256=sha256(args.checkpoint),
                   version=checkpoint['config']['version'],step=checkpoint['step'],device=str(device),
                   gpu=torch.cuda.get_device_name() if device.type=='cuda' else None,
@@ -181,6 +194,7 @@ def main():
                   inference_timing='normalization + tensor transfer + forward + denormalization; excludes decode and transport')
     manifest.update(candidate_publisher=args.candidate_topic if args.publish_candidates else None,
         model_kind=args.model_kind,
+        rgb_max_age_ms=args.rgb_max_age_ms,
         candidate_expiry=args.candidate_expiry,
         candidate_frame=POLICY_FRAME,candidate_wire='TwistStamped per-step m/rad rotvec; not velocities or SDK ABC',
         sdk_output_convention=SDK_CONVENTION,sdk_conversion_owner='gamepad_node after arbitration',
@@ -191,7 +205,9 @@ def main():
     if args.model_kind == 'passive-wrench-bc':
         manifest['training_contract'] = checkpoint['contract']
         manifest['physical_action_scale'] = model.physical_action_scale.tolist()
-        manifest['wrench_live_guards'] = 'full causal history, finite, tactile_a/b frames, header and receive age'
+        manifest['wrench_input_enabled'] = model.encoder.use_wrench
+        manifest['model_observation_inputs'] = checkpoint['recipe'].get('observation_inputs',sorted(checkpoint['contract']['observations']))
+        manifest['wrench_live_guards'] = 'full causal history, finite, tactile_a/b frames, header and receive age' if model.encoder.use_wrench else 'disabled: no wrench subscription, input or gating; dataset contract retained for provenance'
     if args.publish_candidates:manifest['deployment']='policy candidate producer only; gamepad arbiter owns final robot output'
     (args.output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     import rclpy
@@ -200,9 +216,17 @@ def main():
     from sensor_msgs.msg import Image
     from geometry_msgs.msg import PoseStamped, TwistStamped, WrenchStamped
     from rclpy.qos import QoSProfile, DurabilityPolicy
-    rclpy.init();node=rclpy.create_node('omi_stack_shadow',enable_rosout=False,start_parameter_services=False)
+    from rclpy.signals import SignalHandlerOptions
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO);node=rclpy.create_node('omi_stack_shadow',enable_rosout=False,start_parameter_services=False)
     candidate_pub=node.create_publisher(TwistStamped,args.candidate_topic,QoSProfile(depth=1,durability=DurabilityPolicy.VOLATILE)) if args.publish_candidates else None
     lock=threading.Lock();stop=threading.Event();errors=[]
+    previous_signals={sig:signal.signal(sig,lambda *_:stop.set()) for sig in (signal.SIGINT,signal.SIGTERM)}
+    recorder=None
+    if args.record_observations:
+        from .inference_recording import InferenceRecorder
+        recorder=InferenceRecorder(args.output/'observations',max_bytes=int(args.record_max_gb*1024**3))
+        manifest.update(record_observations=True,record_max_gb=args.record_max_gb,normalization=norm)
+        (args.output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     def receive(key,msg):
         with lock:runtime.ingest(key,msg,node.get_clock().now().nanoseconds)
     for topic,key in runtime.topics.items():
@@ -248,7 +272,7 @@ def main():
                     z=(window[0]['state'][-1,7:]-np.asarray(norm['state_mean'])[0,7:])/np.asarray(norm['state_std'])[0,7:]
                     status['eef_standardized_by_training_stats']=z.tolist()
                     status['eef_max_abs_z']=float(np.max(np.abs(z)))
-                    if not saved:
+                    if not saved and recorder is None:
                         np.savez_compressed(args.output/'first_window.npz',**window[0],history_mask=window[1],action=action)
                         saved=True
                 finished=node.get_clock().now().nanoseconds
@@ -259,7 +283,7 @@ def main():
                     args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10,candidate_expiry=args.candidate_expiry=='on')
                 status['candidate_expiry']=args.candidate_expiry
                 status['candidate_published']=False
-                if candidate_pub and status['candidate_gate']=='ok':
+                if candidate_pub and not stop.is_set() and status['candidate_gate']=='ok':
                     if node.count_publishers(args.candidate_topic)>1:raise RuntimeError('Another policy producer owns '+args.candidate_topic)
                     msg=TwistStamped();msg.header.frame_id=POLICY_FRAME
                     msg.header.stamp.sec,msg.header.stamp.nanosec=divmod(reference,10**9)
@@ -268,8 +292,12 @@ def main():
                     msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z=a[3:]
                     status['candidate_gate']=candidate_reason(status,node.get_clock().now().nanoseconds,
                         args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10,candidate_expiry=args.candidate_expiry=='on')
-                    if status['candidate_gate']=='ok':
+                    if not stop.is_set() and status['candidate_gate']=='ok':
                         candidate_pub.publish(msg);status['candidate_published']=True
+                if recorder is not None and window is not None:
+                    status['observation_record']=recorder.submit(window,action,status)
+                    if not status['observation_record'].endswith('.npz'):
+                        print('RECORDING WARNING: '+status['observation_record'],flush=True)
                 rows.append(status);log.write(json.dumps(status,allow_nan=False)+'\n');log.flush()
                 (args.output/'status.tmp').write_text(json.dumps(status,indent=2)+'\n')
                 (args.output/'status.tmp').replace(args.output/'status.json')
@@ -290,6 +318,11 @@ def main():
         stop.set();thread.join(timeout=2)
         executor.shutdown();node.destroy_node()
         if rclpy.ok():rclpy.shutdown()
+        recording=None
+        if recorder is not None:
+            print('推理已停止，正在保存已入队观测，请等待退出……',flush=True)
+            recording=recorder.close()
+            print('观测保存结果：'+json.dumps(recording),flush=True)
         inferred=[r for r in rows if r['inferred']]
         def stats(values):
             return {k:float(v) for k,v in zip(('min','p50','p95','max'),np.percentile(values,[0,50,95,100]))} if values else None
@@ -305,9 +338,11 @@ def main():
             eef_max_abs_z=stats([r['eef_max_abs_z'] for r in inferred]),
             execution_allowed=False,action_publishers=[],worker_errors=errors,header_mode=args.header_mode)
         report.update(candidate_published=sum(r.get('candidate_published',False) for r in rows),
+                      observation_recording=recording,
                       candidate_gates=dict(Counter(r.get('candidate_gate','unknown') for r in rows)),eef_reference=args.eef_reference)
         (args.output/'report.json').write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps(report,indent=2),flush=True)
+        for sig,handler in previous_signals.items():signal.signal(sig,handler)
     return 0 if inferred and not errors else 2
 
 

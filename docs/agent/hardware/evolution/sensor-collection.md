@@ -1,5 +1,9 @@
 # 独立传感器采集与回放
 
+## 2026-10-05 当前实现
+
+真实grid触觉已改为逐字段独立读取、校验和发布，六维力优先单独调度；腕部默认增加有限JPEG FIFO、可靠record输出和最新已解码实时输出。实现文件、线程/进程关系、元数据、离线转换及剩余阻塞边界统一见[采集解耦纪传体](sensor-decoupling.md)，操作见[教程](../../../../tutorials/sensor_decoupling.md)。下方2026-10-03各节保留当时阶段事实，其中“仅最新JPEG”“未整合录包”等限制已有上述后续更新。
+
 腕部长停顿的排查与解决过程集中维护于[视频流性能纪传体](wrist-stream-performance.md)，本页侧重采集能力和接口。
 
 实现：`ros2/omi_sensors/omi_sensors/`。独立 ament_python 包，Python >=3.10；
@@ -8,8 +12,8 @@
 ## 职责
 
 - `config.py`：严格 schema、设备配置、RealSense launch 参数、传感器 topic 白名单。
-- `tactile.py`：延迟导入厂商 SDK；Flux getter 数值读取、同 fid 检查、数组复制和有限性校验。
-- `node.py`：每指独立进程、同帧统一 header、状态/重试、SDK 原图与 infer 分离、模拟源。
+- `tactile.py`：厂商SDK连接与旧匹配帧路径；真实grid独立读取现由 `independent_tactile.py` 实现。
+- `node.py`：每指独立进程与路径分派；旧路径保留同帧header，真实grid使用字段自身读取结束时间及schema4元数据。
 - `cli.py`：plan/doctor/live/fake/record/replay；子进程组退出管理、录包版本/数量报告、私有解压。
 - `reconstruction.py`：从原看板迁入的固定基准 CPU 图像重建；`vendor_bundle` 与 `reconstruction_check` 提供归档/回归工具。
   见[迁移方案](tactile-reconstruction-migration.md)。

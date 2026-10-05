@@ -34,6 +34,9 @@ def test_default_does_not_load_sdk_or_connect(node):
     assert not node.connect_on_start
     assert not node.motion_authorized
     assert node.robot is None
+    services = {service.srv_name for service in node.services}
+    assert '/delta_ctrl_node/home_poses' in services
+    assert '/delta_ctrl_node/set_keyboard_control' not in services
     assert 'fx_robot' not in sys.modules
     assert 'fx_kine' not in sys.modules
     with pytest.raises(RuntimeError, match='authorization'):
@@ -211,15 +214,6 @@ def test_failed_feedback_hold_keeps_all_actions_blocked(node):
     assert not node.have_goal
 
 
-def test_keyboard_manual_is_not_affected_by_guard(node):
-    import time
-    sent, calls = install_fake_guard_robot(node)
-    node.tactile_guard.update('a', [3., 0., 0., 0., 0., 0.], time.monotonic())
-    node.keys = SimpleNamespace(read=lambda: ({'w'}, None), close=lambda: None)
-    node.keyboard_ctrl()
-    assert calls and sent
-
-
 def test_guard_default_is_disabled_and_enabled_tcp_frame_is_rejected():
     rclpy.init(args=['--ros-args', '-p', 'eef_publish_rate:=0.0',
                      '-p', 'enable_publish_joint_state:=false'])
@@ -292,16 +286,6 @@ def test_new_trip_does_not_clear_running_manual_queue(node):
     assert not node.traj_queue and node.have_goal and not node.pending_guard_hold
     node.ctrl_loop()
     assert sent and node.have_goal and not node.traj_queue
-
-
-def test_entering_keyboard_overrides_pending_policy_hold(node):
-    sent, calls = install_fake_guard_robot(node)
-    node.pending_guard_hold = True
-    node.keys = SimpleNamespace(ok=True, read=lambda: ({'w'}, None), close=lambda: None)
-    assert node._enter_keyboard()
-    assert not node.pending_guard_hold and node.queue_source == 'manual'
-    node.ctrl_loop()
-    assert calls and len(sent) == 1
 
 
 @pytest.mark.parametrize('failure', ['ik', 'envelope', 'sdk'])

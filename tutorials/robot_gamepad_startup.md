@@ -2,11 +2,11 @@
 
 适用于本次 OpticalModule 控制接收端迁移后的现场验证。默认配置：ROS Jazzy、A 左臂、控制器 IP `192.168.14.190`，机器人接收端与手柄程序运行在同一台电脑。IP 不同时替换命令中的地址。
 
-实际操作两端统一使用 `ROS_DOMAIN_ID=13` 和 `/omi/controller_test/decision`；第 1 节的离线 preview 脚本使用隔离 domain 114。本教程使用直接手柄入口，不启动策略模型。当前现场手柄已确认 **X 键码为 307、RB 键码为 311**，下方所有手柄命令均显式指定 `--home-button-code 307` 和 `--rate 10`。
+实际操作两端统一使用 `ROS_DOMAIN_ID=13` 和 `/omi/controller_test/decision`；第 1 节的离线 preview 脚本使用隔离 domain 114。本教程使用直接手柄入口，不启动策略模型。RB 键码为 311；回位键以预览中显示的实际键码为准，下方示例使用 314。
 
 本教程的自定义话题是手动入口，接收端使用 `manual_delta_topic` 配置。
-如改用默认 `/omi/action/manual_decision`，同时修改接收端的 `manual_delta_topic` 和手柄的
-`--topic`，确保两端一致。`delta_topic` 留给模型；触觉保护默认关闭，显式开启也不拦截手柄。
+手柄执行模式默认从接收端读取该参数并自动匹配；显式传入 `--topic` 时会验证两端一致。
+`delta_topic` 留给模型；触觉保护默认关闭，显式开启也不拦截手柄。
 
 **连接启动会清错误、初始化计算侧 TCP，并切入模式 3（关节阻抗），不是只读连接。** 按现场规程完成机器人上电，确保工作空间无人、急停可用。迁移目前完成离线验证，实际安装方向、TCP 和真机执行仍需现场验收。
 
@@ -122,18 +122,18 @@ ls -l /dev/input/js*
 .venv/bin/python scripts/gamepad_test.py \
   --device /dev/input/js0 \
   --rate 10 \
-  --home-button-code 307 \
-  --scale 0.5 \
+  --home-button-code 314 \
+  --scale 1 \
   --output-convention sdk-x-forward-z-left
 ```
 
 设备编号不同时修改 `--device`。本入口使用项目 `.venv/bin/python`：本机该环境已有 gymnasium 1.3.0，已验证 gymnasium、rclpy、std_msgs 导入及脚本 `--help`。使用 `/usr/bin/python3` 会因缺少 gymnasium 报错。
 
-预览不会发送动作。检查状态：
+预览不会发送 ROS 话题或动作，即使输出为 `human`。检查状态：
 
 - 未按 RB：`idle`，输出六个零。
 - 按住 RB 并操作：`human`，显示转换前后数值。
-- 单独按 X：`X=True`、`按下按钮=[307]`；RB+X：`按下按钮=[307, 311]`。普通预览无 ROS 节点，RB+X 会提示 FK 服务不可用；此模式用于核对按键，不计算或发布返回轨迹。
+- 单独按 X：核对 `X=True` 和实际 `按下按钮` 键码；RB+X：同时显示该键码与 311。若 `X=False`，将实测键码传给 `--home-button-code`。普通预览无 ROS 节点，RB+X 会提示 FK 服务不可用；此模式用于核对按键，不计算或发布返回轨迹。
 - `disconnected`：按同行错误检查设备、权限或手柄兼容性。
 
 确认后按 `Ctrl+C` 退出预览。
@@ -154,14 +154,15 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 .venv/bin/python scripts/gamepad_test.py \
   --execute \
   --device /dev/input/js0 \
-  --topic /omi/controller_test/decision \
   --rate 10 \
-  --home-button-code 307 \
-  --scale 0.5 \
+  --home-button-code 314 \
+  --scale 1 \
   --output-convention sdk-x-forward-z-left
 ```
 
-**按回车开始发送，按住 RB（右肩键，不是 RT 扳机）并操作才产生非零增量。** 默认 10 Hz，当前请求速度上限为平移 5 mm/s、旋转 5°/s；这些是指令值，不是实际反馈速度。
+启动时先查询接收端的连接授权参数和实际手动订阅话题；查不到、接收端未连接或订阅不匹配时会报错退出。若要指定话题，可加 `--topic /omi/controller_test/decision`，与接收端配置不同会报错。
+
+**按回车开始发送，按住 RB（右肩键，不是 RT 扳机）并操作才产生非零增量。** 默认 10 Hz，当前请求速度上限为平移 10 mm/s、旋转 10°/s；这些是指令值，不是实际反馈速度。
 
 | 按住 RB 同时操作 | 转换前动作（约定 +X 前、+Y 左、+Z 上） |
 | --- | --- |
@@ -195,7 +196,7 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 | 输出 | 含义与处理 |
 | --- | --- |
-| `X=True`、`按下按钮=[307, 311]` | 当前手柄已正确识别 RB+X |
+| `X=True`、`按下按钮` 同时包含回位键码与 311 | 当前手柄已正确识别 RB+X |
 | `home_waiting` | 正在读取当前关节并计算 FK |
 | `human_home` | 正在发送返回增量 |
 | `home_unavailable`、FK 服务不可用 | 按第 1–3 节构建、重启接收端并检查服务；此时发送六个零，不会返回 |
@@ -205,7 +206,7 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 七关节冗余臂通过末端增量返回目标 TCP 位姿，不保证七个关节角逐一等于给定值。详细行为见[RB+X 返回说明](gamepad_control.md#rb--x-返回初始末端位姿)。
 
-程序默认 X 键码仍为 308；本教程根据本次现场输出显式指定 307。换手柄时重新在预览模式检查键码。Shell 多行命令每行末尾仅保留一个 `\`，不要输入 `\ \`。
+程序有默认回位键码；本教程的 314 是待预览核对的示例。换手柄时重新在预览模式检查键码。Shell 多行命令每行末尾仅保留一个 `\`，不要输入 `\ \`。
 
 ### 同时启用夹爪：A 关闭、B 张开
 
@@ -237,8 +238,8 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
   --device /dev/input/js0 \
   --topic /omi/controller_test/decision \
   --rate 10 \
-  --home-button-code 307 \
-  --scale 0.5 \
+  --home-button-code 314 \
+  --scale 1 \
   --output-convention sdk-x-forward-z-left \
   --gripper-server 192.168.14.11:55551 \
   --gripper-sdk-root "$PWD/local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py" \

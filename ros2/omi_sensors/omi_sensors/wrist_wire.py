@@ -7,6 +7,7 @@ import math
 import struct
 import time
 import uuid
+from collections import Counter
 
 HEADER = struct.Struct('!4sB16sQdIHHHBB')
 
@@ -38,10 +39,19 @@ class Reassembler:
         self.session = uuid.UUID(session).bytes
         self.frames = {}
         self.last_id = -1
+        self.counters = Counter()
+
+    def expire(self, now=None):
+        now = time.monotonic() if now is None else now
+        stale = [k for k, v in self.frames.items() if now-v[0] >= .2]
+        for k in stale:
+            del self.frames[k]
+        self.counters['expired_incomplete_frames'] += len(stale)
 
     def push(self, packet, now=None):
         now = time.monotonic() if now is None else now
-        self.frames = {k: v for k, v in self.frames.items() if now - v[0] < .2}
+        self.expire(now)
+        self.counters['packets'] += 1
         if len(packet) < HEADER.size:
             raise ValueError('short FCP1 packet')
         magic, version, session, fid, stamp, size, idx, count, length, codec, flags = HEADER.unpack_from(packet)
@@ -55,6 +65,7 @@ class Reassembler:
         if fid not in self.frames:
             if len(self.frames) >= 4:
                 self.frames.pop(min(self.frames, key=lambda k: self.frames[k][0]))
+                self.counters['incomplete_capacity_drops'] += 1
             self.frames[fid] = (now, size, count, stamp, {})
         state = self.frames[fid]
         if state[1:4] != (size, count, stamp):
@@ -70,6 +81,10 @@ class Reassembler:
         self.frames.pop(fid)
         if len(data) != size:
             raise ValueError('incorrect JPEG size')
+        if self.last_id >= 0:
+            self.counters['completed_sequence_gaps'] += max(0, fid-self.last_id-1)
+        self.counters['completed_frames'] += 1
+        self.counters['superseded_incomplete_frames'] += sum(k < fid for k in self.frames)
         self.last_id = fid
         self.frames = {k: v for k, v in self.frames.items() if k > fid}
         return fid, stamp, data

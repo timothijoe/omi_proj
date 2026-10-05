@@ -21,19 +21,39 @@ class DatasetView:
             raise ValueError('dataset conversion is incomplete')
         paths = ([self.directory / 'demo.json'] if (self.directory / 'demo.json').exists()
                  else sorted(self.directory.glob('episodes/*/demo.json')))
+        if not paths:
+            paths = ([self.directory / 'dataset.json'] if (self.directory / 'dataset.json').exists()
+                     else sorted(self.directory.glob('episodes/*/dataset.json')))
         self.episodes = [(p.parent, json.loads(p.read_text())) for p in paths]
-        self.episodes = [(p,m) for p,m in self.episodes if m['keep'] and m['valid'] and m['count']]
+        self.episodes = [(p,m) for p,m in self.episodes if m.get('keep', True) and m.get('valid', True) and m['count']]
         if not self.episodes:
             raise ValueError('no retained episodes found')
 
     def catalog(self):
         return dict(dataset=str(self.directory), episodes=[dict(id=m['episode'], count=m['count'],
-                    synthetic=m['synthetic'], diagnostic=m.get('training_allowed') is False, raw_wire=m.get('display_action')=='raw_wire', outcome=m['operator_outcome'], bag=m.get('raw_bag')) for _,m in self.episodes])
+                    synthetic=m.get('synthetic', False), diagnostic=m.get('training_allowed') is False,
+                    has_next=m['version'] != 'omi-passive-command-bc-wrench-v1',
+                    raw_wire=m.get('display_action')=='raw_wire', outcome=m.get('operator_outcome', 'BC; outcome unlabelled'),
+                    bag=m.get('raw_bag', m.get('source_bag'))) for _,m in self.episodes])
 
     def frame(self, episode, step, slot=9, after=False):
         if not 0 <= episode < len(self.episodes) or not 0 <= slot < 10:
             raise ValueError('episode/history index out of range')
         directory, manifest = self.episodes[episode]
+        if manifest['version'] == 'omi-passive-command-bc-wrench-v1':
+            if after or not 0 <= step < manifest['count']:
+                raise ValueError('BC sample has no next observation, or step out of range')
+            from .passive_bc import PassiveDataset
+            path = directory/f'{step:06d}.npz'
+            obs, action, metadata = PassiveDataset.read(path)
+            with np.load(path, allow_pickle=False) as archive:
+                for key in ('wrench_receive_ns', 'wrench_header_ns'):
+                    obs[key] = archive[key].copy()
+            metadata.update(action_source='recorded_command_bc', command_status='RECORDED; no execution receipt',
+                current_observation_audit=metadata['observation_audit'],
+                observation_wrench_frame_ids=metadata['wrench_frame_ids'],
+                command_audit=dict(command_receive_ns=metadata['command_receive_ns'], wire_action=metadata['wire_action']))
+            return render(obs, action, metadata, manifest, step, slot, False)
         from .zero_preview import VERSION as ZERO_VERSION, load_step
         from .passive_preview import VERSION as WIRE_VERSION, load_step as load_wire
         loader = load_wire if manifest["version"] == WIRE_VERSION else (load_step if manifest["version"] == ZERO_VERSION else read_demo_step)
@@ -44,7 +64,11 @@ class DatasetView:
 
 def render(obs, action, meta, manifest, step, slot, after):
     has_wrench = 'wrench' in obs
-    canvas = Image.new('RGB', (1536, 1280 if has_wrench else 1060), '#12161c')
+    timing_audit = (meta.get('command_audit', {}).get('next_observation_status', {}) if after
+                    else meta.get('current_observation_audit', {}))
+    has_alignment = bool(timing_audit.get('field_alignment_history'))
+    height = (1520 if has_wrench else 1350) if has_alignment else (1280 if has_wrench else 1060)
+    canvas = Image.new('RGB', (1536, height), '#12161c')
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.truetype('DejaVuSans.ttf', 16)
     small = ImageFont.truetype('DejaVuSans.ttf', 13)
@@ -53,7 +77,9 @@ def render(obs, action, meta, manifest, step, slot, after):
     diagnostic = manifest.get('training_allowed') is False
     raw_wire = manifest.get('display_action') == 'raw_wire'
     sdk_wire = raw_wire and manifest.get('wire_units') == 'mm,SDK_ABC_degrees'
-    label = 'REAL SENSORS / ZERO PLACEHOLDER / NOT FOR TRAINING' if diagnostic else ('SYNTHETIC / NOT HUMAN' if manifest['synthetic'] else 'HUMAN DEMO')
+    bc = manifest['version'] == 'omi-passive-command-bc-wrench-v1'
+    label = 'REAL SENSORS / ZERO PLACEHOLDER / NOT FOR TRAINING' if diagnostic else ('SYNTHETIC / NOT HUMAN' if manifest.get('synthetic', False) else 'HUMAN DEMO')
+    if bc: label = 'RECORDED COMMAND / BC ONLY / NOT AN RL TRANSITION'
     if raw_wire:label='REAL OBSERVATIONS / RECORDED WIRE / REVIEW ONLY'
     text(14,10,f'{label} | {manifest["episode"]} | step {step}/{manifest["count"]-1} | READ ONLY')
     text(14,35,f'{"NEXT observation (result)" if after else "Observation BEFORE action"} | history slot {slot}/9 ({(slot-9)*100} ms)')
@@ -70,7 +96,7 @@ def render(obs, action, meta, manifest, step, slot, after):
     scale=np.asarray(manifest['contract']['physical_action_scale'])
     units=action if raw_wire else action*scale*np.array([1000]*3+[180/np.pi]*3)
     bars=action/np.asarray(manifest['wire_display_scale']) if raw_wire else action
-    text(14,442,'Recorded command: actual wire values, receipt unavailable' if raw_wire else ('Zero placeholder: NO COMMAND SENT' if diagnostic else 'Adopted human action label'))
+    text(14,442,'Recorded command: receipt unavailable' if raw_wire or bc else ('Zero placeholder: NO COMMAND SENT' if diagnostic else 'Adopted human action label'))
     text(14,467,('SDK BASE delta: XYZ mm / ABC degrees; source confirmed' if sdk_wire else 'Wire components 1..6; no inverse frame conversion assumed') if raw_wire else 'Policy-frame delta: translation mm / rotation vector deg')
     names=('dx','dy','dz','dA','dB','dC') if sdk_wire else ('wire1','wire2','wire3','wire4','wire5','wire6') if raw_wire else ('dx','dy','dz','rx','ry','rz')
     for i,name in enumerate(names):
@@ -83,15 +109,16 @@ def render(obs, action, meta, manifest, step, slot, after):
         end=cx+int(float(bars[i])*100)
         draw.rectangle((min(cx,end),y+3,max(cx,end)+1,y+17),fill='#59ceb5')
         text(602,y,f'{bars[i]:+.4f}')
-    text(14,704,'Bars: relative to each component maximum in this bag; NOT policy labels' if raw_wire else ('Bars: normalized [-1,1]; zero placeholders only' if diagnostic else 'Bars: normalized [-1,1]; accepted command, not measured motion'),tiny=True)
+    text(14,704,'Bars: relative to each component maximum in this bag; NOT policy labels' if raw_wire else ('Bars: normalized [-1,1]; recorded BC label' if bc else 'Bars: normalized [-1,1]; not measured motion'),tiny=True)
     audit=meta.get('command_audit',{});wire=audit.get('wire_action')
     text(14,729,('Recorded wire: ' if raw_wire else 'SDK wire mm/ABC: ')+(', '.join(f'{v:+.4f}' for v in wire) if wire else 'not sent / none'),tiny=True)
     text(14,754,'Status: '+meta.get('command_status','unknown'),tiny=True)
     text(14,794,'Observation / action alignment')
-    current=meta['observation_time_ns'];following=meta['next_observation_time_ns']
-    sent=audit.get('command_receive_ns') if raw_wire else audit.get('command_trace',{}).get('command_send_ns')
-    rows=[f'obs t:      {current} ns',f'command {"RX" if raw_wire else "TX"}: {sent if sent else "not sent / none"}',
-          f'next obs t: {following} ns',f'next - obs: {(following-current)/1e6:.4f} ms',
+    current=meta['observation_time_ns'];following=meta.get('next_observation_time_ns', current)
+    sent=audit.get('command_receive_ns') if raw_wire or bc else audit.get('command_trace',{}).get('command_send_ns')
+    rows=[f'obs t:      {current} ns',f'command {"RX" if raw_wire or bc else "TX"}: {sent if sent else "not sent / none"}',
+          'next obs: absent (BC)' if bc else f'next obs t: {following} ns',
+          'No post-command EEF requirement (BC)' if bc else f'next - obs: {(following-current)/1e6:.4f} ms',
           f'command - obs: {(sent-current)/1e6:.4f} ms' if sent else 'command timing: not sent / none',
           'EEF xyz/xyzw: ['+', '.join(f'{float(v):.4f}' for v in obs['state'][slot,7:])+']',
           'command ID: '+str(audit.get('command_id','none')),
@@ -100,7 +127,7 @@ def render(obs, action, meta, manifest, step, slot, after):
     text(14,1023,'STRICT sensor headers; command pairing uses bag receive time; REVIEW ONLY.' if raw_wire else ('DIAGNOSTIC: receive-time alignment; NOT FOR TRAINING.' if diagnostic else 'Exact dataset tensors; no commands are published.'),tiny=True)
     if has_wrench:
         text(14,1050,'Display: four decimal places; stored arrays retain full precision.',tiny=True)
-        text(14,1075,'History slot 9 = latest. NEXT shows the result of the same action.',tiny=True)
+        text(14,1075,'History slot 9 = latest. NEXT is a later observation, not execution proof.',tiny=True)
         text(14,1100,'Tactile panels and force/torque follow the selected history slot.',tiny=True)
     tactile=obs['tactile'][slot]
     tactile_top_offset=430 if has_wrench else 0
@@ -149,6 +176,26 @@ def render(obs, action, meta, manifest, step, slot, after):
                                        left+k*width/9,top+height/2-float(data[k,axis])*height/2/span),fill=colors[axis],width=2)
                 draw.line((left+slot*width/9,top,left+slot*width/9,top+height),fill='#ffffff')
         text(782,459,'X red / Y green / Z blue; cursor = slot. Missing values show --.',tiny=True)
+    timing = (audit.get('next_observation_status', {}) if after else meta.get('current_observation_audit', {}))
+    history = timing.get('field_alignment_history', [])
+    fields = history[slot] if len(history) == 10 else {}
+    top = (1210 if has_wrench else 1060) if has_alignment else (1130 if has_wrench else 1041)
+    if has_alignment:
+        text(14,top,'Per-field timing | host timestamps do NOT verify synchronized exposure')
+    if not fields:
+        text(14,top,'Per-field timing unavailable; reconvert the bag to populate the audit.',tiny=True)
+    else:
+        tactile_headers = [v['header_ns'] for k,v in fields.items() if k.startswith(('a_','b_')) and v.get('header_ns')]
+        if tactile_headers:
+            text(14,top+27,f'Tactile host-header spread: {(max(tactile_headers)-min(tactile_headers))/1e6:.4f} ms',tiny=True)
+        for i,(key,row) in enumerate(sorted(fields.items())):
+            x=14+(i//6)*752; y=top+55+(i%6)*30
+            header_age=row.get('header_age_ms')
+            age='unknown' if header_age is None else f'{header_age:.4f}ms'
+            rx_age = row.get('receive_age_ms')
+            rx_text = 'missing' if rx_age is None else f'{rx_age:.4f}ms'
+            text(x,y,f'{key}: RX {rx_text} | header {age} | SDK id {row.get("sdk_frame_id")}',
+                 color='#ead09b' if row.get('valid') and row.get('header_within_age_limit', True) else '#ff927d',tiny=True)
     output=BytesIO();canvas.save(output,format='PNG')
     return output.getvalue()
 
@@ -165,6 +212,7 @@ for(let i=0;i<10;i++)$('slot').add(new Option(`${i} (${(i-9)*100} ms)`,i));$('sl
 function stop(){playing=false;clearTimeout(timer);$('play').textContent='播放'}
 async function show(){if(!data)return;if(busy){pending=true;return}busy=true;const e=+$('ep').value,s=+$('seek').value,ep=data.episodes[e];
 $('count').textContent=`${s+1} / ${ep.count}`;$('status').textContent=`${data.dataset}\nBag: ${ep.bag||'未录包 / synthetic'} | ${ep.outcome} | ${ep.raw_wire?'真实观测 / 实际发送值 / 待审核':ep.diagnostic?'真实观测 / 零标签诊断 / 禁止训练':(ep.synthetic?'合成测试数据':'人工示范')} `;
+$('after').disabled=ep.has_next===false;if(ep.has_next===false)$('after').checked=false;
 try{const r=await fetch(`/frame?episode=${e}&step=${s}&slot=${$('slot').value}&after=${+$('after').checked}`);if(!r.ok)throw Error(await r.text());
 const old=$('frame').src;$('frame').src=URL.createObjectURL(await r.blob());if(old.startsWith('blob:'))URL.revokeObjectURL(old);
 }catch(err){stop();$('status').textContent=String(err)}finally{busy=false;if(pending){pending=false;show()}else if(playing)timer=setTimeout(advance,+$('speed').value)}}
