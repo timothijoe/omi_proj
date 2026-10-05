@@ -1,5 +1,7 @@
 # 操作教程
 
+- [机器人控制接收端：迁移、构建和离线预览](robot_controller.md)
+
 - [无关节模型实时 ROS 影子推理](stack_shadow.md)
 
 - [实时相机、触觉与末端位姿RViz看板](grid_live_review.md)

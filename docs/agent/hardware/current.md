@@ -1,5 +1,7 @@
 # Hardware 当前摘要
 
+2026-10-05：[OpticalModule控制端已迁入](evolution/robot-controller.md)，维护源码在`ros2/arm_delta_cmd`，原包/SDK/资源在`local/vendor/optical_module_pu`。默认断开，独立Jazzy构建及5项离线测试通过。源码确认ABC均分20步与命令目标锚点，相关旋转/反馈语义仍待统一；未连接真机。
+
 手柄输出 wrapper 已支持显式 `--output-convention sdk-x-forward-z-left`：按假设安装方向 `(x,y,z)→(x,-z,y)` 并将旋转向量转 SDK ABC；默认 legacy 不转换。终端现同时显示原始值、转换状态和最终值，67项相关测试通过。接收端 FRAME_BASE/UserFrame 与实际安装方向仍待核对，用户曾报告旧映射左推导致上下移动，尚未完成换轴后的现场验收。详见[手柄教程](../../../tutorials/gamepad_control.md)。
 
 新增[手柄六维控制与 RB 接管首版](chronicles/2026-10-04-gamepad-intervention.md)：右摇杆 XY、十字键上下 Z、左摇杆 Rx/Ry、十字键左右 Rz；按住 RB 接管，松开等待新策略候选，断连零增量。相关测试 37 通过、1 跳过，本机 Xbox 识别及 domain13 无动作发布预览通过。**尚未真机逐轴验证，shadow 策略尚未接入，当前松开 RB 后保持零增量**。见[操作教程](../../../tutorials/gamepad_control.md)。

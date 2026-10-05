@@ -1,5 +1,7 @@
 # CLI 入口
 
+控制端本地构建/离线预览：`bash scripts/robot_controller.sh {build|preview}`；原包导入/校验：`python3 scripts/import_optical_module.py {import ZIP|verify}`。见[教程](../../../tutorials/robot_controller.md)。
+
 `eef_bc.sh export --wrist-camera {off,required,optional}`启用EEF v2相机配置，省略保持v1。
 train/shadow自动读取已保存的输入源契约，不接受静默切换相机；[用法](../../../tutorials/eef_action_space.md#6-开启或关闭腕部相机v2)。
 

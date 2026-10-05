@@ -1,5 +1,7 @@
 # 外部系统与参考边界
 
+**OpticalModule控制包：**用户提供的接收端及SDK已归档到`local/vendor/optical_module_pu`，维护的ROS接收端在`ros2/arm_delta_cmd`。与下文旧`TianjiSdkArm`是不同路径；接口确认与验证边界见[控制端审计](../hardware/evolution/robot-controller.md)。
+
 **Daimon SDK：**重建/真实触觉采集的外部运行依赖，已本地归档于 `local/vendor/daimon_tactile`，
 不进Git。Python/架构/固件匹配及依赖安装必须另验；新数值场看板仅订阅消息，不依赖SDK。
 

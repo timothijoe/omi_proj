@@ -1,5 +1,7 @@
 # OMI 文档总目录
 
+控制接收端已迁入：[迁移与构建教程](../tutorials/robot_controller.md) → [架构及执行语义](agent/hardware/evolution/robot-controller.md)。
+
 实时检查现场topic：[实时小矩阵RViz看板](../tutorials/grid_live_review.md)，独立于录包回放。
 
 

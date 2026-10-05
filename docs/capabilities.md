@@ -1,5 +1,7 @@
 # 能力总表
 
+新增[控制接收端迁移](agent/hardware/evolution/robot-controller.md)：原包与363文件哈希校验、本机Jazzy构建、5项断开设备/假IK测试通过。默认不连接，不代表真机闭环验收。
+
 新增[双相机输入选择](agent/training/evolution/eef-action-space.md#v2可选腕部相机与输入源标记)：
 腕部与外部各3×128×128，显式camera_mask及off/required/optional配置；
 双相机、关闭、整路腕部缺失均实际两轮140条影子候选通过；最新完整测试155 passed、6 skipped。

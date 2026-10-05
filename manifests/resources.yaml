@@ -13,6 +13,19 @@ historical_data_archive:
   retained_local_directories: [local/eef_bc]
   restore: For tactile and bc pass archive paths explicitly or copy needed experiments back; no symlinks remain. Continue using local/eef_bc, whose archive is incomplete. New outputs belong in separate directories. Latest native-field bags do not require historical tactile baselines or BC artifacts.
 resources:
+  - id: optical-module-pu-controller-source
+    path: local/vendor/optical_module_pu
+    tracked: false
+    source: /home/zhoutong/Downloads/oct04/robot_control/OpticalModule_PU.zip
+    source_sha256: f266412ad9f466966c6d75b536ffaa4eebf0b8a97dc4c85c162d275e34872112
+    purpose: Complete original archive, extracted robot/gripper/camera/tactile SDKs, ROS sources, models and per-file provenance; maintained receiver in ros2/arm_delta_cmd
+    restore: Copy this whole directory and run python3 scripts/import_optical_module.py verify, or import the original ZIP into a new destination. Rebuild ROS packages with scripts/robot_controller.sh build; never reuse foreign build/install or launch the vendor defaults during migration.
+  - id: robot-controller-local-build
+    path: local/ros2/robot_controller_ws
+    tracked: false
+    source: ros2/arm_delta_cmd and ros2/live_feedback_interfaces/marvin_msgs
+    purpose: Jazzy receiver and matching live messages, isolated from historical bag marvin_msgs
+    restore: Run bash scripts/robot_controller.sh build in a clean ROS terminal; see tutorials/robot_controller.md
   - id: live-grid-viewer-sessions
     path: local/grid_live_review
     tracked: false

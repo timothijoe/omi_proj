@@ -1,5 +1,7 @@
 # Hardware 编年索引
 
+- [2026-10-05 控制接收端迁移](2026-10-05-robot-controller-migration.md)
+
 - [2026-10-04：手柄六维控制与 RB 接管首版](2026-10-04-gamepad-intervention.md)
 
 - [2026-10-04：实时 RViz 保留版本与 EEF 对齐遗留](2026-10-04-live-rviz-checkpoint.md)

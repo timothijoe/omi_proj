@@ -1,5 +1,7 @@
 # Training 当前摘要
 
+2026-10-05新增接收端源码证据：[控制端迁移与审计](../hardware/evolution/robot-controller.md)。原端将ABC各分量除20再重复IK，且从上次命令目标继续，与反馈锚点代理标签不同；此前单次SDK数学审计不能覆盖整条执行链。当前限幅与模型保持不变。
+
 2026-10-05待解决：用户指出当前动作限幅仍有不足，orientation与rotation尚未完全统一，需进一步核对其具体含义、表示转换及限幅衔接。仅记录，未修改控制代码；见[动作缩放策略](evolution/policy-action-scaling.md)。
 
 动作缩放讨论已归档：[分别限幅与统一缩放](evolution/policy-action-scaling.md)。为保留policy平移/旋转比例，建议共用缩放系数；目前仅讨论和记录，代码仍为分别限幅。
