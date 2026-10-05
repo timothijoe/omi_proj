@@ -1,5 +1,11 @@
 # 操作教程
 
+- [六维真机HIL环境、无夹爪SAC与Actor/Learner](hil_actor_learner.md)
+
+- [USB 插入触觉保护：峰值锁定和负 X 撤退](tactile_guard.md)
+- [只读触觉预警：读取原始示数，超限打印日志](tactile_warning.md)
+- [双指六维力/力矩：实时查看和完整历史记录](wrench_live.md)
+
 - [机器人控制接收端：迁移、构建和离线预览](robot_controller.md)
 
 - [无关节模型实时 ROS 影子推理](stack_shadow.md)
@@ -74,5 +80,7 @@
 - [本地 marvin_msgs 消息包：加载、迁移与重建](marvin_messages.md)
 
 - [手柄六维控制与 RB 接管](gamepad_control.md)：摇杆/十字键映射、预览和真机发布、策略候选接口。
+
+- [机器人接收端与手柄启动步骤](robot_gamepad_startup.md)：OpticalModule A 臂连接、反馈检查、手柄预览与发布，含 Python 环境修正。
 
 - [其他电脑复现手柄控制（Agent手册）](gamepad_reproduce_on_other_pc.md)：固定提交、最小文件包、环境、跨机ROS和验收。

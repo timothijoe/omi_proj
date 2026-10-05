@@ -16,15 +16,13 @@
      - data=false: 切回话题控制
      键盘控制键位 (沿 TCP 自身轴): q/w=±X  a/s=±Y  z/e=±Z
      r/f=±Rx  t/g=±Ry  y/h=±Rz
-  4. 每收到一条增量: 若上一条增量的队列还没走完, 直接丢弃旧队列剩余部分,
-     以最新指令为起点重新解算本条增量 (增量控制始终采用最新数据);
-     然后把这条增量按时间均分为
-     N=20 个子增量, 逐个子增量调用 TcpForceKine.solve_tcp_delta_ik()
-     (移植自 FX_Robot_Kine_SolveTcpDeltaIK) 做精确的 TCP/BASE 系增量 IK,
-     得到 N 个目标关节角组成队列
-  5. 200Hz 定时器: 每周期从队列取出下一个目标关节角, 通过 SDK
-     set_joint_cmd_pose (关节跟踪指令, 位置跟随与关节阻抗模式均有效) 下发。
-     N=20 步恰好用 20 个 200Hz 周期 (0.1s) 走完, 与 10Hz 增量节奏对齐
+  4. 每收到一条增量: 丢弃上一条尚未执行的子增量, 将本条增量均分为
+     N=20 个子增量入队, 回调内不计算 IK。
+  5. 200Hz 定时器: 每周期取一个子增量, 从最近已下发指令出发调用
+     TcpForceKine.solve_tcp_delta_ik(), 限幅并检查包络后立即通过 SDK
+     set_joint_cmd_pose 下发, 下一周期继续 IK 和下发, 直到完成 N 步。
+     任一步 IK 失败或超出包络时停止剩余步, 已下发的点位不回滚。
+     N=20 步名义上用 20 个 200Hz 周期 (0.1s) 走完。
      (关节阻抗模式下指令是阻抗控制的参考位置, 手推仍可柔顺偏离)
 
 依赖: Arm_control SDK，由 ARM_SDK_DIR 指定；仅授权连接时导入。
@@ -32,6 +30,7 @@
 """
 
 import math
+import json
 import os
 import sys
 import threading
@@ -40,10 +39,11 @@ import time
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from std_msgs.msg import Float64MultiArray
-from std_srvs.srv import SetBool
+from std_msgs.msg import Float64MultiArray, String
+from std_srvs.srv import SetBool, Trigger
 from marvin_msgs.msg import Jointfeedback
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, WrenchStamped
+from .tactile_guard import TactileGuard
 import tf2_ros
 from geometry_msgs.msg import TransformStamped
 
@@ -154,6 +154,7 @@ class DeltaCtrlNode(Node):
         self.declare_parameter('robot_ip', '192.168.14.190')
         self.declare_parameter('arm', 'A')              # A / B
         self.declare_parameter('delta_topic', '/omi/action/decision')
+        self.declare_parameter('manual_delta_topic', '/omi/action/manual_decision')
         self.declare_parameter('ctrl_rate', 200.0)      # Hz
         self.declare_parameter('delta_timeout', 0.5)    # s, 超时无增量则停止发送
         self.declare_parameter('max_step_deg', 2.0)     # 单步目标最大关节角步进(度), 安全限幅
@@ -166,6 +167,13 @@ class DeltaCtrlNode(Node):
         self.declare_parameter('delta_splits', 20)
         # 增量表达坐标系: 'base'=沿机器人 Base 轴; 'tcp'=沿当前 TCP 自身轴
         self.declare_parameter('delta_frame', 'base')
+        # Opt-in, policy-only guard. Manual input has a separate trusted topic.
+        self.declare_parameter('tactile_guard_enabled', False)
+        self.declare_parameter('tactile_force_limit', 2.0)
+        self.declare_parameter('tactile_torque_limit', 0.5)
+        self.declare_parameter('tactile_timeout', 0.2)
+        self.declare_parameter('tactile_retreat_step_mm', 0.2)
+        self.declare_parameter('tactile_retreat_speed_mm_s', 2.0)
         # TCP 标定: 'identity'=TCP 与法兰重合 (无视觉输入时的默认);
         # 'measure'=用 tool_xyzabc 参数 (法兰系 [x,y,z,A,B,C], mm/度) 手量标定
         self.declare_parameter('calib_mode', 'identity')
@@ -194,6 +202,9 @@ class DeltaCtrlNode(Node):
         self.robot_ip = self.get_parameter('robot_ip').value
         self.arm = self.get_parameter('arm').value
         self.delta_topic = self.get_parameter('delta_topic').value
+        self.manual_delta_topic = self.get_parameter('manual_delta_topic').value
+        if self.manual_delta_topic == self.delta_topic:
+            raise ValueError('manual_delta_topic and delta_topic must differ')
         self.ctrl_rate = float(self.get_parameter('ctrl_rate').value)
         self.delta_timeout = float(self.get_parameter('delta_timeout').value)
         self.max_step_deg = float(self.get_parameter('max_step_deg').value)
@@ -204,6 +215,17 @@ class DeltaCtrlNode(Node):
         if self.connect_on_start and not self.motion_authorized:
             raise ValueError('connect_on_start requires motion_authorized=true: startup changes robot mode')
         self.delta_frame = str(self.get_parameter('delta_frame').value).lower()
+        self.tactile_guard = TactileGuard(
+            enabled=bool(self.get_parameter('tactile_guard_enabled').value),
+            force_limit=float(self.get_parameter('tactile_force_limit').value),
+            torque_limit=float(self.get_parameter('tactile_torque_limit').value),
+            timeout=float(self.get_parameter('tactile_timeout').value),
+            retreat_step_mm=float(self.get_parameter('tactile_retreat_step_mm').value))
+        if self.tactile_guard.enabled and self.delta_frame != 'base':
+            raise ValueError('tactile guard requires delta_frame=base: retreat is SDK base -X')
+        self.tactile_retreat_speed_mm_s = float(self.get_parameter('tactile_retreat_speed_mm_s').value)
+        if not math.isfinite(self.tactile_retreat_speed_mm_s) or self.tactile_retreat_speed_mm_s <= 0:
+            raise ValueError('tactile_retreat_speed_mm_s must be finite and positive')
         self.calib_mode = str(self.get_parameter('calib_mode').value).lower()
         self.tool_xyzabc = [float(v) for v in self.get_parameter('tool_xyzabc').value]
         # 工作空间包络: 相对启动时 TCP 位置的球形限位 (mm), 0=禁用
@@ -247,8 +269,12 @@ class DeltaCtrlNode(Node):
 
         # ---------- 共享状态 (须在 _connect_robot 之前创建, _set_mode 会用到) ----------
         self.lock = threading.Lock()
-        self.traj_queue = []            # 200Hz 待下发目标关节角队列 (每项 7 关节)
+        self.traj_queue = []            # 200Hz 待执行子增量队列 (每项: 平移 mm, 旋转 deg)
         self.have_goal = False
+        self.queue_is_retreat = False
+        self.queue_source = 'policy'
+        self.guard_generation = 0
+        self.pending_guard_hold = False
         self.last_delta_time = self.get_clock().now()
         self.cmd_fb_err_strikes = 0
         # 启动锚点: TCP 位置包络以连接时的位形为基准
@@ -284,12 +310,30 @@ class DeltaCtrlNode(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=1,   # 只保留最新一条增量, 旧增量直接丢弃
         )
+        self.hil_pending = None
+        self.hil_receipt_pub = self.create_publisher(String, '/omi/action/receipt', 10)
         self.sub = self.create_subscription(
-            Float64MultiArray, self.delta_topic, self.delta_callback, qos)
+            Float64MultiArray, self.delta_topic, self.hil_delta_callback, qos)
+        self.manual_sub = self.create_subscription(
+            Float64MultiArray, self.manual_delta_topic, self.manual_delta_callback, qos)
 
         # 控制源切换: std_srvs/SetBool, true=键盘控制, false=话题控制
         self.kb_srv = self.create_service(
             SetBool, '/delta_ctrl_node/set_keyboard_control', self.keyboard_control_callback)
+        self.home_srv = self.create_service(
+            Trigger, '/delta_ctrl_node/home_poses', self.home_poses_callback)
+        if self.tactile_guard.enabled:
+            self.tactile_subs = [self.create_subscription(
+                WrenchStamped, '/omi/tactile_grid24x16/' + side + '/wrench',
+                lambda msg, side=side: self.tactile_callback(side, msg),
+                QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT))
+                for side in ('a', 'b')]
+            self.guard_baseline_srv = self.create_service(
+                Trigger, '/delta_ctrl_node/capture_tactile_baseline', self.guard_baseline_callback)
+            self.guard_reset_srv = self.create_service(
+                Trigger, '/delta_ctrl_node/reset_tactile_guard', self.guard_reset_callback)
+            self.guard_pub = self.create_publisher(String, '/omi/safety/tactile_guard', 1)
+            self.guard_timer = self.create_timer(0.1, self.publish_guard_status)
 
         if self.pub_js:
             self.js_pub = self.create_publisher(Jointfeedback, '/tj/info/joint_feedback', 10)
@@ -318,6 +362,83 @@ class DeltaCtrlNode(Node):
         self.get_logger().info(
             f'delta_ctrl_node 启动: arm={self.arm}, ip={self.robot_ip}, '
             f'rate={self.ctrl_rate}Hz, topic={self.delta_topic}')
+
+    # ---------------- Receiver-owned tactile protection ----------------
+    def _check_tactile_guard(self):
+        """Called with self.lock held; watchdog also runs without new actions."""
+        state = self.tactile_guard.evaluate(time.monotonic())
+        new_trip = self.guard_generation != self.tactile_guard.generation
+        policy_queue = self.queue_source == 'policy' and self.control_source == CTRL_SOURCE_TOPIC
+        blocked_queue = (policy_queue and self.have_goal and state not in ('clear', 'disabled') and
+                         not (state == 'latched' and self.queue_is_retreat))
+        self.guard_generation = self.tactile_guard.generation
+        if (new_trip and policy_queue and self.have_goal) or blocked_queue:
+            self.guard_generation = self.tactile_guard.generation
+            self.traj_queue = []
+            self.have_goal = False
+            self.queue_is_retreat = False
+            self.pending_guard_hold = self.robot is not None
+            self.hil_finish('tactile_guard', accepted=False)
+            self.get_logger().warn('Tactile guard: ' + self.tactile_guard.reason)
+        return state
+
+    def tactile_callback(self, side, msg):
+        w = msg.wrench
+        values = [w.force.x, w.force.y, w.force.z, w.torque.x, w.torque.y, w.torque.z]
+        with self.lock:
+            self.tactile_guard.update(side, values, time.monotonic())
+            self._check_tactile_guard()
+
+    def guard_baseline_callback(self, request, response):
+        with self.lock:
+            if self.have_goal or self.control_source == CTRL_SOURCE_KEYBOARD or self.pending_guard_hold:
+                response.success, response.message = False, 'stop motion/keyboard before baseline capture'
+            else:
+                response.success, response.message = self.tactile_guard.capture_baseline(time.monotonic())
+                self.guard_generation = self.tactile_guard.generation
+        return response
+
+    def guard_reset_callback(self, request, response):
+        with self.lock:
+            if self.have_goal or self.pending_guard_hold or self.control_source == CTRL_SOURCE_KEYBOARD:
+                response.success, response.message = False, 'stop retreat/hold before reset'
+            else:
+                response.success, response.message = self.tactile_guard.reset(time.monotonic())
+                self.guard_generation = self.tactile_guard.generation
+        return response
+
+    def publish_guard_status(self):
+        with self.lock:
+            self._check_tactile_guard()
+            status = self.tactile_guard.status(time.monotonic())
+            status['pending_feedback_hold'] = self.pending_guard_hold
+            status['retreat_speed_mm_s'] = self.tactile_retreat_speed_mm_s
+            status['scope'] = 'policy_only'
+            status['queue_source'] = self.queue_source
+        self.guard_pub.publish(String(data=json.dumps(status)))
+
+    def _apply_guard_hold(self):
+        """Replace the previous SDK target with current feedback, not just silence.
+
+        This is a position-reference hold, NOT a certified stop/unloading command.
+        Failed feedback/SDK calls keep the gate closed and are retried.
+        """
+        try:
+            sub = self.robot.subscribe(self.dcss)
+            joints = [float(v) for v in sub['outputs'][self.arm_idx]['fb_joint_pos']]
+            if len(joints) != 7 or not all(math.isfinite(v) for v in joints):
+                raise ValueError('invalid feedback for tactile hold')
+            self.robot.clear_set()
+            if not self.robot.set_joint_cmd_pose(arm=self.arm, joints=joints):
+                raise RuntimeError('feedback hold command rejected')
+            self.robot.send_cmd()
+        except Exception as exc:
+            self.get_logger().error('Tactile hold failed: ' + str(exc), throttle_duration_sec=1.0)
+            return
+        with self.lock:
+            self.cur_joints = joints
+            self.cmd_fb_err_strikes = 0
+            self.pending_guard_hold = False
 
     # ---------------- 机械臂连接 ----------------
     def _connect_robot(self):
@@ -530,6 +651,8 @@ class DeltaCtrlNode(Node):
             self.traj_queue = []
             self.have_goal = False
             self.control_source = CTRL_SOURCE_KEYBOARD
+            self.queue_source = 'manual'
+            self.pending_guard_hold = False
 
         if self.keys is None:
             self.keys = KeyState(log=self.get_logger().error)
@@ -595,6 +718,8 @@ class DeltaCtrlNode(Node):
                 delta_r[i] += d_r[i] * KEY_STEP_DEG
 
         with self.lock:
+            # Local keyboard is manual input, outside tactile protection.
+            self.pending_guard_hold = False
             q_ref = list(self.cur_joints)
 
         # 增量 IK (TCP 系; cur_joints 是最近指令, 比反馈更平滑)
@@ -638,8 +763,44 @@ class DeltaCtrlNode(Node):
             self.cur_joints = q_target  # 下个周期从本指令值继续
             self.cmd_fb_err_strikes = 0
 
+    def hil_finish(self, status, *, accepted):
+        """Report terminal command outcome; SDK delivery is not measured completion."""
+        pending, self.hil_pending = getattr(self, 'hil_pending', None), None
+        if pending:
+            self.hil_receipt_pub.publish(String(data=json.dumps(dict(pending, status=status,
+                accepted=accepted, finished=True, timestamp_ns=self.get_clock().now().nanoseconds))))
+
+    def hil_delta_callback(self, msg):
+        """Optional tagged HIL receipt: queue acceptance, not measured execution."""
+        dims = msg.layout.dim
+        command_id = dims[0].label if dims and dims[0].label.startswith('hil:') else None
+        result = None
+        if getattr(self, 'hil_pending', None):
+            self.hil_finish('queue_cancelled' if not command_id and not any(msg.data) else 'queue_replaced',
+                            accepted=not command_id and not any(msg.data))
+        try:
+            if not command_id or (self.delta_frame == 'base' and self.arm == 'A'):
+                result = self.delta_callback(msg)
+        finally:
+            if command_id:
+                receipt = dict(command_id=command_id, accepted=bool(result and result['accepted']),
+                               status='queue_accepted' if result and result['accepted'] else 'rejected_or_modified',
+                               wire_action=list(msg.data), delta_frame=self.delta_frame, arm=self.arm,
+                               timestamp_ns=self.get_clock().now().nanoseconds,
+                               execution_confirmed=False, finished=not bool(result and result["accepted"]))
+                if receipt["accepted"]:
+                    self.hil_pending = receipt
+                self.hil_receipt_pub.publish(String(data=json.dumps(receipt)))
+
     # ---------------- 增量回调 (10Hz) ----------------
     def delta_callback(self, msg: Float64MultiArray):
+        return self._delta_callback(msg, manual=False)
+
+    def manual_delta_callback(self, msg: Float64MultiArray):
+        self.hil_finish("external_manual_takeover", accepted=False)
+        return self._delta_callback(msg, manual=True)
+
+    def _delta_callback(self, msg: Float64MultiArray, *, manual):
         if msg.data is None or len(msg.data) != 6:
             self.get_logger().warn('增量数据长度应为 6', throttle_duration_sec=1.0)
             return
@@ -662,9 +823,39 @@ class DeltaCtrlNode(Node):
                     throttle_duration_sec=5.0)
                 return
 
-        dx, dy, dz, drx, dry, drz = [float(v) for v in msg.data]
-
         with self.lock:
+            if manual:
+                # Explicit human takeover supersedes pending policy stop/queue.
+                if self.queue_source != 'manual':
+                    self.traj_queue = []
+                    self.have_goal = False
+                self.queue_source = 'manual'
+                self.pending_guard_hold = False
+                action, reason = tuple(float(v) for v in msg.data), 'manual_bypass'
+                self._check_tactile_guard()
+                if not any(action):
+                    # RB release/disconnect/route handoff cancels manual interpolation.
+                    self.traj_queue = []
+                    self.have_goal = False
+                    self.queue_is_retreat = False
+                    return
+            else:
+                self._check_tactile_guard()
+                action, reason = self.tactile_guard.filter_action(msg.data, time.monotonic())
+            if action is None or self.pending_guard_hold:
+                if self.queue_source == 'manual':
+                    # A blocked model command must not interrupt human control.
+                    return
+                # A rejected command must never leave a previous retreat running.
+                had_goal = self.have_goal
+                self.traj_queue = []
+                self.have_goal = False
+                self.queue_is_retreat = False
+                if had_goal:
+                    self.pending_guard_hold = True
+                self.get_logger().warn('Tactile action blocked: ' + reason, throttle_duration_sec=1.0)
+                return
+            dx, dy, dz, drx, dry, drz = action
             # 上一条增量的队列还没走完: 丢弃旧队列剩余部分, 用本条新增量
             # 重新解算 (增量控制以最新数据为准, 不堆积旧增量)
             if self.have_goal:
@@ -675,63 +866,37 @@ class DeltaCtrlNode(Node):
             self.last_delta_time = self.get_clock().now()
 
             n = self.delta_splits
+            if reason == 'retreat_only':
+                # Bound each 200Hz substep, even with delta_splits=1 or a fast producer.
+                n = max(n, math.ceil(abs(dx) * self.ctrl_rate / self.tactile_retreat_speed_mm_s))
             # 1. 均分: 把整条增量切成 n 个子增量, 每个子增量位移/旋转均为整条的 1/n
             sub_t = [dx / n, dy / n, dz / n]
             sub_r = [drx / n, dry / n, drz / n]
 
-            # 2. 逐个子增量做 IK (移植 FX_Robot_Kine_SolveTcpDeltaIK):
-            #    每次都从上一步的结果关节角出发, FK -> 按 frame (TCP/BASE) 精确
-            #    合成目标位姿 -> IK (参考当前关节角, NEAR_REF 防解跳变),
-            #    n 个目标关节角依次入队
-            queue = []
-            q_ref = list(self.cur_joints)
-            for i in range(n):
-                ok, q_i, tgt_mat = self.tk.solve_tcp_delta_ik(
-                    q_ref, sub_t, sub_r, self.frame)
-                if not ok:
-                    # 失败语义三档: q_i=None 时不可用; tgt_mat 保留仅供诊断。
-                    # 整条增量作废, 队列一条都不下发, 机械臂保持在原地
-                    self.get_logger().warn(
-                        f'子增量 {i + 1}/{n} IK 失败 (不可达/超限/输入无效), '
-                        '整条增量作废'
-                        + (f', 诊断目标矩阵: {tgt_mat}' if tgt_mat else ''),
-                        throttle_duration_sec=1.0)
-                    return
-
-                # 安全限幅: 每步目标相对上一步限幅, 防异常增量导致机械臂突跳
-                base = queue[-1] if queue else self.cur_joints
-                for j in range(7):
-                    d = q_i[j] - base[j]
-                    if abs(d) > self.max_step_deg:
-                        q_i[j] = base[j] + math.copysign(self.max_step_deg, d)
-                queue.append(q_i)
-                q_ref = q_i  # 下一个子增量从本步目标出发
-
-            # 3. 整条增量全部解算成功, 才切换到新队列
-            # 工作空间包络检查: 队列末端 TCP 相对启动锚点超界则整条作废
-            if self.tcp_anchor is not None:
-                t_end = self.kine.fk(queue[-1])
-                if t_end:
-                    p = [t_end[r][3] for r in range(3)]
-                    dist = math.sqrt(sum((p[i] - self.tcp_anchor[i]) ** 2 for i in range(3)))
-                    if dist > self.envelope_radius_mm:
-                        self.get_logger().warn(
-                            f'TCP 目标距启动锚点 {dist:.1f} mm 超出包络 '
-                            f'{self.envelope_radius_mm} mm, 整条增量作废',
-                            throttle_duration_sec=1.0)
-                        return
-
-            self.traj_queue = queue
+            # 仅保存子增量; IK 在控制循环内逐步计算并立即下发。
+            hil_modified = list(action) != list(msg.data)
+            if hil_modified and any(d.label.startswith('hil:') for d in msg.layout.dim):
+                return None
+            self.traj_queue = [(tuple(sub_t), tuple(sub_r)) for _ in range(n)]
             self.have_goal = True
+            self.queue_is_retreat = reason == 'retreat_only'
+            self.queue_source = 'manual' if manual else 'policy'
 
             self.get_logger().debug(
                 f'增量 [{dx:.2f},{dy:.2f},{dz:.2f},{drx:.3f},{dry:.3f},{drz:.3f}] '
-                f'({self.delta_frame} 系) -> 切分 {n} 步, 末端目标关节 '
-                f'{[round(j, 2) for j in queue[-1]]}')
+                f'({self.delta_frame} 系) -> 切分 {n} 步, 逐周期 IK 后下发')
+            return dict(accepted=not hil_modified)
 
     # ---------------- 200Hz 控制循环 ----------------
     def ctrl_loop(self):
         if self.robot is None:
+            return
+
+        with self.lock:
+            self._check_tactile_guard()
+            needs_hold = self.pending_guard_hold
+        if needs_hold:
+            self._apply_guard_hold()
             return
 
         # 键盘控制分支 (200Hz 增量移动; 话题队列逻辑不参与)
@@ -749,6 +914,7 @@ class DeltaCtrlNode(Node):
             # 增量超时: 清空队列停在原地不再下发
             since = (self.get_clock().now() - self.last_delta_time).nanoseconds * 1e-9
             if since > self.delta_timeout:
+                self.hil_finish('receiver_timeout', accepted=False)
                 self.traj_queue = []
                 self.have_goal = False
                 self.get_logger().warn(
@@ -756,8 +922,51 @@ class DeltaCtrlNode(Node):
                     throttle_duration_sec=5.0)
                 return
 
-            # 每周期弹出下一个目标, 200Hz 逐点下发 (20 步 = 0.1s, 对齐 10Hz)
-            cmd = self.traj_queue.pop(0)
+            # 每周期只计算一个子增量, 本点下发后才会计算下一点。
+            sub_t, sub_r = self.traj_queue.pop(0)
+            q_ref = list(self.cur_joints)
+            ok, cmd, tgt_mat = self.tk.solve_tcp_delta_ik(
+                q_ref, list(sub_t), list(sub_r), self.frame)
+            if not ok:
+                self.hil_finish('ik_failed', accepted=False)
+                self.traj_queue = []
+                self.have_goal = False
+                self.queue_is_retreat = False
+                self.get_logger().warn(
+                    '子增量 IK 失败, 停止剩余增量'
+                    + (f', 诊断目标矩阵: {tgt_mat}' if tgt_mat else ''),
+                    throttle_duration_sec=1.0)
+                return
+
+            # 每步相对最近已下发指令限幅。
+            for j in range(7):
+                d = cmd[j] - q_ref[j]
+                if abs(d) > self.max_step_deg:
+                    if getattr(self, 'hil_pending', None):
+                        self.hil_finish('joint_clamp', accepted=False)
+                        self.traj_queue = []
+                        self.have_goal = False
+                        return
+                    cmd[j] = q_ref[j] + math.copysign(self.max_step_deg, d)
+
+            # 每个点位下发前检查包络, 超界点及后续子增量都不下发。
+            if self.tcp_anchor is not None:
+                t_end = self.kine.fk(cmd)
+                if t_end:
+                    p = [t_end[r][3] for r in range(3)]
+                    dist = math.sqrt(sum(
+                        (p[i] - self.tcp_anchor[i]) ** 2 for i in range(3)))
+                    if dist > self.envelope_radius_mm:
+                        self.hil_finish('envelope_rejected', accepted=False)
+                        self.traj_queue = []
+                        self.have_goal = False
+                        self.queue_is_retreat = False
+                        self.get_logger().warn(
+                            f'TCP 目标距启动锚点 {dist:.1f} mm 超出包络 '
+                            f'{self.envelope_radius_mm} mm, 停止剩余增量',
+                            throttle_duration_sec=1.0)
+                        return
+
             fb = None
             if self.dcss is not None:
                 sub = self.robot.subscribe(self.dcss)
@@ -771,7 +980,13 @@ class DeltaCtrlNode(Node):
         # IK 在跑、指令在发, 机械臂不动, 指令-反馈偏差持续增大)
         self.robot.clear_set()
         if not self.robot.set_joint_cmd_pose(arm=self.arm, joints=[float(v) for v in cmd]):
+            self.hil_finish('sdk_rejected', accepted=False)
             self.get_logger().error('set_joint_cmd_pose 失败', throttle_duration_sec=1.0)
+            with self.lock:
+                self.traj_queue = []
+                self.have_goal = False
+                self.queue_is_retreat = False
+            return
         self.robot.send_cmd()
 
         stop = False
@@ -798,7 +1013,10 @@ class DeltaCtrlNode(Node):
                     self.cmd_fb_err_strikes = 0
         # 停发后不再调用 SDK (锁外执行, 此处只是跳过后续周期下发)
         if stop:
+            self.hil_finish('feedback_error', accepted=False)
             return
+        if not self.have_goal:
+            self.hil_finish('sdk_commands_sent', accepted=True)
 
     # ---------------- 关节状态发布 ----------------
     def publish_joint_state(self):
@@ -927,6 +1145,50 @@ class DeltaCtrlNode(Node):
                            + m[r_i][2] * p[2]) + m[r_i][3]
         out[3][3] = 1.0
         return out, self.root_frame
+
+    def home_poses_callback(self, request, response):
+        """Read-only current/target TCP FK, sharing eef_left's calibrated kine.
+
+        Return SDK BASE matrices in meters; BASE increments avoid root mounting
+        offsets and gamepad installation presets. SDK joint inputs use degrees.
+        """
+        try:
+            if self.arm != 'A' or self.robot is None or self.kine is None or self.dcss is None:
+                raise ValueError('需要已连接的左臂 A')
+            if self.delta_frame != 'base' or self.control_source != CTRL_SOURCE_TOPIC:
+                raise ValueError('返回需要 BASE 话题控制模式')
+            sub = self.robot.subscribe(self.dcss)
+            if sub is None:
+                raise ValueError('无法读取当前关节反馈')
+            joints = sub['outputs'][self.arm_idx]['fb_joint_pos']
+            home_rad = [1.36784420538524, -1.3972774378908723,
+                        -0.8460047216729514, -1.4080845166192213,
+                        -0.26412765702130986, -0.1478974554847475,
+                        0.6224018645536978]
+            current = self.kine.fk([float(v) for v in joints])
+            target = self.kine.fk([math.degrees(v) for v in home_rad])
+            if current is None or target is None:
+                raise ValueError('FK 失败')
+            poses = []
+            for matrix in (current, target):
+                pose = [[float(matrix[r][c]) for c in range(4)] for r in range(4)]
+                if not all(math.isfinite(v) for row in pose for v in row):
+                    raise ValueError('FK 返回非有限值')
+                for r in range(3):
+                    pose[r][3] /= 1000.
+                poses.append(pose)
+            if self.tcp_anchor is not None:
+                distance = math.sqrt(sum((poses[1][r][3]*1000-self.tcp_anchor[r])**2
+                                         for r in range(3)))
+                if distance > self.envelope_radius_mm:
+                    raise ValueError(f'目标距启动锚点 {distance:.1f} mm，超出包络 '
+                                     f'{self.envelope_radius_mm:.1f} mm')
+            response.message = json.dumps(dict(frame='sdk_base', current=poses[0], target=poses[1]))
+            response.success = True
+        except Exception as exc:
+            response.success = False
+            response.message = str(exc)
+        return response
 
     def publish_eef_pose(self):
         """发布左臂末端工具位姿 /tj/info/eef_left (geometry_msgs/PoseStamped)。

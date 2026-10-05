@@ -1,5 +1,11 @@
 # 磁盘 HIL 经验池
 
+2026-10-05新增[完整transition导入/API](../../../../tutorials/transition_replay.md)：
+training.transition_replay复用本后端，指定目录及观测/动作/奖励契约；
+成功离线human只进Demo，在线policy进RL，在线human进两流。
+episode/step/时间随ring落盘。真机配对及learner未接，当前BC代理标签不能直接导入。
+验证见[本阶段编年](../chronicles/2026-10-05-transition-replay.md)。
+
 `training.disk_replay.DiskHILReplayBuffer` 是当前 SB3 单环境训练的可选存储后端。状态、图像、动作、奖励、结束/超时标记与在线/示范掩码使用 NumPy `.npy` memmap 存在磁盘，保持 [HIL 双流语义](hil-training.md#4-buffer-的存储与采样)。操作见 [磁盘回放教程](../../../../tutorials/disk_replay.md)。
 
 ## 数据流与接口

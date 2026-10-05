@@ -33,7 +33,9 @@ bash scripts/run_policy_gamepad.sh \
 
 1. 平移和旋转向量换轴 `(x,y,z) -> (x,-z,y)`。
 2. 旋转向量转旋转矩阵，再转 SDK ABC，满足 `R = Rz(C) Ry(B) Rx(A)`。
-3. 输出 mm/度，发布 `/omi/action/decision`（`Float64MultiArray`，空 layout）。
+3. 输出 mm/度；模型动作发布 `/omi/action/decision`，手动接管和 RB+X 返回发布
+   `/omi/action/manual_decision`（均为 `Float64MultiArray`，空 layout）。
+   接收端触觉保护默认关闭，显式开启后只拦截模型，手动通道不受影响。
 
 不是直接交换欧拉角，也不能在远端重复这个转换。SDK `FRAME_BASE=0` 对应平移相加、姿态左乘 `R_target = R_delta R_current`；与 GT 定义一致。源证据为本机 `Downloads/oct04/sdk_python/SDK_PYTHON.zip` 内 `fx_tcp_force.py` 与 `docs_1003_delta_IK.md`。
 

@@ -13,6 +13,12 @@ historical_data_archive:
   retained_local_directories: [local/eef_bc]
   restore: For tactile and bc pass archive paths explicitly or copy needed experiments back; no symlinks remain. Continue using local/eef_bc, whose archive is incomplete. New outputs belong in separate directories. Latest native-field bags do not require historical tactile baselines or BC artifacts.
 resources:
+  - id: live-wrench-recording-sessions
+    path: local/wrench_live
+    tracked: false
+    source: Read-only subscriptions to existing A/B WrenchStamped and metadata
+    purpose: Exact received six-component histories, timestamps and provenance, live and peak-preserving full-session PNGs
+    restore: Copy whole session directories. Run bash scripts/view_wrench_live.sh --review-session SESSION to regenerate history.png; no SDK required. See tutorials/wrench_live.md.
   - id: optical-module-pu-controller-source
     path: local/vendor/optical_module_pu
     tracked: false

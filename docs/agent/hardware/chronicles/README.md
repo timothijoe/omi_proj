@@ -1,5 +1,7 @@
 # Hardware 编年索引
 
+- [2026-10-05 双指wrench实时显示与历史记录](2026-10-05-wrench-live-recording.md)
+
 - [2026-10-05 控制接收端迁移](2026-10-05-robot-controller-migration.md)
 
 - [2026-10-04：手柄六维控制与 RB 接管首版](2026-10-04-gamepad-intervention.md)

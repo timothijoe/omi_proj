@@ -13,6 +13,8 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from omi_hil_rl.real.gamepad_control import Mapping, BTN_TR, wire_action
 from omi_hil_rl.real.linux_gamepad import LinuxGamepad
+from omi_hil_rl.real.gamepad_home import GamepadHome, add_home_arguments
+from omi_hil_rl.real.gamepad_gripper import add_gripper_arguments, calibration_from_args, GamepadGripper
 from omi_hil_rl.real.sdk_action import OUTPUT_CONVENTIONS, format_action_trace
 
 
@@ -42,7 +44,8 @@ def command(pad, mapping, convention='legacy'):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--execute', action='store_true')
-    ap.add_argument('--topic', default='/omi/action/decision')
+    ap.add_argument('--topic', default='/omi/action/manual_decision',
+                    help='Trusted manual receiver input; bypasses policy tactile protection')
     ap.add_argument('--output-convention', choices=OUTPUT_CONVENTIONS, default='legacy',
                     help='Final wire frame/rotation format; SDK preset requires FRAME_BASE')
     ap.add_argument('--device', default='/dev/input/js0')
@@ -52,7 +55,10 @@ def main():
     ap.add_argument('--rotation-deg-s', type=positive, default=10.)
     ap.add_argument('--deadzone', type=float, default=.15)
     ap.add_argument('--signs', type=int, nargs=6, default=[1]*6, metavar='SIGN')
+    add_gripper_arguments(ap)
+    add_home_arguments(ap)
     args = ap.parse_args()
+    calibration = calibration_from_args(args, ap)
     try:
         mapping = Mapping(hz=args.rate, translation_m_s=args.speed_mm_s*args.scale/1000,
                           rotation_rad_s=math.radians(args.rotation_deg_s)*args.scale,
@@ -61,13 +67,14 @@ def main():
         ap.error(str(exc))
     print(f'平移最大 {mapping.translation_m_s*1000:g} mm/s，'
           f'旋转最大 {math.degrees(mapping.rotation_rad_s):g} degree/s，{args.rate:g} Hz。')
-    print('按住 RB 移动；右摇杆 XY，十字键上下 Z，左摇杆 Rx/Ry，十字键左右 Rz。')
+    print('按住 RB 移动；RB+X 返回初始末端位姿，松开 RB 取消；右摇杆 XY，十字键上下 Z，左摇杆 Rx/Ry，十字键左右 Rz。')
     print('输出约定:', args.output_convention)
     if args.output_convention != 'legacy':
         print('SDK 输出为 [dx,dy,dz,dA,dB,dC]；接收端使用 FRAME_BASE=0 并核对 UserFrame。')
     else:
         print('每条命令：[dx,dy,dz,rx,ry,rz]，单位 mm/degree。')
     pad = LinuxGamepad(args.device)
+    gripper = GamepadGripper(args, calibration, args.execute)
     node = pub = ros = None
     try:
         if args.execute:
@@ -82,19 +89,41 @@ def main():
             input('按回车开始；随后按住 RB 才移动，Ctrl+C 退出：')
         else:
             print('仅手柄预览，无 ROS 发布；加 --execute 发送。Ctrl+C 退出。')
+        gripper.start()
+        home = GamepadHome(node, button_code=args.home_button_code)
+        print(f'返回触发键码={args.home_button_code}；按 X 核对“按下按钮”，'
+              '若键码不同，用 --home-button-code 指定。', flush=True)
+        if args.execute and args.rate != 10.:
+            print('RB+X 返回要求 --rate 10；当前频率下禁用返回。')
         period = 1/args.rate
         previous, last_print = None, 0.
+        previous_buttons, previous_status = None, None
         while ros is None or ros.ok():
             started = time.monotonic()
             mode, original, data = command_details(pad, mapping, args.output_convention)
+            if node is not None:
+                ros.spin_once(node, timeout_sec=0.)
+            home_command = home.tick(mode != 'disconnected', pad.buttons) if args.rate == 10. else None
+            convention = args.output_convention
+            if home_command is not None:
+                mode, original, data = home_command
+                convention = 'sdk-base-aligned'
             if pub is not None:
                 if node.count_publishers(args.topic) > 1:
                     raise RuntimeError('发现其他动作发布者，请先停止其他控制程序')
                 pub.publish(Float64MultiArray(data=data))
-            if mode != previous or started-last_print >= .5:
-                print(format_action_trace(mode, original, args.output_convention, data, pub is not None)+
+            gripper.tick(mode != 'disconnected', pad.buttons)
+            pressed_buttons = sorted(k for k, v in pad.buttons.items() if v)
+            if (mode != previous or started-last_print >= .5 or
+                    pressed_buttons != previous_buttons or home.status != previous_status):
+                print(format_action_trace(mode, original, convention, data, pub is not None)+
+                      f' | 返回={home.status}'+
+                      f' | RB={bool(pad.buttons.get(BTN_TR, False))}'+
+                      f' | X={bool(pad.buttons.get(args.home_button_code, False))}'+
+                      f' | 按下按钮={pressed_buttons}'+
                       (f' | 错误={pad.error}' if mode == 'disconnected' else ''), flush=True)
                 previous, last_print = mode, started
+                previous_buttons, previous_status = pressed_buttons, home.status
             # No catch-up bursts and no enlarged delta after a scheduling delay.
             time.sleep(max(0., period-(time.monotonic()-started)))
     except KeyboardInterrupt:
@@ -107,6 +136,7 @@ def main():
             node.destroy_node()
         if ros is not None and ros.ok():
             ros.shutdown()
+        gripper.close()
 
 
 if __name__ == '__main__':

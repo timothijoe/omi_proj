@@ -1,5 +1,9 @@
 # OMI 文档总目录
 
+新增六维真机HIL、无夹爪SAC与Actor/Learner：[当前进展与验证边界](agent/training/evolution/hil-actor-learner.md) → [操作教程](../tutorials/hil_actor_learner.md)。三项软件实现已完成，处于真机联调前阶段。
+
+双指六维力/力矩：[实时查看与完整历史记录](../tutorials/wrench_live.md)。
+
 控制接收端已迁入：[迁移与构建教程](../tutorials/robot_controller.md) → [架构及执行语义](agent/hardware/evolution/robot-controller.md)。
 
 实时检查现场topic：[实时小矩阵RViz看板](../tutorials/grid_live_review.md)，独立于录包回放。

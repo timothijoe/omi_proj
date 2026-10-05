@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import sys
 
+from .gamepad_gripper import add_gripper_arguments, calibration_from_args
+from .gamepad_home import add_home_arguments
 from .eef_reference import EEF_REFERENCES, reference_offset
 from .policy_action import POLICY_FRAME, SDK_CONVENTION
 
@@ -22,7 +24,13 @@ def commands(args):
     arbiter=[sys.executable,'-m','omi_hil_rl.real.gamepad_node','--device',args.gamepad,
         '--policy-topic',topic,'--frame',POLICY_FRAME,'--output-convention',SDK_CONVENTION,
         '--policy-timeout','0.1','--log',str(args.output/'selected_actions.jsonl'),*common]
+    if getattr(args, 'gripper_server', None):
+        for key in ('server', 'sdk_root', 'calibration', 'close_speed', 'close_position', 'close_torque', 'open_position'):
+            value = getattr(args, 'gripper_' + key)
+            if value is not None:
+                arbiter.extend(['--gripper-' + key.replace('_', '-'), str(value)])
     if args.execute:arbiter.append('--publish')
+    arbiter.extend(['--home-button-code', str(getattr(args, 'home_button_code', 308))])
     return [arbiter,actor],topic
 
 
@@ -39,7 +47,10 @@ def main():
     p.add_argument('--speed-mm-s',type=float,default=10.)
     p.add_argument('--rotation-deg-s',type=float,default=10.)
     p.add_argument('--execute',action='store_true',help='Enable final robot output; without this all selected actions are preview only')
+    add_gripper_arguments(p)
+    add_home_arguments(p)
     args=p.parse_args()
+    calibration_from_args(args, p)
     if not args.checkpoint.is_file():p.error('checkpoint missing')
     if not all(math.isfinite(v) and v>0 for v in (args.duration,args.speed_mm_s,args.rotation_deg_s)):p.error('duration/speeds must be finite and positive')
     if not math.isfinite(args.policy_scale) or not 0<args.policy_scale<=1:p.error('policy scale must be in (0,1]')
@@ -52,6 +63,7 @@ def main():
         children,topic=commands(args)
         (args.output/'session.json').write_text(json.dumps(dict(
             execute=args.execute,candidate_topic=topic,command_topic='/omi/action/decision',
+            manual_command_topic='/omi/action/manual_decision',tactile_guard_scope='receiver_policy_only_opt_in',
             policy_frame=POLICY_FRAME,sdk_output=SDK_CONVENTION,conversion_owner='arbiter after RB selection',
             eef_reference=args.eef_reference,eef_input_offset_base_m=reference_offset(args.eef_reference).tolist(),
             policy_scale=args.policy_scale,speed_mm_s=args.speed_mm_s,rotation_deg_s=args.rotation_deg_s,

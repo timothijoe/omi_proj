@@ -1,5 +1,8 @@
 # 使用磁盘经验池
 
+完整离线示范/在线transition指定目录导入、追加及Python写入API，见
+[transition_replay.md](transition_replay.md)。当前BC代理标签不能直接导入。
+
 先完成 [环境准备](environment_setup.md)，从 `omi_proj/` 执行。磁盘池支持图像字段，目前 OMI 的 A 臂到达任务仍只有数值观测。
 
 ## 运行训练

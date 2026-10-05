@@ -1,5 +1,19 @@
 # Training 当前摘要
 
+2026-10-05进展已归档：[HIL环境、SAC与Actor/Learner当前专题](evolution/hil-actor-learner.md) → [操作教程](../../../tutorials/hil_actor_learner.md)。
+三项软件实现完成，当前处于真机联调前阶段。下一步依次验证现场观测、按钮/计时、动作回执、短回合入池及learner更新；尚无真实插入成功率或收敛结果。
+
+2026-10-05新增[六维真机HIL环境、SAC与Actor/Learner](../../../tutorials/hil_actor_learner.md)。
+ROS reset/step、开始后15秒计时、人工成功/整段入池审核、无夹爪Actor/双Critic/目标网络、
+两进程磁盘交接与权重发布已实现。复用冻结ResNet-10＋视觉触觉EEF十帧结构；
+默认ROS只读，尚未启动真机训练。42项软件测试通过（含真实多模态梯度与独立进程闭环）；
+CUDA专项3项及接收端/保护48项通过；另有既有消息schema测试环境问题。后文“真机组装/learner未接”是早期阶段记录。
+
+2026-10-05新增[完整transition磁盘导入与在线分流API](../../../tutorials/transition_replay.md)。
+复用DiskHILReplayBuffer，指定目录、逐行JSONL、契约检查、episode/时间落盘；
+成功离线human只进Demo，在线policy进RL，在线human进两流。相关26项测试通过。
+当前BC代理标签不能直接当执行命令导入；真机配对、reward/episode及learner仍未接。
+
 2026-10-05新增接收端源码证据：[控制端迁移与审计](../hardware/evolution/robot-controller.md)。原端将ABC各分量除20再重复IK，且从上次命令目标继续，与反馈锚点代理标签不同；此前单次SDK数学审计不能覆盖整条执行链。当前限幅与模型保持不变。
 
 2026-10-05待解决：用户指出当前动作限幅仍有不足，orientation与rotation尚未完全统一，需进一步核对其具体含义、表示转换及限幅衔接。仅记录，未修改控制代码；见[动作缩放策略](evolution/policy-action-scaling.md)。

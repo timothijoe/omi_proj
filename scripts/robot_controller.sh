@@ -35,6 +35,7 @@ case "$controller_action" in
     exec /usr/bin/python3 -m arm_delta_cmd.delta_ctrl_node --ros-args \
       -p connect_on_start:=false -p motion_authorized:=false \
       -p delta_topic:=/omi/controller_preview/decision \
+      -p manual_delta_topic:=/omi/controller_preview/manual_decision \
       -p enable_publish_joint_state:=false -p eef_publish_rate:=0.0 \
       -p publish_root_tf:=none
     ;;

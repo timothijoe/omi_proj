@@ -1,5 +1,24 @@
 # Hardware 当前摘要
 
+2026-10-05新增[USB 插入触觉保护](../../../tutorials/tactile_guard.md)：
+`arm_delta_cmd` 接收端按用户最新要求默认关闭、显式开启，**只约束模型**；
+手柄/返回走 `/omi/action/manual_decision`，接收端键盘也不受触觉保护影响。
+模型走 `/omi/action/decision`；显式固定夹持基线后，任一指 `‖ΔF‖≥2.0` 或
+`‖ΔT‖≥0.5` 即锁定并清插补队列、尝试当前关节反馈位置保持。
+锁定且双侧健康时只保留 Base `dx<0`，其他分量归零，撤退每条≤0.2mm、名义≤2mm/s；
+缺失/无效/主机接收超时0.2s禁止全部模型动作，但不影响手动控制。
+数据健康仅指持续收到有限有效数值，不是力低；力大且数据有效仍允许模型负 X 撤退。
+需低于半阈值并显式复位，不自动重归零。
+41项纯逻辑/假SDK测试通过；未连接或驱动真机。单位/方向/设备采样新鲜度仍未标定，
+候选阈值未经正常/异常插入验收；现有运行接收端需重建和重启后才生效。
+
+2026-10-05新增[双指六维wrench实时看板和完整历史记录](evolution/wrench-live.md)：
+`bash scripts/view_wrench_live.sh`，默认domain13，最近15秒曲线、逐条JSONL和退出全程PNG。
+最新加入最小比例尺：力图默认±2、力矩图默认±0.5，范围内固定、超界按2倍档位扩大，
+可通过`--force-min-span`/`--torque-min-span`调整，参数沿用到历史图。
+11项专项测试、首版A310/B316条记录及比例尺版A140/B142条记录通过，
+独立RViz启动/退出通过；不代表力标定或同帧验收，尚未接入当前模型或真机RL。
+
 2026-10-05：[OpticalModule控制端已迁入](evolution/robot-controller.md)，维护源码在`ros2/arm_delta_cmd`，原包/SDK/资源在`local/vendor/optical_module_pu`。默认断开，独立Jazzy构建及5项离线测试通过。源码确认ABC均分20步与命令目标锚点，相关旋转/反馈语义仍待统一；未连接真机。
 
 手柄输出 wrapper 已支持显式 `--output-convention sdk-x-forward-z-left`：按假设安装方向 `(x,y,z)→(x,-z,y)` 并将旋转向量转 SDK ABC；默认 legacy 不转换。终端现同时显示原始值、转换状态和最终值，67项相关测试通过。接收端 FRAME_BASE/UserFrame 与实际安装方向仍待核对，用户曾报告旧映射左推导致上下移动，尚未完成换轴后的现场验收。详见[手柄教程](../../../tutorials/gamepad_control.md)。

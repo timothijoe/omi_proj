@@ -1,5 +1,9 @@
 # 本地资源定位
 
+双指wrench实时/历史记录：`local/wrench_live/session-*`，包含samples.jsonl、metadata.jsonl、
+manifest/status/report及实时/全程PNG；原始记录不能由截图恢复，转移请复制整个会话目录。
+见[教程](../../../tutorials/wrench_live.md)。
+
 控制接收端原包、SDK与全套源资源：`local/vendor/optical_module_pu/`；独立本机构建：`local/ros2/robot_controller_ws/`。来源校验与恢复见[迁移教程](../../../tutorials/robot_controller.md)。
 
 实时grid看板会话：`local/grid_live_review/session-*`，每次保存RViz配置与最新dashboard.png/status.json；本次GUI证据在`local/grid_live_review/live_user/`，见[教程](../../../tutorials/grid_live_review.md)。

@@ -1,0 +1,30 @@
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Class: rviz_default_plugins/Image
+    Name: Tactile Wrench History
+    Enabled: true
+    Value: true
+    Normalize Range: false
+    Topic:
+      Value: /omi/live_wrench/dashboard
+      Depth: 1
+      Reliability Policy: Best Effort
+      Durability Policy: Volatile
+      History Policy: Keep Last
+    Transport Hint: raw
+  Enabled: true
+  Global Options:
+    Background Color: 18; 25; 35
+    Fixed Frame: base_link
+    Frame Rate: 15
+  Name: root
+  Tools: []
+  Value: true
+Window Geometry:
+  Width: 1680
+  Height: 1040
+  Hide Left Dock: false

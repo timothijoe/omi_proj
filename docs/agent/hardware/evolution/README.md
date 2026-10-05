@@ -1,5 +1,7 @@
 # Hardware 纪传体
 
+- [双指wrench实时显示与持久历史](wrench-live.md)
+
 - [OpticalModule控制接收端、架构与迁移](robot-controller.md)
 
 - [手柄末端控制、SDK 换轴与开发记录](gamepad-control.md)

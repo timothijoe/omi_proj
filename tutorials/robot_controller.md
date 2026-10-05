@@ -23,6 +23,11 @@
 
 ## 构建与离线启动
 
+接收端[USB 插入触觉保护](tactile_guard.md)默认关闭，显式开启后只约束模型通道。
+模型超限锁定后只允许限速 Base -X 撤退，断流/无效触觉时禁止全部模型动作。
+手柄发送独立 `manual_delta_topic`（默认 `/omi/action/manual_decision`），键盘也不受
+触觉保护影响；原有 IK/包络/关节限制仍保留。启用保护要求 `delta_frame=base` 并显式采集基线。
+
 使用安装了 ROS Jazzy、colcon、rosidl、rclpy、std_msgs、std_srvs、geometry_msgs、tf2_ros
 的系统 Python。不要在训练 venv 或加载过历史 `marvin_msgs` 的终端构建。
 

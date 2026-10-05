@@ -8,6 +8,21 @@ ABS_X, ABS_Y, ABS_RX, ABS_RY, ABS_HAT0X, ABS_HAT0Y = 0, 1, 3, 4, 16, 17
 BTN_TR = 311
 
 
+def command_routes(mode, data, previous_route=None):
+    """Atomic action/source routing; no separate asynchronous source-status flag.
+
+    Cancel the old channel with zero on handoff. Receiver treats manual zeros as
+    stop messages, not movement. Both topics must have one shared arbiter owner.
+    """
+    route = 'manual' if mode in ('human', 'human_home', 'home_waiting',
+                                'home_failed', 'home_unavailable') else 'policy'
+    messages = []
+    if previous_route is not None and previous_route != route:
+        messages.append((previous_route, [0.] * 6))
+    messages.append((route, list(data)))
+    return route, messages
+
+
 @dataclass
 class Mapping:
     hz: float = 10.

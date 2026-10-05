@@ -1,5 +1,9 @@
 # Training 编年索引
 
+- [2026-10-05：六维真机HIL环境、双Critic与Actor/Learner](2026-10-05-hil-actor-learner.md)
+
+- [2026-10-05：完整 transition 磁盘导入与在线分流 API](2026-10-05-transition-replay.md)
+
 - [2026-10-04：实时policy、RB仲裁与SDK转换接通](2026-10-04-policy-gamepad-integration.md)
 
 - [2026-10-04：无关节模型实时影子入口与现场EEF阻塞](2026-10-04-stack-live-shadow.md)

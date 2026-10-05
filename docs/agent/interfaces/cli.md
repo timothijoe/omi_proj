@@ -1,6 +1,23 @@
 # CLI 入口
 
+wrench看板及历史录制：`bash scripts/view_wrench_live.sh [--window 15] [--duration SECONDS] [--no-rviz]`；
+本地全程图重建：`--review-session SESSION`。默认domain13，只订阅传感器并发布诊断图；
+逐条记录保存至local/wrench_live新会话。[教程](../../../tutorials/wrench_live.md)。
+
+只读触觉预警：`bash scripts/watch_tactile_warning.sh --force-limit VALUE --torque-limit VALUE`，
+至少指定一种阈值；默认domain13，直接比较原始三维力/力矩模长，超限打印WARNING。
+不扣基线、不锁定、不发布动作、不改变保护开关；可加 `--log-file NEW_FILE` 保存日志。
+详见[教程](../../../tutorials/tactile_warning.md)。
+
 控制端本地构建/离线预览：`bash scripts/robot_controller.sh {build|preview}`；原包导入/校验：`python3 scripts/import_optical_module.py {import ZIP|verify}`。见[教程](../../../tutorials/robot_controller.md)。
+
+接收端[触觉保护](../../../tutorials/tactile_guard.md)默认关闭，显式开启只影响模型通道；
+手动通道 `manual_delta_topic` 默认 `/omi/action/manual_decision`，不参与触觉拦截。
+`/delta_ctrl_node/capture_tactile_baseline`、`/delta_ctrl_node/reset_tactile_guard`
+均为 `std_srvs/srv/Trigger`，显式解除启动阻塞/触发锁定；
+`/omi/safety/tactile_guard` 为 `std_msgs/msg/String` JSON 状态。
+launch 可配置 `tactile_guard_enabled`、`tactile_force_limit`、`tactile_torque_limit`、
+`tactile_timeout`、`tactile_retreat_step_mm`、`tactile_retreat_speed_mm_s`。
 
 `eef_bc.sh export --wrist-camera {off,required,optional}`启用EEF v2相机配置，省略保持v1。
 train/shadow自动读取已保存的输入源契约，不接受静默切换相机；[用法](../../../tutorials/eef_action_space.md#6-开启或关闭腕部相机v2)。

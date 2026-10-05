@@ -9,8 +9,43 @@
 两个入口共用手柄映射和输出 wrapper，不要同时开启动作发布。
 
 参考发送接口为 `/home/zhoutong/Downloads/oct04/robot_pose/circle_test.py` 的最新版本。
-最终话题 `/omi/action/decision`，消息 `std_msgs/msg/Float64MultiArray`，空 layout，默认 10 Hz。
+直接手柄最终话题 `/omi/action/manual_decision`；策略选择入口将手动/RB+X 动作发到
+该话题，将模型动作发到 `/omi/action/decision`。消息均为 `std_msgs/msg/Float64MultiArray`，
+空 layout，默认 10 Hz。接收端触觉保护默认关闭；显式开启后只影响模型，不影响手柄。
+接收端 `manual_delta_topic` 必须与手柄 `--topic`（仲裁器 `--manual-topic`）一致。
 接收端决定控制哪只机械臂，消息里没有左右臂字段。
+
+## RB + X 返回初始末端位姿
+
+按住 RB，再按一次 X，两个入口都会读取接收端当前左臂关节反馈，并用
+`eef_left` 相同的标定后 SDK FK 计算当前及以下目标关节对应的 TCP 位姿：
+
+```text
+[1.36784420538524, -1.3972774378908723, -0.8460047216729514,
+ -1.4080845166192213, -0.26412765702130986, -0.1478974554847475,
+ 0.6224018645536978]  # rad
+```
+
+沿直线平移并插值到目标姿态，10 Hz 每步平移最多 1 mm、旋转最多 1°；
+末步仅发送剩余增量，姿态限速时平移也相应减小。返回增量固定使用 SDK BASE
+坐标及 ABC 度格式，不受手柄换轴、`--signs`、`--scale` 或速度选项影响。
+返回期间覆盖摇杆输入；松开 RB 或断开手柄取消，重新按 X 从最新反馈重新计算。
+X 一直按住不会重复触发。直接控制脚本需保持 `--rate 10`。
+
+默认 X 使用 Linux 位置映射 `BTN_WEST=308`。终端会在按钮变化时立即显示
+`RB=`、`X=`、`按下按钮=` 和 `返回=`。先在预览模式单独按 X：如果实际显示
+`按下按钮=[307]`，在原启动命令中加 `--home-button-code 307`；三个手柄入口
+都支持该参数。不要根据 Linux 头文件中的历史 `BTN_X` 名称推断物理 X 的键码。
+
+接收端需使用本仓库更新后的 `arm_delta_cmd`，先在接收电脑运行
+`bash scripts/robot_controller.sh build` 并重启接收节点，提供只读服务
+`/delta_ctrl_node/home_poses`（`std_srvs/srv/Trigger`）。需要已连接左臂 A、
+`delta_frame:=base` 和话题控制模式。服务不可用、FK 失败、请求超过 1 秒或
+目标超出接收端工作空间包络时，拒绝启动返回并打印原因。
+普通无 ROS 预览无法读取 FK；`gamepad_node` 的预览模式可读取服务但不发布动作。
+
+“发布完成”仅表示增量已发完，并非实测到达确认；接收端仍可能限幅或拒绝增量。
+七关节冗余臂通过末端增量返回目标 TCP 位姿，不保证七个关节角逐一等于上述值。
 
 ## 启动：跨电脑、domain 13
 
@@ -45,7 +80,7 @@ python scripts/gamepad_test.py --execute --scale 0.5 \
 接收端另一个已配置相同环境的终端可检查消息：
 
 ```bash
-ros2 topic echo /omi/action/decision std_msgs/msg/Float64MultiArray
+ros2 topic echo /omi/action/manual_decision std_msgs/msg/Float64MultiArray
 ```
 
 能 echo 只证明消息到达，不代表控制器已执行。停止 circle/axis、旧手柄程序等其他同话题发布者。
@@ -65,7 +100,8 @@ ros2 topic echo /omi/action/decision std_msgs/msg/Float64MultiArray
 
 摇杆死区默认 0.15，死区外线性变速，十字键固定速度。多轴同时操作限制合速度。
 RB 松开或设备断连输出六个零；按住 RB 但所有控制回中也是零增量。
-LB、LT/RT、A/B/X/Y、摇杆按下及 Start/Back 暂未分配，夹爪未接入。
+启用夹爪 SDK 后，A 关闭、B 张开，无需按 RB；按键设置见下节。
+LB、LT/RT、X/Y、摇杆按下及 Start/Back 暂未分配。
 Linux 通过内核轴/按钮语义识别当前 Xbox 手柄，默认设备 `/dev/input/js0`。
 
 - `--scale` 同时缩放平移和旋转速度，默认 1。它**不启用坐标转换**。
@@ -79,6 +115,50 @@ Linux 通过内核轴/按钮语义识别当前 Xbox 手柄，默认设备 `/dev/
 
 这些是请求的增量与速度，不是实际末端反馈。持续按住可持续移动，没有累计位移/工作空间限位。
 零增量不替代接收端的断流停止机制；当前发送程序没有位姿反馈联锁。
+
+## 夹爪 SDK 与 A/B 按键
+
+直接手柄、策略选择节点及 policy 启动器均支持 `--gripper-*` 参数。
+传入 `--gripper-server` 启用夹爪；不传则不连接夹爪。预览模式只打印动作，不导入或连接 SDK。
+A 关闭、B 张开，与 RB 独立；启动或重连后先松开 A/B，再按一次触发一次。
+长按不重复发送，同时按 A/B 不执行，需松开两个按钮后再按；SDK 工作线程忙时丢弃新按键动作。
+
+| 参数 | 范围 / 默认值 |
+| --- | --- |
+| `--gripper-close-position` | 0–1000，默认 0（完全关闭） |
+| `--gripper-open-position` | 0–1000，默认 1000（完全张开）；须大于关闭位置 |
+| `--gripper-close-speed` | 10–100，默认 50；张开也使用此速度 |
+| `--gripper-close-torque` | 10–100%，默认 **30%**；张开也使用此力矩上限 |
+
+位置是 SDK 归一化值，速度是 SDK 档位，力矩参数是百分比上限。
+SDK 使用已有行程标定初始化，不执行机械归零；每次开合先检查反馈，再设置力矩、发送目标位置。
+退出时释放连接，保留当前力矩上限。夹爪命令直接通过 SDK 的 gRPC/CAN 接口发送。
+
+厂商配置中的夹爪地址为 `192.168.14.11:55551`。
+[gripper_limits.json](gripper_limits.json) 来自随包 `dm_gripper.yaml` 的标定值，使用前核对属于当前夹爪；
+换夹爪后应替换为该设备的实际标定值。
+
+在已配置 ROS 环境的项目根目录执行：
+
+```bash
+GRIPPER_SDK_DIR="$PWD/local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py"
+.venv/bin/python -m pip install -r "$GRIPPER_SDK_DIR/requirement.txt"
+
+# 先预览；实际控制时加 --execute，按回车开始
+.venv/bin/python scripts/gamepad_test.py \
+  --device /dev/input/js0 \
+  --topic /omi/controller_test/decision \
+  --scale 0.5 --output-convention sdk-x-forward-z-left \
+  --gripper-server 192.168.14.11:55551 \
+  --gripper-sdk-root "$GRIPPER_SDK_DIR" \
+  --gripper-calibration tutorials/gripper_limits.json \
+  --gripper-close-position 0 \
+  --gripper-close-speed 50 \
+  --gripper-close-torque 30
+```
+
+`gamepad_node` 使用 `--publish` 启用实际输出，policy 启动器使用 `--execute`；均透传上述夹爪参数。
+停止其他控制同一夹爪的程序，避免不同控制入口覆盖目标。
 
 ## 输出转换模式
 

@@ -1,5 +1,9 @@
 # Training 纪传体
 
+- [六维真机HIL、SAC和Actor/Learner](hil-actor-learner.md)：当前进展、按钮回合、整段审核、验证边界与下一阶段；[操作教程](../../../../tutorials/hil_actor_learner.md)。
+
+- [完整transition磁盘入口](../../../../tutorials/transition_replay.md)：指定目录、Demo/RL分流与恢复；真机组装及learner待接入。
+
 - [禁用关节输入的GPU历史拼接训练](nojoint-stack.md)
 
 
