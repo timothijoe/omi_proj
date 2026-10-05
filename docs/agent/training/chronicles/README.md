@@ -1,5 +1,11 @@
 # Training 编年索引
 
+- [2026-10-05：四个真实日期包转换与wrench BC训练](2026-10-05-passive-bc-wrench.md)：1005条样本、整包验证划分、wrench网络分支与CUDA训练。
+
+- [2026-10-05：独立手柄四包检查与真实指令可视化](2026-10-05-passive-demo-audit.md)：335条预览、wrench、时效检查、左右键操作及待标注事项。
+
+- [2026-10-05：独立示范采集与命令监督 BC](2026-10-05-demo-collection-bc.md)
+
 - [2026-10-05：六维真机HIL环境、双Critic与Actor/Learner](2026-10-05-hil-actor-learner.md)
 
 - [2026-10-05：完整 transition 磁盘导入与在线分流 API](2026-10-05-transition-replay.md)

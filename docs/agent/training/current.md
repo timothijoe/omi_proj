@@ -1,5 +1,29 @@
 # Training 当前摘要
 
+最新实时入口：[wrench BC＋RB手柄仲裁](../../../tutorials/wrench_policy_gamepad.md)，
+`bash scripts/run_wrench_policy_gamepad.sh --output <新目录>`默认预览，显式`--execute`发布。
+用户要求默认policy-scale=1.0，保留5mm/s、5°/s范数限幅；接收端须订阅两个独立模型/手动话题。
+双侧完整wrench历史门控、旧候选丢弃与RB优先回归已覆盖；真实包146样本观测逐字段一致、
+CUDA检查点推理一致。未执行真机运动，输入门控不等于峰值保护（后者仍默认关闭）。
+
+2026-10-05最新：[日期bag含wrench的BC训练已完成1000步](../../../tutorials/passive_bag_bc_wrench.md)，
+见[本次编年](chronicles/2026-10-05-passive-bc-wrench.md)。四包生成1005条有效样本，
+前三包844条训练，最后一包161条验证；第三包503条BC配对取代预览专用335条的训练限制。
+模型保留双相机/三场触觉/EEF十帧结构，新增双指wrench[10,2,6]和mask进入MLP融合，
+训练集独立归一化。数据在`local/passive_bc_20261005_wrench`，CUDA训练在同名前缀
+`_train_v1`目录，1000步/batch32/lr0.0003；进度/完整结果见progress/history/report JSON。
+监督是记录指令，不是执行回执；自动返回和成功标注仍未确认，不当作RL transition或成功率证据。
+
+当前现场采用**独立gamepad遥操作＋纯录包**。先看[操作教程](../../../tutorials/demo_bag_dataset.md)、[当前数据契约](evolution/demo-collection-bc.md)和[四包检查记录](chronicles/2026-10-05-passive-demo-audit.md)。以下较早条目保留阶段历史，以此处入口为准。
+
+- `record_demo_bag.sh` 不读取手柄、不发布控制；默认明确topic列表，包含 `/omi/controller_test/decision` 与双指wrench，Ctrl+C或duration停止，不用execute/episodes。
+- 用户四包已检查：17.42/22.78/52.48/22.32秒，原始观测和指令完整，使用控制端消息定义后全部解码通过；少量时效异常需清洗。
+- 原第三包335条strict观测/实际wire配对预览仍为review-only，240条非零；其16.9秒跳跃不能当连续轨迹。新增BC转换独立生成503条因果观测/指令样本；无ID/回执、成功或返回段标注的限制仍保留。
+- 查看器左列双相机/动作/时间，右列最上方六维力/力矩和曲线，下方三场触觉；四位小数、←/→切帧并暂停、历史槽和next observation切换、PNG导出。入口 `local/four-demo-audit-20261005/preview-204949/`，示例 `http://127.0.0.1:8767/?step=242`（需启动服务）。
+- 三场触觉使用10Hz十帧，当前＋过去9帧；本次BC recipe已将wrench历史正式接入网络，旧recipe保持原输入兼容。旧在线观测入口尚未提供此新checkpoint的wrench历史。
+- 先前10秒只读测试生成70条真实观测/全零占位预览，RGB header age中位约490ms，strict完整窗口0，只用于诊断。它与本次四包真实指令数据区分。
+- 集成collector及其快照转换/BC仍作为另一入口保留，软件和合成训练闭环通过。当前独立gamepad包没有其sample/event消息，不能直接使用快照转换器；新增 `passive_preview` 提供真实wire审阅格式。
+
 2026-10-05进展已归档：[HIL环境、SAC与Actor/Learner当前专题](evolution/hil-actor-learner.md) → [操作教程](../../../tutorials/hil_actor_learner.md)。
 三项软件实现完成，当前处于真机联调前阶段。下一步依次验证现场观测、按钮/计时、动作回执、短回合入池及learner更新；尚无真实插入成功率或收敛结果。
 

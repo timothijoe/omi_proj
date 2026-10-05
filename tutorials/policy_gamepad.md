@@ -1,5 +1,8 @@
 # 实时 policy、RB 接管与 SDK 输出
 
+2026-10-05新训练的双侧wrench BC模型使用[专用入口](wrench_policy_gamepad.md)，
+不是下文旧模型的checkpoint替换；默认预览、复用相同RB仲裁。
+
 动作限幅的实现与后续建议见[动作缩放策略](../docs/agent/training/evolution/policy-action-scaling.md)：当前代码分别限幅，统一缩放尚未实施。
 
 入口 `scripts/run_policy_gamepad.sh` 读取真实观测，运行无关节 GPU 模型，再由手柄节点选择动作。默认仅预览；远端接收程序由用户确认选择左臂、`FRAME_BASE=0`，本机不调用 SDK。

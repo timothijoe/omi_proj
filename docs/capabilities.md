@@ -14,6 +14,7 @@
 
 | 能力 | 当前入口 | 已验证 | 尚未验证 |
 | --- | --- | --- | --- |
+| 独立手柄纯录包与实际指令审阅 | `record_demo_bag.sh`、`training.passive_audit`、`training.passive_preview`、`view_demo_dataset.sh`；[教程](../tutorials/demo_bag_dataset.md) | 用户四包只读审计、335条严格观测/实际wire配对、双指wrench历史、PNG/HTTP及键盘页面部署 | 成功/返回段标注、accepted-command证据、真实BC效果；wrench网络接入 |
 | Stand方向修正版录包可视化 | `scripts/view_corrected_stand_observation_3d.sh` | 新旧链随机角度数学对照、单元测试、RViz启动及截图；派生模型命名归档 | 真机base/TCP及限位；左joint4限位已知不一致，不可控制 |
 | A 臂 MJCF 加载和任务预检 | `python -m omi_hil_rl.sim.preflight --scene ...` | 外部场景在本机加载；headless 仿真与自动测试 | 现场模型、工具和 TCP 一致性 |
 | A 臂末端到达任务 | `TianjiAReachEnv` | 目标可达；策略独立评估 30/30（固定简单目标） | 真实设备、视觉变化和扰动 |

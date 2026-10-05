@@ -52,41 +52,28 @@ def test_connect_flag_alone_is_rejected():
         rclpy.shutdown()
 
 
-def test_fake_ik_preserves_vendor_splitting_and_command_anchor(node):
-    calls, events = [], []
-
+def test_fake_ik_policy_speed_hold_and_command_anchor(node):
+    calls, events, sent = [], [], []
     def solve(q, translation, abc, frame):
         calls.append((list(q), translation, abc, frame))
         events.append('ik')
-        return True, [v + 0.1 for v in q], None
-
-    sent = []
-    node.robot = SimpleNamespace(
-        clear_set=lambda: None,
+        return True, [v + .1 for v in q], None
+    node.robot = SimpleNamespace(clear_set=lambda: None,
         set_joint_cmd_pose=lambda **kw: sent.append(kw['joints']) or True,
         send_cmd=lambda: events.append('send'))
     node.kine = object()
     node.tk = SimpleNamespace(solve_tcp_delta_ik=solve)
-    node.cur_joints = [4.0] * 7
+    node.cur_joints = [4.] * 7
     node.delta_callback(Float64MultiArray(data=[2., 4., 6., 8., 10., 12.]))
-    assert not calls and not sent
-    assert len(node.traj_queue) == 20
-    for i in range(20):
+    assert not calls and not node.traj_queue
+    for i in range(35):
         node.ctrl_loop()
-        assert len(calls) == len(sent) == i + 1
         assert events == ['ik', 'send'] * (i + 1)
-    assert calls[0] == ([4.] * 7, [0.1, 0.2, 0.3], [0.4, 0.5, 0.6], 0)
-    assert node.cur_joints == pytest.approx([6.] * 7)
-    assert not node.have_goal and not node.traj_queue
-    node.ctrl_loop()
-    assert len(calls) == 20
-    node.delta_callback(Float64MultiArray(data=[2.] * 6))
-    node.ctrl_loop()
-    anchor = list(node.cur_joints)
+    assert node.have_goal and len(sent) == 35
+    assert calls[0] == ([4.] * 7, [.1, .2, .3], [.4, .5, .6], 0)
     node.delta_callback(Float64MultiArray(data=[0.] * 6))
-    assert len(node.traj_queue) == 20  # replacement, not append
     node.ctrl_loop()
-    assert calls[-1] == (anchor, [0.] * 3, [0.] * 3, 0)
+    assert len(sent) == 35 and not node.have_goal
 
 
 def test_nonfinite_command_never_reaches_ik(node):
@@ -169,7 +156,7 @@ def test_receiver_trip_clears_old_queue_and_holds_feedback_before_retreat(node):
     from geometry_msgs.msg import WrenchStamped
     sent, calls = install_fake_guard_robot(node)
     node.delta_callback(Float64MultiArray(data=[1., 0., 0., 0., 0., 0.]))
-    assert len(node.traj_queue) == 20
+    assert node.have_goal and not node.traj_queue
     msg = WrenchStamped()
     msg.wrench.force.x = -3.
     node.tactile_callback('a', msg)
@@ -182,7 +169,7 @@ def test_receiver_trip_clears_old_queue_and_holds_feedback_before_retreat(node):
     assert node.cur_joints == [2.] * 7 and not node.pending_guard_hold
     calls.clear()
     node.delta_callback(Float64MultiArray(data=[-1., 5., 6., 7., 8., 9.]))
-    assert node.queue_is_retreat and len(node.traj_queue) == 20
+    assert node.queue_is_retreat and not node.traj_queue
     assert not calls
     node.ctrl_loop()
     assert calls[0] == ([-.01, 0., 0.], [0., 0., 0.], 0)
@@ -261,7 +248,7 @@ def test_retreat_speed_limit_survives_single_split_configuration(node):
     node.tactile_guard.update('a', [3., 0., 0., 0., 0., 0.], time.monotonic())
     node.ctrl_loop()
     node.delta_callback(Float64MultiArray(data=[-10., 0., 0., 0., 0., 0.]))
-    assert len(node.traj_queue) == 20 and not calls
+    assert node.have_goal and not node.traj_queue and not calls
     node.ctrl_loop()
     assert len(calls) == 1
     assert abs(calls[0][0][0]) * node.ctrl_rate <= node.tactile_retreat_speed_mm_s
@@ -302,9 +289,9 @@ def test_new_trip_does_not_clear_running_manual_queue(node):
     msg = WrenchStamped()
     msg.wrench.force.x = 3.
     node.tactile_callback('a', msg)
-    assert len(node.traj_queue) == 20 and not node.pending_guard_hold
+    assert not node.traj_queue and node.have_goal and not node.pending_guard_hold
     node.ctrl_loop()
-    assert sent and len(node.traj_queue) == 19
+    assert sent and node.have_goal and not node.traj_queue
 
 
 def test_entering_keyboard_overrides_pending_policy_hold(node):
@@ -347,12 +334,12 @@ def test_incremental_failure_stops_remaining_steps_without_advancing_anchor(node
 
 
 def test_incremental_timeout_never_runs_ik(node):
-    from rclpy.duration import Duration
+    import time
     node.robot = SimpleNamespace()
     node.kine = object()
     node.tk = SimpleNamespace(solve_tcp_delta_ik=lambda *args: pytest.fail('IK after timeout'))
     node.delta_callback(Float64MultiArray(data=[1.] * 6))
-    node.last_delta_time = node.get_clock().now() - Duration(seconds=1.)
+    node.last_policy_time = time.monotonic() - 1.
     node.ctrl_loop()
     assert not node.traj_queue and not node.have_goal
 
@@ -371,3 +358,190 @@ def test_incremental_joint_limit_anchors_next_ik_to_sent_point(node):
     node.ctrl_loop()
     assert sent == [[2.] * 7, [4.] * 7]
     assert refs == [[0.] * 7, sent[0]]
+
+
+def test_manual_speed_continues_past_twenty_steps_and_refreshes_without_a_gap(node, monkeypatch):
+    import arm_delta_cmd.delta_ctrl_node as module
+    now = [100.]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now[0])
+    sent, calls = install_fake_guard_robot(node)
+    node.manual_delta_callback(Float64MultiArray(data=[.5, 0., 0., 0., 0., 0.]))
+    assert node.manual_velocity == [5., 0., 0., 0., 0., 0.]
+    for i in range(35):
+        now[0] = 100. + i / node.ctrl_rate
+        node.ctrl_loop()
+    assert len(sent) == len(calls) == 35
+    assert all(c[0] == [.025, 0., 0.] for c in calls)
+    assert node.have_goal and not node.traj_queue
+    node.manual_delta_callback(Float64MultiArray(data=[-.5, 0., 0., 0., 0., 0.]))
+    now[0] += .005
+    node.ctrl_loop()
+    assert calls[-1][0] == [-.025, 0., 0.]
+    assert len(sent) == 36
+    node.manual_delta_callback(Float64MultiArray(data=[0.] * 6))
+    node.ctrl_loop()
+    assert len(sent) == 36 and not node.have_goal
+    assert node.manual_velocity == [0.] * 6
+
+
+def test_manual_watchdog_uses_monotonic_time_and_does_not_resume(node, monkeypatch):
+    import arm_delta_cmd.delta_ctrl_node as module
+    now = [100.]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now[0])
+    sent, _ = install_fake_guard_robot(node)
+    node.manual_delta_callback(Float64MultiArray(data=[1.] * 6))
+    node.ctrl_loop()
+    # ROS clock still looks fresh; the manual watchdog must use steady elapsed time.
+    now[0] += node.manual_timeout
+    node.ctrl_loop()
+    node.ctrl_loop()
+    assert len(sent) == 1 and not node.have_goal
+    assert node.manual_velocity == [0.] * 6
+
+
+@pytest.mark.parametrize('bad', [[1.] * 5, [float('nan')] * 6, [float('inf')] * 6])
+def test_invalid_manual_update_stops_previously_held_velocity(node, bad):
+    sent, _ = install_fake_guard_robot(node)
+    node.manual_delta_callback(Float64MultiArray(data=[1.] * 6))
+    node.ctrl_loop()
+    node.manual_delta_callback(Float64MultiArray(data=bad))
+    node.ctrl_loop()
+    assert len(sent) == 1 and not node.have_goal
+    assert node.manual_velocity == [0.] * 6
+
+
+def test_manual_speed_is_independent_of_delta_splits_and_uses_configured_rates(node):
+    _, calls = install_fake_guard_robot(node)
+    node.delta_splits = 1
+    node.manual_command_rate = 20.
+    node.ctrl_rate = 100.
+    node.manual_delta_callback(Float64MultiArray(data=[1., 2., 3., 4., 5., 6.]))
+    node.ctrl_loop()
+    assert calls[0] == ([.2, .4, .6], [.8, 1., 1.2], 0)
+
+
+def test_accepted_policy_command_replaces_manual_velocity_with_policy_hold(node):
+    node.robot = SimpleNamespace(clear_set=lambda: None, set_joint_cmd_pose=lambda **kw: True,
+                                 send_cmd=lambda: None)
+    node.kine = object()
+    node.tk = SimpleNamespace(solve_tcp_delta_ik=lambda q, *args: (True, list(q), None))
+    node.manual_delta_callback(Float64MultiArray(data=[1.] * 6))
+    assert node.have_goal and not node.traj_queue
+    node.delta_callback(Float64MultiArray(data=[.2] * 6))
+    assert node.queue_source == 'policy' and not node.traj_queue
+    assert node.manual_velocity == [0.] * 6
+    for _ in range(35):
+        node.ctrl_loop()
+    assert node.have_goal
+    node.delta_callback(Float64MultiArray(data=[0.] * 6))
+    assert not node.have_goal
+
+
+@pytest.mark.parametrize('failure', ['ik', 'envelope', 'sdk', 'feedback'])
+def test_manual_fault_cancels_velocity_hold(node, failure):
+    sent, _ = install_fake_guard_robot(node)
+    node.manual_delta_callback(Float64MultiArray(data=[1.] * 6))
+    if failure == 'ik':
+        node.tk.solve_tcp_delta_ik = lambda *a: (False, None, None)
+    elif failure == 'envelope':
+        node.tcp_anchor = [0.] * 3
+        node.envelope_radius_mm = 1.
+        node.kine = SimpleNamespace(fk=lambda _: [[1., 0., 0., 2.], [0., 1., 0., 0.],
+                                                [0., 0., 1., 0.], [0., 0., 0., 1.]])
+    elif failure == 'sdk':
+        node.robot.set_joint_cmd_pose = lambda **kw: False
+    else:
+        node.cur_joints = [30.] * 7
+        node.cmd_fb_err_strikes = 9
+    node.ctrl_loop()
+    count = len(sent)
+    node.ctrl_loop()
+    assert len(sent) == count and not node.have_goal
+    assert node.manual_velocity == [0.] * 6
+
+
+@pytest.mark.parametrize('parameter,value', [('manual_command_rate', '0.0'), ('manual_timeout', '-1.0')])
+def test_invalid_manual_parameters_rejected(parameter, value):
+    rclpy.init(args=['--ros-args', '-p', f'{parameter}:={value}'])
+    try:
+        with pytest.raises(ValueError, match=parameter):
+            DeltaCtrlNode()
+    finally:
+        rclpy.shutdown()
+
+
+
+def test_real_control_timer_keeps_sending_after_manual_twenty_steps(node):
+    import time
+    sent, _ = install_fake_guard_robot(node)
+    node.manual_delta_callback(Float64MultiArray(data=[.1, 0., 0., 0., 0., 0.]))
+    deadline = time.monotonic() + .18
+    while time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=.005)
+    assert len(sent) > 20
+    assert node.have_goal and not node.traj_queue
+    node.manual_delta_callback(Float64MultiArray(data=[0.] * 6))
+    count = len(sent)
+    for _ in range(3):
+        rclpy.spin_once(node, timeout_sec=.01)
+    assert len(sent) == count
+
+
+def test_policy_hold_uses_steady_watchdog_and_new_message_updates_speed(node, monkeypatch):
+    import arm_delta_cmd.delta_ctrl_node as module
+    now = [100.]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now[0])
+    sent, calls = install_fake_guard_robot(node)
+    node.delta_callback(Float64MultiArray(data=[.5, 0., 0., 0., 0., 0.]))
+    for i in range(35):
+        now[0] = 100. + i / node.ctrl_rate
+        node.ctrl_loop()
+    assert len(sent) == 35 and node.have_goal
+    assert all(c[0] == [.025, 0., 0.] for c in calls)
+    node.delta_callback(Float64MultiArray(data=[-.5, 0., 0., 0., 0., 0.]))
+    node.ctrl_loop()
+    assert calls[-1][0] == [-.025, 0., 0.]
+    now[0] += node.delta_timeout
+    node.ctrl_loop()
+    assert not node.have_goal and node.policy_velocity == [0.] * 6
+    assert len(sent) == 36
+
+
+@pytest.mark.parametrize('bad', [[1.] * 5, [float('nan')] * 6, [float('inf')] * 6])
+def test_invalid_policy_update_clears_hold_without_stopping_manual(node, bad):
+    sent, _ = install_fake_guard_robot(node)
+    node.delta_callback(Float64MultiArray(data=[1.] * 6))
+    node.delta_callback(Float64MultiArray(data=bad))
+    assert not node.have_goal and node.policy_velocity == [0.] * 6
+    node.manual_delta_callback(Float64MultiArray(data=[1.] * 6))
+    node.delta_callback(Float64MultiArray(data=bad))
+    node.ctrl_loop()
+    assert sent and node.queue_source == 'manual' and node.have_goal
+
+
+def test_policy_speed_ignores_delta_splits_and_caps_retreat_at_nondefault_rate(node):
+    import time
+    _, calls = install_fake_guard_robot(node)
+    node.delta_splits = 1
+    node.policy_command_rate = 50.
+    node.tactile_guard.update('a', [3., 0., 0., 0., 0., 0.], time.monotonic())
+    node.ctrl_loop()
+    node.delta_callback(Float64MultiArray(data=[-10., 0., 0., 0., 0., 0.]))
+    node.ctrl_loop()
+    assert node.queue_is_retreat
+    assert abs(calls[-1][0][0]) * node.ctrl_rate <= node.tactile_retreat_speed_mm_s
+
+
+def test_real_control_timer_keeps_sending_policy_past_twenty_steps(node):
+    import time
+    sent, _ = install_fake_guard_robot(node)
+    node.delta_callback(Float64MultiArray(data=[.1, 0., 0., 0., 0., 0.]))
+    deadline = time.monotonic() + .18
+    while time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=.005)
+    assert len(sent) > 20 and node.have_goal
+    node.delta_callback(Float64MultiArray(data=[0.] * 6))
+    count = len(sent)
+    for _ in range(3):
+        rclpy.spin_once(node, timeout_sec=.01)
+    assert len(sent) == count

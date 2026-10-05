@@ -16,14 +16,11 @@
      - data=false: 切回话题控制
      键盘控制键位 (沿 TCP 自身轴): q/w=±X  a/s=±Y  z/e=±Z
      r/f=±Rx  t/g=±Ry  y/h=±Rz
-  4. 每收到一条增量: 丢弃上一条尚未执行的子增量, 将本条增量均分为
-     N=20 个子增量入队, 回调内不计算 IK。
-  5. 200Hz 定时器: 每周期取一个子增量, 从最近已下发指令出发调用
-     TcpForceKine.solve_tcp_delta_ik(), 限幅并检查包络后立即通过 SDK
-     set_joint_cmd_pose 下发, 下一周期继续 IK 和下发, 直到完成 N 步。
-     任一步 IK 失败或超出包络时停止剩余步, 已下发的点位不回滚。
-     N=20 步名义上用 20 个 200Hz 周期 (0.1s) 走完。
-     (关节阻抗模式下指令是阻抗控制的参考位置, 手推仍可柔顺偏离)
+  话题控制: 手柄和策略分别将增量乘以各自的 command_rate 换算为速度。
+  200Hz 每周期按速度 / ctrl_rate 做一次 IK、限幅与包络检查后立即下发。
+  持续保持最近速度, 直到新速度、零指令、断流超时或运动保护触发。
+  策略保留触觉保护与后退速度限制; 手动输入沿用原有保护边界。
+  delta_splits 为兼容保留, 不再决定话题控制的步长或执行时长。
 
 依赖: Arm_control SDK，由 ARM_SDK_DIR 指定；仅授权连接时导入。
 来源及迁移差异见 tutorials/robot_controller.md；原始副本保存在 local/vendor。
@@ -38,6 +35,7 @@ import time
 
 import rclpy
 from rclpy.node import Node
+from rclpy.clock import Clock, ClockType
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from std_msgs.msg import Float64MultiArray, String
 from std_srvs.srv import SetBool, Trigger
@@ -156,7 +154,10 @@ class DeltaCtrlNode(Node):
         self.declare_parameter('delta_topic', '/omi/action/decision')
         self.declare_parameter('manual_delta_topic', '/omi/action/manual_decision')
         self.declare_parameter('ctrl_rate', 200.0)      # Hz
-        self.declare_parameter('delta_timeout', 0.5)    # s, 超时无增量则停止发送
+        self.declare_parameter('policy_command_rate', 10.0)  # Hz, 策略增量对应的输入周期
+        self.declare_parameter('manual_command_rate', 10.0)  # Hz, 手柄增量对应的输入周期
+        self.declare_parameter('manual_timeout', 0.25)      # s, 速度保持的断流期限
+        self.declare_parameter('delta_timeout', 0.25)    # s, 超时无增量则停止发送
         self.declare_parameter('max_step_deg', 2.0)     # 单步目标最大关节角步进(度), 安全限幅
         self.declare_parameter('enable_publish_joint_state', True)
         # 末端工具位姿发布频率 (Hz), 0=不发布 /tj/info/eef_left
@@ -207,6 +208,9 @@ class DeltaCtrlNode(Node):
             raise ValueError('manual_delta_topic and delta_topic must differ')
         self.ctrl_rate = float(self.get_parameter('ctrl_rate').value)
         self.delta_timeout = float(self.get_parameter('delta_timeout').value)
+        self.policy_command_rate = float(self.get_parameter('policy_command_rate').value)
+        self.manual_command_rate = float(self.get_parameter('manual_command_rate').value)
+        self.manual_timeout = float(self.get_parameter('manual_timeout').value)
         self.max_step_deg = float(self.get_parameter('max_step_deg').value)
         self.delta_splits = int(self.get_parameter('delta_splits').value)
         self.pub_js = bool(self.get_parameter('enable_publish_joint_state').value)
@@ -243,6 +247,9 @@ class DeltaCtrlNode(Node):
 
         for name, value in [('ctrl_rate', self.ctrl_rate),
                             ('delta_timeout', self.delta_timeout),
+                            ('policy_command_rate', self.policy_command_rate),
+                            ('manual_command_rate', self.manual_command_rate),
+                            ('manual_timeout', self.manual_timeout),
                             ('max_step_deg', self.max_step_deg)]:
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f'{name} must be positive and finite')
@@ -272,6 +279,10 @@ class DeltaCtrlNode(Node):
         self.traj_queue = []            # 200Hz 待执行子增量队列 (每项: 平移 mm, 旋转 deg)
         self.have_goal = False
         self.queue_is_retreat = False
+        self.manual_velocity = [0.0] * 6  # mm/s, deg/s; 手柄话题专用
+        self.policy_velocity = [0.0] * 6
+        self.last_policy_time = time.monotonic()
+        self.last_manual_time = time.monotonic()
         self.queue_source = 'policy'
         self.guard_generation = 0
         self.pending_guard_hold = False
@@ -357,11 +368,17 @@ class DeltaCtrlNode(Node):
                 f'(SDK TCP FK @臂基系 -> URDF J1 安装变换复合)')
 
         # 200Hz 控制定时器
-        self.ctrl_timer = self.create_timer(1.0 / self.ctrl_rate, self.ctrl_loop)
+        self.ctrl_timer = self.create_timer(
+            1.0 / self.ctrl_rate, self.ctrl_loop,
+            clock=Clock(clock_type=ClockType.STEADY_TIME))
 
         self.get_logger().info(
             f'delta_ctrl_node 启动: arm={self.arm}, ip={self.robot_ip}, '
-            f'rate={self.ctrl_rate}Hz, topic={self.delta_topic}')
+            f'rate={self.ctrl_rate}Hz, topic={self.delta_topic}, '
+            f'manual_topic={self.manual_delta_topic}, '
+            f'manual_command_rate={self.manual_command_rate}Hz, '
+            f'manual_timeout={self.manual_timeout}s, '
+            f'policy_command_rate={self.policy_command_rate}Hz, policy_timeout={self.delta_timeout}s')
 
     # ---------------- Receiver-owned tactile protection ----------------
     def _check_tactile_guard(self):
@@ -377,6 +394,7 @@ class DeltaCtrlNode(Node):
             self.traj_queue = []
             self.have_goal = False
             self.queue_is_retreat = False
+            self.policy_velocity = [0.0] * 6
             self.pending_guard_hold = self.robot is not None
             self.hil_finish('tactile_guard', accepted=False)
             self.get_logger().warn('Tactile guard: ' + self.tactile_guard.reason)
@@ -768,7 +786,8 @@ class DeltaCtrlNode(Node):
         pending, self.hil_pending = getattr(self, 'hil_pending', None), None
         if pending:
             self.hil_receipt_pub.publish(String(data=json.dumps(dict(pending, status=status,
-                accepted=accepted, finished=True, timestamp_ns=self.get_clock().now().nanoseconds))))
+                accepted=accepted, finished=True, velocity_hold_continues=(status == 'velocity_window_sent'),
+                timestamp_ns=self.get_clock().now().nanoseconds))))
 
     def hil_delta_callback(self, msg):
         """Optional tagged HIL receipt: queue acceptance, not measured execution."""
@@ -787,8 +806,13 @@ class DeltaCtrlNode(Node):
                                status='queue_accepted' if result and result['accepted'] else 'rejected_or_modified',
                                wire_action=list(msg.data), delta_frame=self.delta_frame, arm=self.arm,
                                timestamp_ns=self.get_clock().now().nanoseconds,
-                               execution_confirmed=False, finished=not bool(result and result["accepted"]))
-                if receipt["accepted"]:
+                               execution_confirmed=False, finished=not bool(result and result["accepted"]),
+                               control_mode='velocity_hold',
+                               nominal_duration_s=1.0 / self.policy_command_rate,
+                               velocity_hold_continues=bool(result and result['accepted'] and self.have_goal))
+                if receipt["accepted"] and not self.have_goal:
+                    receipt.update(status="velocity_zero_stopped", finished=True)
+                elif receipt["accepted"]:
                     self.hil_pending = receipt
                 self.hil_receipt_pub.publish(String(data=json.dumps(receipt)))
 
@@ -802,10 +826,22 @@ class DeltaCtrlNode(Node):
 
     def _delta_callback(self, msg: Float64MultiArray, *, manual):
         if msg.data is None or len(msg.data) != 6:
+            if manual:
+                with self.lock:
+                    self._stop_manual_motion()
+            else:
+                with self.lock:
+                    self._stop_policy_motion()
             self.get_logger().warn('增量数据长度应为 6', throttle_duration_sec=1.0)
             return
 
         if not all(math.isfinite(float(v)) for v in msg.data):
+            if manual:
+                with self.lock:
+                    self._stop_manual_motion()
+            else:
+                with self.lock:
+                    self._stop_policy_motion()
             self.get_logger().warn('拒绝非有限增量')
             return
 
@@ -825,20 +861,23 @@ class DeltaCtrlNode(Node):
 
         with self.lock:
             if manual:
-                # Explicit human takeover supersedes pending policy stop/queue.
-                if self.queue_source != 'manual':
-                    self.traj_queue = []
-                    self.have_goal = False
-                self.queue_source = 'manual'
-                self.pending_guard_hold = False
-                action, reason = tuple(float(v) for v in msg.data), 'manual_bypass'
-                self._check_tactile_guard()
-                if not any(action):
-                    # RB release/disconnect/route handoff cancels manual interpolation.
-                    self.traj_queue = []
-                    self.have_goal = False
-                    self.queue_is_retreat = False
+                velocity = [float(v) * self.manual_command_rate for v in msg.data]
+                if not all(math.isfinite(v) for v in velocity):
+                    self._stop_manual_motion()
+                    self.get_logger().warn('拒绝非有限手柄速度')
                     return
+                # Trusted human input replaces policy motion and any pending policy hold.
+                self.traj_queue = []
+                self.queue_source = 'manual'
+                self.queue_is_retreat = False
+                self.pending_guard_hold = False
+                self.policy_velocity = [0.0] * 6
+                self.manual_velocity = velocity
+                self.last_manual_time = time.monotonic()
+                self.have_goal = any(velocity)
+                self._check_tactile_guard()
+                # An explicit zero (RB release/disconnect/handoff) stops immediately.
+                return dict(accepted=True)
             else:
                 self._check_tactile_guard()
                 action, reason = self.tactile_guard.filter_action(msg.data, time.monotonic())
@@ -855,37 +894,44 @@ class DeltaCtrlNode(Node):
                     self.pending_guard_hold = True
                 self.get_logger().warn('Tactile action blocked: ' + reason, throttle_duration_sec=1.0)
                 return
-            dx, dy, dz, drx, dry, drz = action
-            # 上一条增量的队列还没走完: 丢弃旧队列剩余部分, 用本条新增量
-            # 重新解算 (增量控制以最新数据为准, 不堆积旧增量)
-            if self.have_goal:
-                self.get_logger().info('上条增量队列未走完, 丢弃旧队列, 采用本条新增量',
-                                       throttle_duration_sec=1.0)
-
-            # 收到新增量, 刷新超时计时基准 (ctrl_loop 以此判断上游断流)
-            self.last_delta_time = self.get_clock().now()
-
-            n = self.delta_splits
-            if reason == 'retreat_only':
-                # Bound each 200Hz substep, even with delta_splits=1 or a fast producer.
-                n = max(n, math.ceil(abs(dx) * self.ctrl_rate / self.tactile_retreat_speed_mm_s))
-            # 1. 均分: 把整条增量切成 n 个子增量, 每个子增量位移/旋转均为整条的 1/n
-            sub_t = [dx / n, dy / n, dz / n]
-            sub_r = [drx / n, dry / n, drz / n]
-
-            # 仅保存子增量; IK 在控制循环内逐步计算并立即下发。
             hil_modified = list(action) != list(msg.data)
             if hil_modified and any(d.label.startswith('hil:') for d in msg.layout.dim):
+                self._stop_policy_motion()
                 return None
-            self.traj_queue = [(tuple(sub_t), tuple(sub_r)) for _ in range(n)]
-            self.have_goal = True
+            velocity = [float(v) * self.policy_command_rate for v in action]
+            if reason == 'retreat_only':
+                velocity[0] = max(velocity[0], -self.tactile_retreat_speed_mm_s)
+            if not all(math.isfinite(v) for v in velocity):
+                self._stop_policy_motion()
+                self.get_logger().warn('拒绝非有限策略速度')
+                return None
+            self.manual_velocity = [0.0] * 6
+            self.policy_velocity = velocity
+            self.last_policy_time = time.monotonic()
+            self.last_delta_time = self.get_clock().now()
+            self.traj_queue = []
+            self.have_goal = any(velocity)
             self.queue_is_retreat = reason == 'retreat_only'
-            self.queue_source = 'manual' if manual else 'policy'
-
-            self.get_logger().debug(
-                f'增量 [{dx:.2f},{dy:.2f},{dz:.2f},{drx:.3f},{dry:.3f},{drz:.3f}] '
-                f'({self.delta_frame} 系) -> 切分 {n} 步, 逐周期 IK 后下发')
+            self.queue_source = 'policy'
             return dict(accepted=not hil_modified)
+
+    def _stop_policy_motion(self):
+        """Called with self.lock held; never cancel a trusted manual command."""
+        if self.queue_source == 'policy':
+            self.policy_velocity = [0.0] * 6
+            self.traj_queue = []
+            self.have_goal = False
+            self.queue_is_retreat = False
+            self.hil_finish('invalid_policy_input', accepted=False)
+
+    def _stop_manual_motion(self):
+        """Called with self.lock held; invalid manual input must not retain speed."""
+        if self.queue_source == 'manual':
+            self.manual_velocity = [0.0] * 6
+            self.policy_velocity = [0.0] * 6
+            self.traj_queue = []
+            self.have_goal = False
+            self.queue_is_retreat = False
 
     # ---------------- 200Hz 控制循环 ----------------
     def ctrl_loop(self):
@@ -908,22 +954,32 @@ class DeltaCtrlNode(Node):
             return
 
         with self.lock:
-            if not self.have_goal or not self.traj_queue:
+            manual = self.queue_source == 'manual'
+            if not self.have_goal:
                 return
 
-            # 增量超时: 清空队列停在原地不再下发
-            since = (self.get_clock().now() - self.last_delta_time).nanoseconds * 1e-9
-            if since > self.delta_timeout:
+            # 两个输入通道均采用单调时钟断流监护。
+            since = time.monotonic() - (self.last_manual_time if manual else self.last_policy_time)
+            timeout = self.manual_timeout if manual else self.delta_timeout
+            if since >= timeout:
                 self.hil_finish('receiver_timeout', accepted=False)
                 self.traj_queue = []
                 self.have_goal = False
+                self.manual_velocity = [0.0] * 6
+                self.policy_velocity = [0.0] * 6
                 self.get_logger().warn(
-                    f'增量超时 {since:.2f}s > {self.delta_timeout}s, 停止下发指令',
+                    f'控制输入超时 {since:.2f}s >= {timeout}s, 停止下发指令',
                     throttle_duration_sec=5.0)
                 return
 
             # 每周期只计算一个子增量, 本点下发后才会计算下一点。
-            sub_t, sub_r = self.traj_queue.pop(0)
+            if manual:
+                # Fixed nominal dt: scheduler delays never produce enlarged catch-up steps.
+                sub_t = [v / self.ctrl_rate for v in self.manual_velocity[:3]]
+                sub_r = [v / self.ctrl_rate for v in self.manual_velocity[3:]]
+            else:
+                sub_t = [v / self.ctrl_rate for v in self.policy_velocity[:3]]
+                sub_r = [v / self.ctrl_rate for v in self.policy_velocity[3:]]
             q_ref = list(self.cur_joints)
             ok, cmd, tgt_mat = self.tk.solve_tcp_delta_ik(
                 q_ref, list(sub_t), list(sub_r), self.frame)
@@ -931,6 +987,8 @@ class DeltaCtrlNode(Node):
                 self.hil_finish('ik_failed', accepted=False)
                 self.traj_queue = []
                 self.have_goal = False
+                self.manual_velocity = [0.0] * 6
+                self.policy_velocity = [0.0] * 6
                 self.queue_is_retreat = False
                 self.get_logger().warn(
                     '子增量 IK 失败, 停止剩余增量'
@@ -946,6 +1004,8 @@ class DeltaCtrlNode(Node):
                         self.hil_finish('joint_clamp', accepted=False)
                         self.traj_queue = []
                         self.have_goal = False
+                        self.manual_velocity = [0.0] * 6
+                        self.policy_velocity = [0.0] * 6
                         return
                     cmd[j] = q_ref[j] + math.copysign(self.max_step_deg, d)
 
@@ -960,6 +1020,8 @@ class DeltaCtrlNode(Node):
                         self.hil_finish('envelope_rejected', accepted=False)
                         self.traj_queue = []
                         self.have_goal = False
+                        self.manual_velocity = [0.0] * 6
+                        self.policy_velocity = [0.0] * 6
                         self.queue_is_retreat = False
                         self.get_logger().warn(
                             f'TCP 目标距启动锚点 {dist:.1f} mm 超出包络 '
@@ -985,6 +1047,8 @@ class DeltaCtrlNode(Node):
             with self.lock:
                 self.traj_queue = []
                 self.have_goal = False
+                self.manual_velocity = [0.0] * 6
+                self.policy_velocity = [0.0] * 6
                 self.queue_is_retreat = False
             return
         self.robot.send_cmd()
@@ -992,8 +1056,6 @@ class DeltaCtrlNode(Node):
         stop = False
         with self.lock:
             self.cur_joints = cmd  # 下一条增量的 FK/IK 从本指令值继续
-            if not self.traj_queue:
-                self.have_goal = False  # 队列走完, 允许接收下一条增量
 
             # 指令-反馈偏差监护: 任一关节指令与反馈偏差过大且持续, 立即停发。
             # 防止标定/IK 参考错误时机械臂被带向错误位形
@@ -1008,6 +1070,8 @@ class DeltaCtrlNode(Node):
                             '请检查 arm 参数 (A/B) 与急停')
                         self.traj_queue = []
                         self.have_goal = False
+                        self.manual_velocity = [0.0] * 6
+                        self.policy_velocity = [0.0] * 6
                         stop = True
                 else:
                     self.cmd_fb_err_strikes = 0
@@ -1015,8 +1079,9 @@ class DeltaCtrlNode(Node):
         if stop:
             self.hil_finish('feedback_error', accepted=False)
             return
-        if not self.have_goal:
-            self.hil_finish('sdk_commands_sent', accepted=True)
+        if not manual and getattr(self, 'hil_pending', None):
+            if time.monotonic() - self.last_policy_time >= 1.0 / self.policy_command_rate:
+                self.hil_finish('velocity_window_sent', accepted=True)
 
     # ---------------- 关节状态发布 ----------------
     def publish_joint_state(self):

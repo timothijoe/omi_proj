@@ -131,6 +131,8 @@ def infer_window(model,norm,window,device):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--checkpoint',type=Path,required=True)
+    p.add_argument('--model-kind',choices=('stack','passive-wrench-bc'),default='stack')
+    p.add_argument('--candidate-expiry',choices=('on','off'),default='on')
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--duration',type=float,default=60.,help='seconds of live observation after model loading')
     p.add_argument('--device',choices=('cuda','cpu'),default='cuda')
@@ -157,9 +159,16 @@ def main():
     torch.backends.cuda.matmul.allow_tf32=False;torch.backends.cudnn.allow_tf32=False
     torch.backends.cudnn.benchmark=False
     torch.use_deterministic_algorithms(True)
-    model,norm,checkpoint=load_stack_policy(args.checkpoint,device)
-    if checkpoint['config']['version']!=NO_JOINT_VERSION:raise ValueError('This live runner requires the no-joint checkpoint')
-    runtime=StackObservations(model.contract,args.header_mode,args.eef_reference)
+    inference = infer_window
+    if args.model_kind == 'passive-wrench-bc':
+        from .wrench_live import load_wrench_policy, WrenchObservations, infer_wrench_window
+        model,norm,checkpoint=load_wrench_policy(args.checkpoint,device)
+        runtime=WrenchObservations(model.contract,args.header_mode,args.eef_reference)
+        inference = infer_wrench_window
+    else:
+        model,norm,checkpoint=load_stack_policy(args.checkpoint,device)
+        if checkpoint['config']['version']!=NO_JOINT_VERSION:raise ValueError('This live runner requires the no-joint checkpoint')
+        runtime=StackObservations(model.contract,args.header_mode,args.eef_reference)
     manifest=dict(checkpoint=str(args.checkpoint.resolve()),checkpoint_sha256=sha256(args.checkpoint),
                   version=checkpoint['config']['version'],step=checkpoint['step'],device=str(device),
                   gpu=torch.cuda.get_device_name() if device.type=='cuda' else None,
@@ -171,19 +180,25 @@ def main():
                   timing='receiver ROS clock; source-header age guards per header_mode; no clock offset correction',
                   inference_timing='normalization + tensor transfer + forward + denormalization; excludes decode and transport')
     manifest.update(candidate_publisher=args.candidate_topic if args.publish_candidates else None,
+        model_kind=args.model_kind,
+        candidate_expiry=args.candidate_expiry,
         candidate_frame=POLICY_FRAME,candidate_wire='TwistStamped per-step m/rad rotvec; not velocities or SDK ABC',
         sdk_output_convention=SDK_CONVENTION,sdk_conversion_owner='gamepad_node after arbitration',
         eef_reference=args.eef_reference,eef_input_offset_base_m=reference_offset(args.eef_reference).tolist(),
         policy_scale=args.policy_scale,policy_speed_mm_s=args.speed_mm_s,policy_rotation_deg_s=args.rotation_deg_s,
         policy_limit_mode='independent_translation_rotvec_norm_scaling_after_policy_scale',
         receiver='User confirms left arm FRAME_BASE=0; UserFrame/TCP equivalence unverified')
+    if args.model_kind == 'passive-wrench-bc':
+        manifest['training_contract'] = checkpoint['contract']
+        manifest['physical_action_scale'] = model.physical_action_scale.tolist()
+        manifest['wrench_live_guards'] = 'full causal history, finite, tactile_a/b frames, header and receive age'
     if args.publish_candidates:manifest['deployment']='policy candidate producer only; gamepad arbiter owns final robot output'
     (args.output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     import rclpy
     from rclpy.executors import SingleThreadedExecutor
     from rclpy.qos import qos_profile_sensor_data
     from sensor_msgs.msg import Image
-    from geometry_msgs.msg import PoseStamped, TwistStamped
+    from geometry_msgs.msg import PoseStamped, TwistStamped, WrenchStamped
     from rclpy.qos import QoSProfile, DurabilityPolicy
     rclpy.init();node=rclpy.create_node('omi_stack_shadow',enable_rosout=False,start_parameter_services=False)
     candidate_pub=node.create_publisher(TwistStamped,args.candidate_topic,QoSProfile(depth=1,durability=DurabilityPolicy.VOLATILE)) if args.publish_candidates else None
@@ -191,7 +206,8 @@ def main():
     def receive(key,msg):
         with lock:runtime.ingest(key,msg,node.get_clock().now().nanoseconds)
     for topic,key in runtime.topics.items():
-        node.create_subscription(PoseStamped if key=='eef' else Image,topic,
+        message_type = WrenchStamped if key.startswith('wrench_') else PoseStamped if key=='eef' else Image
+        node.create_subscription(message_type,topic,
             lambda msg,k=key:receive(k,msg),qos_profile_sensor_data)
     executor=SingleThreadedExecutor();executor.add_node(node)
     def spin():
@@ -220,7 +236,7 @@ def main():
                     window,status=runtime.window(reference)
                     status['ingress_latest']={k:dict(v) for k,v in runtime.latest.items()}
                 if window is not None:
-                    action,elapsed=infer_window(model,norm,window,device)
+                    action,elapsed=inference(model,norm,window,device)
                     finite=bool(np.isfinite(action).all())
                     status.update(inferred=True,finite=finite,inference_ms=elapsed,
                                   action=action.tolist() if finite else None,reason='ok' if finite else 'nonfinite_output')
@@ -240,7 +256,8 @@ def main():
                 status['deadline_met']=reference<=finished<reference+PERIOD_NS
                 status['reference_to_finish_ms']=(finished-reference)/1e6
                 status['candidate_gate']=candidate_reason(status,node.get_clock().now().nanoseconds,
-                    args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10)
+                    args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10,candidate_expiry=args.candidate_expiry=='on')
+                status['candidate_expiry']=args.candidate_expiry
                 status['candidate_published']=False
                 if candidate_pub and status['candidate_gate']=='ok':
                     if node.count_publishers(args.candidate_topic)>1:raise RuntimeError('Another policy producer owns '+args.candidate_topic)
@@ -250,7 +267,7 @@ def main():
                     msg.twist.linear.x,msg.twist.linear.y,msg.twist.linear.z=a[:3]
                     msg.twist.angular.x,msg.twist.angular.y,msg.twist.angular.z=a[3:]
                     status['candidate_gate']=candidate_reason(status,node.get_clock().now().nanoseconds,
-                        args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10)
+                        args.speed_mm_s/1000/10,np.deg2rad(args.rotation_deg_s)/10,candidate_expiry=args.candidate_expiry=='on')
                     if status['candidate_gate']=='ok':
                         candidate_pub.publish(msg);status['candidate_published']=True
                 rows.append(status);log.write(json.dumps(status,allow_nan=False)+'\n');log.flush()

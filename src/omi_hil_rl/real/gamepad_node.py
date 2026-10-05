@@ -24,6 +24,7 @@ def main():
     p.add_argument('--speed-mm-s', type=float, default=10.)
     p.add_argument('--rotation-deg-s', type=float, default=10.)
     p.add_argument('--policy-timeout', type=float, default=.2)
+    p.add_argument('--candidate-expiry', choices=('on','off'), default='on')
     p.add_argument('--duration',type=float,help='Optional bounded preview/run duration in seconds')
     p.add_argument('--deadzone', type=float, default=.15)
     p.add_argument('--signs', type=int, nargs=6, default=[1]*6, metavar='SIGN')
@@ -56,7 +57,7 @@ def main():
     publishers = {'policy': publisher, 'manual': manual_publisher}
     topics = {'policy': args.topic, 'manual': args.manual_topic}
     previous_route = None
-    arbiter, pad = Arbiter(mapping,args.policy_timeout), LinuxGamepad(args.device)
+    arbiter, pad = Arbiter(mapping,args.policy_timeout,candidate_expiry=args.candidate_expiry=='on'), LinuxGamepad(args.device)
     log = args.log.open('x') if args.log else None
     def now():
         return node.get_clock().now().nanoseconds/1e9
@@ -108,6 +109,8 @@ def main():
                    original_mm_rotvec_deg=wire_action(delta))
         row['command_topic'] = topics[selected_route]
         row.update(policy_frame=args.frame,policy_topic=args.policy_topic,policy_offered=offered,
+                   candidate_expiry=args.candidate_expiry,
+                   selected_policy_age_ms=None if arbiter.selected_policy_stamp is None else (clock-arbiter.selected_policy_stamp)*1000,
                    policy_accepted=accepted,selected_policy_reference_ns=None if arbiter.selected_policy_stamp is None else round(arbiter.selected_policy_stamp*1e9),
                    gamepad_connected=connected,rb_held=bool(pad.buttons.get(BTN_TR,False)),
                    gamepad_axes=dict(pad.axes),gamepad_buttons=dict(pad.buttons),

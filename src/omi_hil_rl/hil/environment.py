@@ -32,6 +32,7 @@ class Interaction:
     valid: bool = True
     command_status: str = "simulated"
     event_times: dict = field(default_factory=dict)
+    audit: dict = field(default_factory=dict)
 
 
 class ButtonEvents:
@@ -131,7 +132,8 @@ class RealHILEnv(gym.Env):
                 executed_action=executed, action_source=result.source, command_status=result.command_status,
                 policy_action=np.asarray(action).copy(), episode_success=success,
                 reason="success" if success else "timeout" if timed_out else "active",
-                valid_transition=True)
+                valid_transition=True, events=sorted(result.events), event_times=dict(result.event_times),
+                command_audit=dict(result.audit))
             self.previous, self.previous_stamp = result.observation, result.observation_time_ns
             self.step_number += 1
             if success or timed_out:

@@ -1,5 +1,9 @@
 # OMI 文档总目录
 
+当前[独立手柄录包、检查与逐帧查看](../tutorials/demo_bag_dataset.md) → [四个真实bag检查记录](agent/training/chronicles/2026-10-05-passive-demo-audit.md)。第三包335条真实指令配对已可查看，支持左右键切帧；六维力/力矩位于触觉列顶部。
+
+[采集数据契约与 BC 入口](agent/training/evolution/demo-collection-bc.md) → [采集、指令标签和训练教程](../tutorials/demo_collection_bc.md)。区分当前独立录包、集成collector和零动作诊断；尚无本批真实数据的BC或闭环效果。
+
 新增六维真机HIL、无夹爪SAC与Actor/Learner：[当前进展与验证边界](agent/training/evolution/hil-actor-learner.md) → [操作教程](../tutorials/hil_actor_learner.md)。三项软件实现已完成，处于真机联调前阶段。
 
 双指六维力/力矩：[实时查看与完整历史记录](../tutorials/wrench_live.md)。

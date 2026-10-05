@@ -1,106 +1,128 @@
-import json
 from types import SimpleNamespace as NS
 
 import numpy as np
 import pytest
+import torch
 
-from omi_hil_rl.real.wrench_live import Monitor, render, review_session, positive, axis_bounds
-
-
-def message(values, stamp=1_000_000_000):
-    return NS(header=NS(stamp=NS(sec=stamp//10**9,nanosec=stamp%10**9),frame_id='tactile_a'),
-              wrench=NS(force=NS(**dict(zip(('x','y','z'),values[:3]))),
-                        torque=NS(**dict(zip(('x','y','z'),values[3:])))))
-
-
-def test_record_preserves_signed_values_and_both_clocks():
-    m=Monitor()
-    values=[-1.,2.,-3.,.01,-.02,.03]
-    row=m.ingest('a',message(values),1_100_000_000,3.)
-    assert row['values']==values and row['header_ros_ns']==10**9
-    assert row['receive_ros_ns']==1_100_000_000 and row['elapsed_s']==3.
-    assert m.status(3.)['a']['values']==values
-    assert m.status(3.)['a']['header_age_at_receive_ms']==100
-    assert m.status(3.)['b']['state']=='WAITING'
+from omi_hil_rl.training.demo_wrench import align_history
+from omi_hil_rl.training.eef_bc_grid import GridProfile
+from omi_hil_rl.training.wrench_live import WrenchObservations, infer_wrench_window, load_wrench_policy
+from omi_hil_rl.real.policy_gamepad import commands
+from omi_hil_rl.real.gamepad_control import Arbiter, Mapping
 
 
-def test_minimum_scale_is_stable_and_expands_only_at_range_boundary():
-    for values in ([],[0.],[.01,-.02],[1.9,-2.]):
-        assert axis_bounds(values,4.)==(-2.,2.)
-    assert axis_bounds([-.49,.1],1.)==(-.5,.5)
-    assert axis_bounds([2.01],4.)==(-4.,4.)
-    assert axis_bounds([-3.9,3.5],4.)==(-4.,4.)
-    assert axis_bounds([-4.01],4.)==(-8.,8.)
+def wrench(t, side='a', value=1., frame=None, stamp=None):
+    stamp = t if stamp is None else stamp
+    return NS(header=NS(stamp=NS(sec=stamp//10**9, nanosec=stamp%10**9),
+                        frame_id=frame or 'tactile_'+side),
+              wrench=NS(force=NS(x=value,y=2.,z=3.), torque=NS(x=4.,y=5.,z=6.)))
 
 
-def test_recorded_review_uses_saved_scale_and_explicit_override(tmp_path,monkeypatch):
-    (tmp_path/'samples.jsonl').write_text('')
-    (tmp_path/'manifest.json').write_text(json.dumps(dict(force_min_span=8.,torque_min_span=2.)))
-    calls=[]
-    from PIL import Image
-    def capture(*args,**kwargs):
-        calls.append(kwargs)
-        return Image.new('RGB',(10,10))
-    monkeypatch.setattr('omi_hil_rl.real.wrench_live.render',capture)
-    review_session(tmp_path)
-    assert calls[-1]['force_min_span']==8. and calls[-1]['torque_min_span']==2.
-    review_session(tmp_path,force_min_span=6.)
-    assert calls[-1]['force_min_span']==6. and calls[-1]['torque_min_span']==2.
+def runtime():
+    r = WrenchObservations(GridProfile('required').CONTRACT)
+    r.profile.decode = lambda k,m: (m.stamp,m.value)
+    return r
 
 
-def test_invalid_and_stale_never_present_as_zero_or_live():
-    m=Monitor()
-    row=m.ingest('a',message([0,0,0,0,float('nan'),0]),10**9,0.)
-    assert row['valid'] is False and row['values'][4] is None
-    json.dumps(row,allow_nan=False)
-    assert m.status(0.)['a']['state']=='INVALID'
-    assert m.status(0.)['a']['values'] is None
-    m.ingest('a',message([0]*6),10**9,1.)
-    assert m.status(1.)['a']['state']=='LIVE'
-    assert m.status(2.)['a']['state']=='STALE'
-    assert m.status(2.)['a']['values'] is None
-    assert m.invalid['a']==1
+def feed(r,t):
+    for key in r.topics.values():
+        if key.startswith('wrench_'):
+            assert r.ingest(key,wrench(t,key[-1]),t)
+            continue
+        if key in ('rgb','wrist_rgb'):value=np.full((3,128,128),42,np.uint8)
+        elif key=='eef':value=np.array([.5,.1,.8,0,0,0,1],np.float32)
+        else:value=np.zeros((1 if key.endswith('depth') else 2,16,24),np.float32)
+        assert r.ingest(key,NS(stamp=t,value=value),t)
 
 
-def test_live_history_is_bounded_without_discarding_record_rows():
-    m=Monitor(window=1.)
-    recorded=[m.ingest('a',message([i]*6),10**9+i,i/10) for i in range(100)]
-    assert len(m.history['a'])<=11
-    assert len(recorded)==100 and m.counts['a']==100
-    m.status(12.)
-    assert len(m.history['a'])==0
+def warm(r):
+    for i in range(10):
+        t=10**9+i*100_000_000
+        feed(r,t)
+        window,status=r.window(t)
+    return t,window,status
 
 
-def test_saved_history_preserves_brief_peaks_and_exact_log(tmp_path,monkeypatch):
-    rows=[]
-    for i in range(2000):
-        rows.append(dict(side='a',elapsed_s=i/100,valid=True,values=[1000. if i==777 else -2.,0,0,0,0,0]))
-    data=''.join(json.dumps(r)+'\n' for r in rows)
-    path=tmp_path/'samples.jsonl';path.write_text(data)
-    captured={}
-    from PIL import Image
-    def capture(history,*args,**kwargs):
-        captured.update(history)
-        return Image.new('RGB',(10,10))
-    monkeypatch.setattr('omi_hil_rl.real.wrench_live.render',capture)
-    assert review_session(tmp_path).is_file()
-    assert len(captured['a'])<=580
-    assert max(p[2][0] for p in captured['a'])==1000.
-    assert min(p[1][0] for p in captured['a'])==-2.
-    assert path.read_text()==data
+def test_live_history_matches_offline_alignment_and_has_no_joints():
+    r=runtime();t,window,status=warm(r)
+    assert window is not None and all(status['history_mask'])
+    data,mask=window
+    expected,_=align_history(r.wrenches,t)
+    np.testing.assert_array_equal(data['wrench'],expected['wrench'])
+    assert data['wrench'].shape==(10,2,6) and data['wrench_mask'].all()
+    assert not data['state'][:,:7].any()
+    # Receiving a future sample does not use it in an earlier history slot.
+    r.ingest('wrench_a',wrench(t+50_000_000,value=99),t+50_000_000)
+    aligned,_=align_history(r.wrenches,t)
+    assert aligned['wrench'][-1,0,0]==1
 
 
-def test_render_waiting_live_invalid_and_empty_recording(tmp_path):
-    m=Monitor()
-    m.ingest('a',message([1,-2,3,.01,-.02,.03]),10**9,0.)
-    m.ingest('a',message([float('inf'),0,0,0,0,0]),10**9,0.1)
-    image=render(m.history,m.status(.1),0.,15.,'Test')
-    assert image.size==(1440,880)
-    (tmp_path/'samples.jsonl').write_text('')
-    assert review_session(tmp_path).is_file()
+@pytest.mark.parametrize('bad',[
+    dict(value=float('nan')),dict(frame='wrong'),dict(stamp=1),dict(stamp=9_000_000_000)])
+def test_invalid_newest_blocks_no_fallback(bad):
+    r=runtime();t,_,_=warm(r)
+    assert not r.ingest('wrench_a',wrench(t+1,**bad),t+1)
+    assert r.window(t+100_000_000)[0] is None
 
 
-@pytest.mark.parametrize('value',['nan','inf','0','-1'])
-def test_positive_rejects_invalid(value):
-    import argparse
-    with pytest.raises(argparse.ArgumentTypeError):positive(value)
+def test_missing_stale_reset_and_recovery():
+    r=runtime();t,_,_=warm(r)
+    r.wrenches['b'].clear()
+    assert r.window(t+100_000_000)[0] is None
+    r=runtime();t,_,_=warm(r)
+    for i in range(1,5):
+        stamp=t+i*100_000_000
+        # Keep other inputs fresh, but stop wrench B.
+        saved=r.topics
+        r.topics={k:v for k,v in saved.items() if v!='wrench_b'}
+        feed(r,stamp);r.topics=saved
+        window,status=r.window(stamp)
+    assert window is None and status['reason']=='incomplete_or_invalid_wrench_history'
+    for i in range(5,18):
+        stamp=t+i*100_000_000;feed(r,stamp);window,status=r.window(stamp)
+    assert window is not None and window[1].all()
+    r.ingest('wrench_a',wrench(1_000_000_000),1_000_000_000)
+    assert not r.wrenches['b'] and not r.history
+
+
+def test_strict_training_input_required():
+    for mode,ref in [('receive-only-diagnostic','raw'),('strict','bag-baseline-v1')]:
+        with pytest.raises(ValueError):WrenchObservations(GridProfile('required').CONTRACT,mode,ref)
+
+
+def test_deterministic_inference_uses_contract_scale_once():
+    class Actor:
+        physical_action_scale=np.array([.0005]*3+[np.deg2rad(.5)]*3)
+        def sample(self,obs,deterministic):
+            assert deterministic and obs['history_mask'].shape==(1,10)
+            assert obs['wrench'].shape==(1,10,2,6)
+            return torch.tensor([[1.,-.5,0,0,0,.25]]),None
+    _,window,_=warm(runtime())
+    action,ms=infer_wrench_window(Actor(),{},window,torch.device('cpu'))
+    np.testing.assert_allclose(action,[.0005,-.00025,0,0,0,np.deg2rad(.125)])
+    assert ms>=0
+
+
+def test_wrong_checkpoint_fails_before_ros(tmp_path):
+    path=tmp_path/'actor.pt'
+    torch.save(dict(contract={},recipe={}),path)
+    with pytest.raises(ValueError):load_wrench_policy(path,'cpu')
+
+
+def test_launcher_and_rb_precedence_with_wrench_policy(tmp_path):
+    a=NS(checkpoint=tmp_path/'actor.pt',output=tmp_path,duration=5,device='cpu',gamepad='/missing',
+         eef_reference='raw',policy_scale=.1,speed_mm_s=5,rotation_deg_s=5,execute=False,
+         model_kind='passive-wrench-bc',home_button_code=307)
+    cmd,topic=commands(a)
+    assert topic.startswith('/omi/policy/preview_') and '--publish' not in cmd[0]
+    assert cmd[1][cmd[1].index('--model-kind')+1]=='passive-wrench-bc'
+    arb=Arbiter(Mapping(),.1)
+    arb.select(True,False,{},1.)
+    assert arb.offer([.0001,0,0,0,0,0],1.01,1.02)
+    mode,action=arb.select(True,True,{},1.03)
+    assert mode=='human' and not action.any()
+    assert arb.select(True,False,{},1.04)[0]=='paused_no_policy'
+    assert not arb.offer([.0001,0,0,0,0,0],1.02,1.05)
+    assert arb.offer([.0001,0,0,0,0,0],1.06,1.07)
+    assert arb.select(True,False,{},1.08)[0]=='policy'
+    assert arb.select(False,False,{},1.09)[0]=='paused_disconnected'

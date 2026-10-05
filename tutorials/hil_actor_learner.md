@@ -1,5 +1,7 @@
 # 六维真机 HIL 环境、SAC 与 Actor/Learner
 
+若当前只想先采集示范并验证模仿学习，使用[独立 Demo 采集与 BC](demo_collection_bc.md)：不需要先启动 learner 或提供策略，保留发送指令并允许后补 reward。本文的 `--offline-demo` 是另一条直接入 RL Demo 流的入口。
+
 本入口在 `omi_hil_rl.hil`，不含夹爪动作、夹爪 Critic 或关节输入。
 它提供 ROS 环境适配、真实多模态 Actor/双 Critic、两进程训练和人工回合审核。
 目前通过软件与断开连接的 ROS 测试，尚未进行真机训练或插入成功率验收。
@@ -162,13 +164,15 @@ ROS 默认不创建机器人动作 publisher，不生成可训练 transition；�
 HIL 人工动作和 policy 都发送到 `/omi/action/decision`，遵守该接收端的保护设置，
 不使用已有 `/omi/action/manual_decision` 人工保护旁路。
 
-每条命令带 `layout.dim[0].label=hil:<id>`；接收端在 `/omi/action/receipt` 返回入队及终态：
-完整 SDK 指令发送、结束时零动作取消余队列、拒绝/IK 失败/限幅/保护/SDK 失败等。
-Actor 等待匹配终态和命令之后的 EEF 输入；失败不入池。
-成功或到时会请求零增量停发。结束打断余队列时状态记为 queue_cancelled，
-保存的动作仍是**采用的完整请求命令**，不是按反馈估计的实际位移；这是 accepted_command 契约。
-不会声称完成全部请求位移，execution_confirmed 始终 false。
-目前回执不是 SDK 运动完成信号，实际 TCP、安装方向、UserFrame 与反馈链仍须真机验收。
+每条命令带 `layout.dim[0].label=hil:<id>`；接收端在 `/omi/action/receipt` 返回采用及观察窗口回执。
+当前执行方式是速度保持：策略名义增量乘以`policy_command_rate`换算速度，200Hz持续IK下发。
+一个名义周期后，`velocity_window_sent`、`finished=true`表示观察窗口结束，
+`velocity_hold_continues=true`明确表示速度还在保持。Actor等待匹配回执和命令之后的EEF输入，
+随后产生下一条动作；故障拒绝不入池。成功或到时请求零动作立即停止。
+取消、替换、拒绝/IK失败/限幅/保护/SDK拒绝会给出对应回执。
+保存的动作是名义周期的采用命令，实际位移须结合反馈及观测时间理解；
+不声称完成全部请求位移，`execution_confirmed`始终false。
+策略断流默认0.25秒停止，完整参数见[控制教程](robot_controller.md#速度保持执行与参数)。
 
 观测沿用 strict header/receive 时效，要求十帧完整、外部相机可用、EEF 新鲜，关节位固定零。
 旧观测、推理超出 100ms、缺失回执或后继观测会中止并丢弃，不伪造 transition。
@@ -191,3 +195,12 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/python -m pytest -q \
 source scripts/env_ros.sh
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q tests/test_hil_receipts_ros.py
 ```
+
+## 速度保持执行回执
+
+策略接收端现在把名义动作增量按 `policy_command_rate` 换算为速度，并在 200 Hz 保持。
+`velocity_window_sent` 的 `finished=true` 只表示一个名义控制观察周期已结束，
+`velocity_hold_continues=true` 明确表示速度仍在保持，直到下一条动作或停止条件。
+Actor 可据此获取因果后继观测并产生下一条动作；回执不证明实际完成请求位移。
+网络输出仍为名义周期的增量，训练记录应结合观测时间间隔理解实际位移。
+策略断流由 `delta_timeout`（默认 0.25 秒，单调时钟）停止，零动作立即停止。

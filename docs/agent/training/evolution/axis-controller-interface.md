@@ -1,5 +1,7 @@
 # 对齐 axis_test 实机动作接口
 
+当前接收端已改为手柄与策略速度保持，20步队列描述仅对应历史阶段；现行参数与执行边界见[接收端契约](../../hardware/evolution/robot-controller.md#速度保持参数与停止边界)。
+
 2026-10-05已获得并迁入接收端源码，实际20步拆分、锚点、Tool/UserFrame及默认模式见[控制端审计](../../hardware/evolution/robot-controller.md)。下文“未读取接收端”属于历史阶段。
 
 > **最新更新：下文是早期接口假设。** SDK 源码确认最终后三维为 ABC 欧拉角（度），不是旋转向量；用户确认接收端左臂、FRAME_BASE=0。当前实现由统一 wrapper 换轴并转 ABC，详见[当前接入教程](../../../../tutorials/policy_gamepad.md)。

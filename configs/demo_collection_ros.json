@@ -1,0 +1,9 @@
+{
+  "transport": "ros",
+  "hz": 10.0,
+  "episode_seconds": 15.0,
+  "review": "manual",
+  "wrist_camera": "required",
+  "eef_reference": "raw",
+  "sdk_convention": "sdk-x-forward-z-left"
+}

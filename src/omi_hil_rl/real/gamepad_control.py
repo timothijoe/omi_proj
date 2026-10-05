@@ -68,10 +68,11 @@ def wire_action(action, convention='legacy'):
 
 
 class Arbiter:
-    def __init__(self, mapping, timeout=.2):
+    def __init__(self, mapping, timeout=.2, *, candidate_expiry=True):
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError('Invalid policy timeout')
         self.mapping, self.timeout = mapping, timeout
+        self.candidate_expiry = candidate_expiry
         self.policy = None
         self.barrier = float('-inf')
         self.last_stamp = float('-inf')
@@ -82,7 +83,8 @@ class Arbiter:
     def offer(self, action, stamp, now):
         d = np.asarray(action, dtype=float)
         valid = (d.shape == (6,) and np.isfinite(d).all()
-                 and math.isfinite(stamp) and 0 <= now-stamp <= self.timeout
+                 and math.isfinite(stamp) and math.isfinite(now) and 0 <= now-stamp
+                 and (not self.candidate_expiry or now-stamp <= self.timeout)
                  and stamp > max(self.barrier, self.last_stamp)
                  and np.linalg.norm(d[:3]) <= self.mapping.translation_m_s/self.mapping.hz + 1e-12
                  and np.linalg.norm(d[3:]) <= self.mapping.rotation_rad_s/self.mapping.hz + 1e-12)
@@ -105,7 +107,9 @@ class Arbiter:
             self.policy = None
             return 'human', self.mapping.action(axes)
         candidate, self.policy = self.policy, None  # never replay a delta twice
-        if candidate is not None and candidate[0] > self.barrier and 0 <= now-candidate[0] <= self.timeout:
+        if (candidate is not None and candidate[0] > self.barrier
+                and math.isfinite(now) and 0 <= now-candidate[0]
+                and (not self.candidate_expiry or now-candidate[0] <= self.timeout)):
             self.selected_policy_stamp = candidate[0]
             return 'policy', candidate[1]
         return 'paused_no_policy', np.zeros(6)

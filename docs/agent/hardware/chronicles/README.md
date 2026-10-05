@@ -1,5 +1,7 @@
 # Hardware 编年索引
 
+- [2026-10-05 手柄、策略速度保持与夹爪启用修复](2026-10-05-control-velocity-hold.md)
+
 - [2026-10-05 双指wrench实时显示与历史记录](2026-10-05-wrench-live-recording.md)
 
 - [2026-10-05 控制接收端迁移](2026-10-05-robot-controller-migration.md)

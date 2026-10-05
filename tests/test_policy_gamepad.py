@@ -48,6 +48,28 @@ def good_status():
                 policy_trace=policy_trace([.0002,0,0,0,0,0]))
 
 
+def test_expiry_off_keeps_other_guards_and_single_use_rb():
+    s=good_status()
+    assert candidate_reason(s,1_105_850_000)=='expired_or_future'
+    assert candidate_reason(s,1_105_850_000,candidate_expiry=False)=='ok'
+    assert candidate_reason(s,999_999_999,candidate_expiry=False)=='expired_or_future'
+    s['history_mask'][0]=False
+    assert candidate_reason(s,2_000_000_000,candidate_expiry=False)=='history_warmup_or_gap'
+    a=Arbiter(Mapping(),.1,candidate_expiry=False)
+    a.select(True,False,{},.9)
+    assert a.offer([.0002,0,0,0,0,0],1.,1.011)
+    assert a.select(True,False,{},1.10585)[0]=='policy'
+    assert a.select(True,False,{},1.20585)[0]=='paused_no_policy'
+    assert a.offer([.0002,0,0,0,0,0],1.2,1.5)
+    assert a.select(True,True,{},1.6)[0]=='human'
+    assert a.select(True,False,{},1.7)[0]=='paused_no_policy'
+    assert not a.offer([.0002,0,0,0,0,0],1.3,1.8)
+    assert not a.offer([.0002,0,0,0,0,0],2.,1.8)
+    assert a.offer([.0002,0,0,0,0,0],1.8,1.9)
+    assert a.select(False,False,{},2.)[0]=='paused_disconnected'
+    assert not a.offer([.0002,0,0,0,0,0],1.8,2.1)
+
+
 @pytest.mark.parametrize('patch,reason',[
     ({'header_mode':'receive-only-diagnostic'},'diagnostic_headers'),
     ({'inferred':False},'no_finite_prediction'),({'finite':False},'no_finite_prediction'),
@@ -79,6 +101,9 @@ def test_launcher_preview_isolated_and_execute_uses_same_conversion(tmp_path):
     assert cmd[0][cmd[0].index('--output-convention')+1]==SDK_CONVENTION
     a.execute=True;cmd,topic=commands(a)
     assert topic=='/omi/policy/candidate' and '--publish' in cmd[0]
+    a.candidate_expiry='off';cmd,_=commands(a)
+    for child in cmd:
+        assert child[child.index('--candidate-expiry')+1]=='off'
 
 
 def test_gamepad_node_imports_without_running_ros():

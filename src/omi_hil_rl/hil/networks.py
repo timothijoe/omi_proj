@@ -30,6 +30,18 @@ class Encoder(nn.Module):
                 self.register_buffer(name, value)
         else:
             raise ValueError("unsupported encoder")
+        self.use_wrench = bool(recipe.get('wrench_history', False))
+        if self.use_wrench:
+            if recipe['encoder'] != 'current9stack':
+                raise ValueError('wrench history requires the real current9stack encoder')
+            for name in ('wrench_mean', 'wrench_std'):
+                value = torch.as_tensor(recipe['normalization'][name], dtype=torch.float32).reshape(1, 1, 2, 6)
+                if not torch.isfinite(value).all() or (name.endswith('std') and not (value > 0).all()):
+                    raise ValueError('invalid normalization: ' + name)
+                self.register_buffer(name, value)
+            # Chronological dual-finger six-vectors (120) + per-finger validity (20).
+            self.wrench_encoder = nn.Sequential(nn.Linear(140, 64), nn.ReLU(), nn.Linear(64, 64), nn.ReLU())
+            self.wrench_fusion = nn.Sequential(nn.Linear(128 + 64, 128), nn.ReLU())
         self.eval()  # disable wrist dropout; trainable parameters still receive gradients
 
     def initialize_pretrained(self, weights):
@@ -45,7 +57,16 @@ class Encoder(nn.Module):
              (obs["tactile"].float() - self.tactile_mean) / self.tactile_std,
              (obs["state"].float() - self.state_mean) / self.state_std,
              obs["wrist_rgb"].float() / 255., obs["camera_mask"].float())
-        return self.model.forward_windows(x, obs["history_mask"].bool())
+        features = self.model.forward_windows(x, obs["history_mask"].bool())
+        if self.use_wrench:
+            wrench = obs['wrench'].float()
+            mask = obs['wrench_mask'].bool() & obs['history_mask'].bool()[:, :, None]
+            if wrench.shape[1:] != (10, 2, 6) or mask.shape != wrench.shape[:-1]:
+                raise ValueError('expected dual-finger ten-slot wrench history')
+            normalized = torch.where(mask[..., None], (wrench - self.wrench_mean) / self.wrench_std, 0.)
+            wrench_features = self.wrench_encoder(torch.cat((normalized.flatten(1), mask.float().flatten(1)), -1))
+            features = self.wrench_fusion(torch.cat((features, wrench_features), -1))
+        return features
 
 
 class Actor(nn.Module):

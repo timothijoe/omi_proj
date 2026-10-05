@@ -21,9 +21,13 @@ def commands(args):
         '--output',str(args.output/'policy'),'--duration',str(args.duration),'--device',args.device,
         '--header-mode','strict','--eef-reference',args.eef_reference,'--publish-candidates',
         '--candidate-topic',topic,'--policy-scale',str(args.policy_scale),*common]
+    actor.extend(['--model-kind', getattr(args, 'model_kind', 'stack')])
+    expiry = getattr(args, 'candidate_expiry', 'on')
+    actor.extend(['--candidate-expiry', expiry])
     arbiter=[sys.executable,'-m','omi_hil_rl.real.gamepad_node','--device',args.gamepad,
         '--policy-topic',topic,'--frame',POLICY_FRAME,'--output-convention',SDK_CONVENTION,
         '--policy-timeout','0.1','--log',str(args.output/'selected_actions.jsonl'),*common]
+    arbiter.extend(['--candidate-expiry', expiry])
     if getattr(args, 'gripper_server', None):
         for key in ('server', 'sdk_root', 'calibration', 'close_speed', 'close_position', 'close_torque', 'open_position'):
             value = getattr(args, 'gripper_' + key)
@@ -37,6 +41,7 @@ def commands(args):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--checkpoint',type=Path,required=True)
+    p.add_argument('--model-kind',choices=('stack','passive-wrench-bc'),default='stack')
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--duration',type=float,default=60.)
     p.add_argument('--device',choices=('cuda','cpu'),default='cuda')
@@ -47,11 +52,17 @@ def main():
     p.add_argument('--speed-mm-s',type=float,default=10.)
     p.add_argument('--rotation-deg-s',type=float,default=10.)
     p.add_argument('--execute',action='store_true',help='Enable final robot output; without this all selected actions are preview only')
+    p.add_argument('--candidate-expiry',choices=('on','off'),default='on',
+                   help='off disables candidate age rejection, not RB priority or sensor freshness checks')
     add_gripper_arguments(p)
     add_home_arguments(p)
     args=p.parse_args()
     calibration_from_args(args, p)
     if not args.checkpoint.is_file():p.error('checkpoint missing')
+    if args.model_kind == 'passive-wrench-bc':
+        if args.eef_reference != 'raw':p.error('wrench BC was trained with raw EEF')
+        from omi_hil_rl.training.wrench_live import load_wrench_policy
+        load_wrench_policy(args.checkpoint, 'cpu')  # fail before starting the publishing arbiter
     if not all(math.isfinite(v) and v>0 for v in (args.duration,args.speed_mm_s,args.rotation_deg_s)):p.error('duration/speeds must be finite and positive')
     if not math.isfinite(args.policy_scale) or not 0<args.policy_scale<=1:p.error('policy scale must be in (0,1]')
     root=Path(os.environ['OMI_PROJECT_ROOT'])
@@ -63,6 +74,7 @@ def main():
         children,topic=commands(args)
         (args.output/'session.json').write_text(json.dumps(dict(
             execute=args.execute,candidate_topic=topic,command_topic='/omi/action/decision',
+            candidate_expiry=args.candidate_expiry,
             manual_command_topic='/omi/action/manual_decision',tactile_guard_scope='receiver_policy_only_opt_in',
             policy_frame=POLICY_FRAME,sdk_output=SDK_CONVENTION,conversion_owner='arbiter after RB selection',
             eef_reference=args.eef_reference,eef_input_offset_base_m=reference_offset(args.eef_reference).tolist(),
@@ -75,6 +87,8 @@ def main():
         print(('EXECUTE: robot output enabled' if args.execute else 'PREVIEW: no robot command publisher')+
               '; RB held=human, released=fresh policy, disconnected=paused; '+SDK_CONVENTION,flush=True)
         from omi_sensors.cli import supervise
+        if args.candidate_expiry == 'off':
+            print('WARNING: candidate expiry OFF; delayed candidates may execute once. RB priority and sensor ingress checks remain enabled.',flush=True)
         return supervise(children,dict(os.environ),None)
 
 

@@ -13,7 +13,7 @@ from .networks import load_actor
 
 
 def run_actor(run, config, *, episodes=1, device="cpu", execute=False,
-              gamepad="/dev/input/js0", offline_demo=False, success_step=5):
+              gamepad="/dev/input/js0", offline_demo=False, success_step=5, deterministic=False):
     if episodes < 1:
         raise ValueError("episodes must be positive")
     run = Path(run)
@@ -59,7 +59,7 @@ def run_actor(run, config, *, episodes=1, device="cpu", execute=False,
                 try:
                     while True:
                         with torch.inference_mode():
-                            action, _ = actor.sample({k: torch.as_tensor(v, device=device)[None] for k, v in observation.items()})
+                            action, _ = actor.sample({k: torch.as_tensor(v, device=device)[None] for k, v in observation.items()}, deterministic=deterministic)
                         next_observation, reward, terminated, truncated, info = env.step(action[0].cpu().numpy())
                         if offline_demo and info["action_source"] != "human":
                             raise InteractionUnavailable("demo mode requires RB human control for every step")
@@ -101,6 +101,7 @@ def main():
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--execute", action="store_true", help="publish tagged real-robot deltas; requires ROS config")
     parser.add_argument("--gamepad", default="/dev/input/js0")
+    parser.add_argument("--deterministic", action="store_true", help="use mean action, e.g. for BC evaluation")
     parser.add_argument("--offline-demo", action="store_true", help="successful all-human episodes go to demo stream only")
     parser.add_argument("--fake-success-step", type=int, default=5)
     args = parser.parse_args()
@@ -111,7 +112,7 @@ def main():
     if args.execute and config.transport != "ros":
         parser.error("--execute requires a ROS config")
     run_actor(args.run, config, episodes=args.episodes, device=args.device, execute=args.execute,
-              gamepad=args.gamepad, offline_demo=args.offline_demo, success_step=args.fake_success_step)
+              gamepad=args.gamepad, offline_demo=args.offline_demo, success_step=args.fake_success_step, deterministic=args.deterministic)
 
 
 if __name__ == "__main__":

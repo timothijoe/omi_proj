@@ -2,6 +2,7 @@
 """Direct gamepad -> circle_test-compatible mm/degree increments.
 
 Preview by default. --execute publishes after Enter. Hold RB to move.
+A/B controls the project gripper by default; --no-gripper disables it.
 """
 import argparse
 import math
@@ -10,7 +11,8 @@ import sys
 import time
 
 # Allow `python scripts/gamepad_test.py` without an editable package install.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / 'src'))
 from omi_hil_rl.real.gamepad_control import Mapping, BTN_TR, wire_action
 from omi_hil_rl.real.linux_gamepad import LinuxGamepad
 from omi_hil_rl.real.gamepad_home import GamepadHome, add_home_arguments
@@ -41,7 +43,7 @@ def command(pad, mapping, convention='legacy'):
     return mode, data
 
 
-def main():
+def build_parser():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--execute', action='store_true')
     ap.add_argument('--topic', default='/omi/action/manual_decision',
@@ -56,9 +58,27 @@ def main():
     ap.add_argument('--deadzone', type=float, default=.15)
     ap.add_argument('--signs', type=int, nargs=6, default=[1]*6, metavar='SIGN')
     add_gripper_arguments(ap)
+    ap.set_defaults(
+        gripper_server='192.168.14.11:55551',
+        gripper_sdk_root=PROJECT_ROOT / 'local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py',
+        gripper_calibration=PROJECT_ROOT / 'tutorials/gripper_limits.json')
+    ap.add_argument('--no-gripper', action='store_true',
+                    help='Disable A/B gripper control; otherwise use the project gripper defaults')
     add_home_arguments(ap)
+    return ap
+
+
+def main():
+    ap = build_parser()
     args = ap.parse_args()
+    if args.no_gripper:
+        args.gripper_server = None
     calibration = calibration_from_args(args, ap)
+    if args.gripper_server:
+        print(f'夹爪配置：{args.gripper_server}；A 闭合 / B 张开，无需 RB；'
+              + ('SDK 控制将在开始后启用。' if args.execute else '仅预览，不连接夹爪。'), flush=True)
+    else:
+        print('夹爪已禁用（--no-gripper），A/B 不执行夹爪动作。', flush=True)
     try:
         mapping = Mapping(hz=args.rate, translation_m_s=args.speed_mm_s*args.scale/1000,
                           rotation_rad_s=math.radians(args.rotation_deg_s)*args.scale,

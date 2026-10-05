@@ -1,5 +1,13 @@
 # Hardware 当前摘要
 
+2026-10-05：[手柄与策略速度保持](evolution/robot-controller.md#速度保持参数与停止边界)已实现并构建。
+10Hz名义增量换算为速度，200Hz每周期IK后立即下发；零指令、保护或默认0.25秒断流停止。
+`delta_splits`不再决定话题执行；输入频率参数须匹配各发送端。网络scale与权重未修改。
+86项软件测试通过、1跳过；安装副本已用模拟SDK验证，实机平顺度未验收。
+直接手柄入口已默认启用项目夹爪配置，A闭合/B张开，`--no-gripper`关闭。
+操作与重启见[控制教程](../../../tutorials/robot_controller.md#速度保持执行与参数)，
+形成经过见[本次编年](chronicles/2026-10-05-control-velocity-hold.md)。
+
 2026-10-05新增[USB 插入触觉保护](../../../tutorials/tactile_guard.md)：
 `arm_delta_cmd` 接收端按用户最新要求默认关闭、显式开启，**只约束模型**；
 手柄/返回走 `/omi/action/manual_decision`，接收端键盘也不受触觉保护影响。
@@ -19,7 +27,7 @@
 11项专项测试、首版A310/B316条记录及比例尺版A140/B142条记录通过，
 独立RViz启动/退出通过；不代表力标定或同帧验收，尚未接入当前模型或真机RL。
 
-2026-10-05：[OpticalModule控制端已迁入](evolution/robot-controller.md)，维护源码在`ros2/arm_delta_cmd`，原包/SDK/资源在`local/vendor/optical_module_pu`。默认断开，独立Jazzy构建及5项离线测试通过。源码确认ABC均分20步与命令目标锚点，相关旋转/反馈语义仍待统一；未连接真机。
+2026-10-05：[OpticalModule控制端已迁入](evolution/robot-controller.md)，维护源码在`ros2/arm_delta_cmd`，原包/SDK/资源在`local/vendor/optical_module_pu`。默认断开，独立Jazzy构建及5项离线测试通过。该段为迁移阶段记录：当时ABC均分20步；当前已改为速度保持，命令目标锚点仍保留，相关旋转/反馈语义仍待统一。
 
 手柄输出 wrapper 已支持显式 `--output-convention sdk-x-forward-z-left`：按假设安装方向 `(x,y,z)→(x,-z,y)` 并将旋转向量转 SDK ABC；默认 legacy 不转换。终端现同时显示原始值、转换状态和最终值，67项相关测试通过。接收端 FRAME_BASE/UserFrame 与实际安装方向仍待核对，用户曾报告旧映射左推导致上下移动，尚未完成换轴后的现场验收。详见[手柄教程](../../../tutorials/gamepad_control.md)。
 

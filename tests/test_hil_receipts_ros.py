@@ -54,10 +54,14 @@ def test_tagged_queue_acceptance_ik_failure_and_clamp_rejection(receiver):
     node.hil_delta_callback(tagged())
     assert receipts[-1]["accepted"] and receipts[-1]["status"] == "queue_accepted"
     assert receipts[-1]["wire_action"] == [.1] * 6
-    assert len(node.traj_queue) == 20
-    for _ in range(20):
+    assert node.have_goal and not node.traj_queue
+    for _ in range(35):
         node.ctrl_loop()
-    assert receipts[-1]["finished"] and receipts[-1]["status"] == "sdk_commands_sent"
+    assert not receipts[-1]['finished'] and node.have_goal
+    node.last_policy_time -= 1. / node.policy_command_rate
+    node.ctrl_loop()
+    assert receipts[-1]['finished'] and receipts[-1]['status'] == 'velocity_window_sent'
+    assert receipts[-1]['velocity_hold_continues'] and node.have_goal
     node.tk.solve_tcp_delta_ik = lambda *a: (False, None, None)
     node.hil_delta_callback(tagged())
     node.ctrl_loop()
@@ -76,3 +80,15 @@ def test_zero_stop_returns_explicit_partial_command_outcome(receiver):
     node.hil_delta_callback(Float64MultiArray(data=[0.] * 6))
     assert receipts[-1]["status"] == "queue_cancelled" and receipts[-1]["finished"]
     assert receipts[-1]["accepted"] and not receipts[-1]["execution_confirmed"]
+
+
+def test_tagged_zero_speed_finishes_without_sdk_motion(receiver):
+    node, receipts = receiver
+    node.robot = node.kine = object()
+    message = tagged()
+    message.data = [0.] * 6
+    node.hil_delta_callback(message)
+    assert receipts[-1]['finished'] and receipts[-1]['accepted']
+    assert receipts[-1]['status'] == 'velocity_zero_stopped'
+    assert not receipts[-1]['velocity_hold_continues']
+    assert not node.have_goal

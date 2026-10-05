@@ -1,12 +1,20 @@
 # 操作教程
 
+- [新wrench BC模型真机入口：默认预览、RB手柄优先](wrench_policy_gamepad.md)
+
+- [本次日期bag转训练集：双指六维力/力矩BC训练](passive_bag_bc_wrench.md)
+
+- [独立手柄录包、四包检查、真实指令预览与左右键切帧](demo_bag_dataset.md)
+
+- [集成手柄 Demo 采集、发送指令标签与 BC](demo_collection_bc.md)
+
 - [六维真机HIL环境、无夹爪SAC与Actor/Learner](hil_actor_learner.md)
 
 - [USB 插入触觉保护：峰值锁定和负 X 撤退](tactile_guard.md)
 - [只读触觉预警：读取原始示数，超限打印日志](tactile_warning.md)
 - [双指六维力/力矩：实时查看和完整历史记录](wrench_live.md)
 
-- [机器人控制接收端：迁移、构建和离线预览](robot_controller.md)
+- [机器人控制接收端：速度保持、参数、重启与离线预览](robot_controller.md)
 
 - [无关节模型实时 ROS 影子推理](stack_shadow.md)
 

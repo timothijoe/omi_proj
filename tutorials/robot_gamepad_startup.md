@@ -209,6 +209,13 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 ### 同时启用夹爪：A 关闭、B 张开
 
+直接手柄入口 `scripts/gamepad_test.py` 现在默认启用项目夹爪配置：
+地址 `192.168.14.11:55551`、项目自带夹爪 SDK、`tutorials/gripper_limits.json`。
+原先省略 `--gripper-server` 会静默忽略 A/B；现在普通手柄启动命令也支持 A/B。
+仅控制机械臂时加 `--no-gripper`；预览模式仍不连接或驱动夹爪。
+启动后会显示夹爪地址和模式。更改代码后退出旧手柄进程，再重新运行原命令；
+当前进程不会自动加载新代码。下方完整命令仍可用于显式指定设备配置。
+
 先退出正在运行的手柄程序，停止其他控制同一夹爪的程序。
 以下地址 `192.168.14.11:55551` 和 [gripper_limits.json](gripper_limits.json) 中的标定值来自随包配置，
 使用前确认对应当前夹爪；换设备后替换地址及实际标定值。初始化使用已有标定，不执行机械归零。
@@ -295,19 +302,35 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 - 现场日志已确认 RB+X 正确触发，但返回因 FK 服务不可用而未启动；该日志不代表已完成真机返回验证。启动步骤增加构建后重启接收端、加载新 install 环境和服务检查。
 - 服务检查由 `rg` 改用 `grep`，避免现场缺少 ripgrep 导致 `BrokenPipeError`。
 
-### 手柄运动不平滑与 10 Hz
+### 手柄速度保持与 10 Hz
 
-现场报告运动不平滑，原因尚未通过实际下发间隔及 IK 耗时测量确认。当前实现把每条 10 Hz 增量拆为 20 个子目标，理论上以 200 Hz 下发，所以动作话题频率不能直接等同于机械臂关节指令频率。
+手柄发送端仍使用 `--rate 10`。接收端的 `manual_delta_topic` 使用速度保持：
+每条 `[dx,dy,dz,dA,dB,dC]` 增量乘以 `manual_command_rate`（默认 10 Hz）
+换算为 mm/s、degree/s；200 Hz 控制循环每周期执行速度除以 `ctrl_rate` 的小增量，
+做一次 IK 并立即下发。手柄消息略晚到时继续沿用最近速度，不再因 20 步耗尽而停顿。
+`delta_splits` 为兼容保留，不再影响手柄或策略话题的速度。
 
-代码中同步计算 20 次 IK 会占用单线程 ROS 执行器，可能推迟控制定时器；新指令替换未完成队列、队列走完等待下一条消息，以及摇杆没有加减速处理，也可能导致速度变化或停顿。稳定 200 Hz 下发、将 IK 计算与下发分开、加入速度和加速度限制属于后续改进方向，**尚未实现**。
+松开 RB、摇杆回中、断开手柄或切换通道后，发送端的全零消息立即停止速度保持。
+若零消息丢失或发送端退出，接收端在 `manual_timeout`（默认 0.25 秒）未收到有效更新后停发，
+该期限使用单调时钟，独立于 ROS 时间。IK 失败、包络越界、SDK 点位拒绝或持续反馈偏差
+也停止当前速度保持。原有手动输入与策略触觉保护的边界保持不变。
 
-当前命令保持 `--rate 10`，接收端使用 `ctrl_rate:=200.0`、`delta_splits:=20`。不要只把发送端改成 50 Hz：每段仍按 100 ms 分配，会更频繁覆盖队列，且 RB+X 返回在非 10 Hz 下禁用。可先在终端 B 检查动作消息频率：
+接收端新增 launch 参数：
 
-```bash
-ros2 topic hz /omi/controller_test/decision
+```text
+manual_command_rate:=10.0
+manual_timeout:=0.25
+policy_command_rate:=10.0
+delta_timeout:=0.25
 ```
 
-此命令只测 ROS 消息接收频率，不能确认 SDK 实际下发是否稳定为 200 Hz。
+`manual_command_rate` 必须与发送端 `--rate` 一致。不要通过改变此参数调速度；
+速度仍由发送端 `--scale` 和速度参数决定。若调整发送频率，同时调整断流期限；
+RB+X 返回目前仍要求发送端使用 10 Hz。
+
+修改接收端后执行 `bash scripts/robot_controller.sh build`，然后退出并重启接收节点。
+无需改变现有话题或手柄启动命令。控制循环按标称 5ms 生成小步，调度延迟不会补发大步；
+这消除了队列衔接停顿，但操作系统和 SDK 的实际下发间隔仍需实机测量。
 
 ### 其他问题
 
@@ -316,3 +339,18 @@ ros2 topic hz /omi/controller_test/decision
 - 换机仅 clone 仓库不足以获得 SDK：另带 `local/vendor/optical_module_pu/` 或重新导入原 ZIP，再重新构建。
 
 相关文档：[控制接收端迁移与恢复](robot_controller.md)、[手柄映射与输出转换](gamepad_control.md)、[接收端契约与遗留问题](../docs/agent/hardware/evolution/robot-controller.md)。
+
+### 策略速度保持
+
+神经网络输出话题 `/omi/action/decision` 同样采用速度保持：
+增量乘以 `policy_command_rate`（默认 10 Hz）换算为速度，200 Hz 每周期做一次 IK 并下发。
+该参数必须与策略动作周期一致，不用于调网络 scale。网络输入、权重及动作归一化不变。
+最近速度保持到新动作、零动作、保护触发或 `delta_timeout` 断流（默认 0.25 秒）。
+消息迟到时实际位移可能超过单条名义增量；调度延迟不补发大步。
+策略继续受触觉保护约束，受保护后退限速为 `tactile_retreat_speed_mm_s`。
+
+HIL 接受回执标记 `control_mode=velocity_hold` 和 `nominal_duration_s`。
+经过一个名义动作周期后发出 `velocity_window_sent` 回执：`finished=true` 代表
+控制观察窗口结束，`velocity_hold_continues=true` 表示保持仍在继续；
+不代表请求位移已经完成，`execution_confirmed` 仍为 false。
+零速度指令立即完成回执，不等待运动点位。相邻策略动作无需等待队列耗尽。

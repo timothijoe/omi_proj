@@ -42,14 +42,14 @@ def policy_trace(action, scale=1., *, max_translation_m=None, max_rotation_rad=N
                 candidate_frame=POLICY_FRAME,candidate_is_sdk_converted=False)
 
 
-def candidate_reason(status, now_ns, max_translation_m=.001, max_rotation_rad=math.pi/180):
+def candidate_reason(status, now_ns, max_translation_m=.001, max_rotation_rad=math.pi/180, *, candidate_expiry=True):
     """Fail closed; same per-step norm limits as the gamepad arbiter."""
     if status.get('header_mode') != 'strict':return 'diagnostic_headers'
     if not status.get('inferred') or not status.get('finite'):return 'no_finite_prediction'
     if not status.get('within_experimental_bounds'):return 'experimental_bounds'
     mask=status.get('history_mask',[])
     if len(mask)!=10 or not all(mask):return 'history_warmup_or_gap'
-    if not status['reference_ns'] <= now_ns < status['expires_ns']:return 'expired_or_future'
+    if now_ns < status['reference_ns'] or (candidate_expiry and now_ns >= status['expires_ns']):return 'expired_or_future'
     action=np.asarray(status['policy_trace']['candidate_m_rad'])
     if np.linalg.norm(action[:3])>max_translation_m+1e-12:return 'policy_translation_speed_bound'
     if np.linalg.norm(action[3:])>max_rotation_rad+1e-12:return 'policy_rotation_speed_bound'
