@@ -1,5 +1,5 @@
 schema_version: 1
-# tactile and bc migrated on 2026-10-03; local sources removed after checksum verification.
+# tactile and bc historical outputs migrated on 2026-10-03; a record010 baseline and replay cache were regenerated locally on 2026-10-07 for RViz review.
 # eef_bc remains local by user request; its archive copy is not a complete current snapshot.
 # Resource path fields below retain logical working paths for reproducible commands.
 historical_data_archive:
@@ -13,6 +13,20 @@ historical_data_archive:
   retained_local_directories: [local/eef_bc]
   restore: For tactile and bc pass archive paths explicitly or copy needed experiments back; no symlinks remain. Continue using local/eef_bc, whose archive is incomplete. New outputs belong in separate directories. Latest native-field bags do not require historical tactile baselines or BC artifacts.
 resources:
+  - id: rviz-representative-bags
+    path: ../representative_rosbag/october
+    tracked: false
+    required_for: historical_bag_driven_rviz_review
+    source: record010 compressed MCAP, oct03 bag_004 native fields, oct3_022 bag_001 grid24x16
+    purpose: Three local representatives for legacy tactile/robot, native wrist/Stand, and grid/3D RViz paths
+    restore: Copy record010/bag_001 with metadata.yaml and its referenced .mcap.zstd, native_wrist_bag_004.zip, and grid24x16_bag_001.zip together; use tutorials/rviz_representative_bags.md. The source Stand RAR, model assets, matching marvin_msgs, and old tactile baseline are separate dependencies.
+  - id: rviz-historical-bag-archive
+    path: /media/zhoutong/zt-think-d1/omi_rviz_archive_20261007
+    tracked: false
+    required_for: optional_historical_rviz_bag_recovery
+    source: Former Downloads/img, Downloads/oct03, Downloads/oct2/record001.zip, and omi_proj/local/bags/oct03 copies
+    purpose: SHA256-verified historical bag files and original-path mapping; no extra local physical copies
+    restore: Read manifest.json for 58 file paths, sizes, hashes, and the three kept local samples. Historical Downloads paths are symlinks to this archive and require the USB drive to be mounted. See docs/agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md.
   - id: live-wrench-recording-sessions
     path: local/wrench_live
     tracked: false
@@ -91,7 +105,7 @@ resources:
     path: local/bags/record001.zip
     tracked: false
     required_for: external_native_field_and_eef_review
-    source: User-supplied oct2/record001.zip external recording; restore from the original data owner
+    source: User-supplied oct2/record001.zip external recording, now in the RViz historical USB archive; the listed path is a suggested restore destination, not the current local sample
     purpose: Native tactile fields, camera, joint feedback and left end-effector pose review; not schema2 OMI sensor data
     restore: Copy the original ZIP or complete bag directory to a chosen data disk and pass its path to scripts/view_recorded_observation_3d.sh. The listed path is a suggested destination, not an already copied file. Also restore model assets and rebuild matching marvin_msgs.
   - id: recorded-review-generated-cache
@@ -158,12 +172,12 @@ resources:
     purpose: Play record010, crop the head and wrist ROIs, publish 128x128 RGB topics, and display the comparison dashboard in RViz.
     restore: Keep the tool beside omi_proj; use the workspace README and the tool README for entry points and ROI parameters.
   - id: record010-rosbag
-    path: /home/zhoutong/Downloads/img/record010/bag_001
+    path: ../representative_rosbag/october/record010/bag_001
     tracked: false
     required_for: ros_observation_offline_validation
     source: Local Tianji multimodal recording
     purpose: Offline validation input for the synchronized ROS observation contract and camera ROI preview.
-    restore: Restore the complete rosbag directory including metadata.yaml and compressed MCAP data; override this machine-local path in commands when stored elsewhere.
+    restore: Restore the complete rosbag directory including metadata.yaml and its referenced .mcap.zstd; the uncompressed MCAP copy is archived externally and is not required by the current viewer. Use tutorials/rviz_representative_bags.md for this machine.
   - id: camera-roi-preview-images
     path: ../camera_roi_preview
     tracked: false

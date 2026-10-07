@@ -16,11 +16,13 @@
 └── eef_bc/
 ```
 
-**`local/tactile/` 和 `local/bc/` 已校验并完成迁移，本地目录已移除，没有软链接。**
+**旧 `local/tactile/` 实验产物和 `local/bc/` 已校验并完成迁移，没有指向该旧实验归档的软链接。**2026-10-07 为旧 RViz 回放重新生成了本地 `local/tactile/record010_zero_load_25_26_confirmed_v2/` 与 `local/tactile/replay_cache/`；它们不代表旧实验产物已全部恢复。
 **`local/eef_bc/` 按用户要求继续保留**，移动盘 `eef_bc/` 只是较早副本，不能当作完整最新备份。
 读取旧触觉/BC实验需改用归档路径或按需恢复；末端实验仍使用本地 `local/eef_bc/`。
 当前最新原生字段bag流程
 不需要这些旧基准或旧policy；程序、SDK和运行必需模型仍留在项目中。
+
+历代 RViz 的三份本机代表录包集中在 `/home/zhoutong/omi_folder/representative_rosbag/october/`；历史录包归档在 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，见[一行式回放命令](rviz_representative_bags.md)及归档 `manifest.json`。旧 Downloads 历史路径是到移动盘的符号链接，盘未挂载时不能使用；三份代表录包不依赖该盘。
 
 读取已迁移历史实验时挂载移动硬盘，将命令中 `local/bc/` 或 `local/tactile/` 前缀换成对应归档
 绝对路径；若报告/配置内还引用旧路径，逐项修正运行参数，或复制所需实验回原位置。
@@ -67,7 +69,7 @@ export OMI_TACTILE_BASELINE="/media/zhoutong/zt-think-d1/legion_data/legion_omi_
 | Daimon完整本地归档 | `omi_proj/local/vendor/daimon_tactile/` | 新机器 `omi_proj/local/vendor/daimon_tactile/` | 358 MiB |
 | record010零载荷基准 | `omi_proj/local/tactile/record010_zero_load_25_26_confirmed_v2/` | 同项目相对路径 | 1.2 MiB |
 | 六组历史参考及图片 | `omi_proj/local/tactile/record010_offline_fields_confirmed_v3/` | 同项目相对路径；回归至少保留6个NPZ | 完整目录13 MiB |
-| record010原始bag | `/home/zhoutong/Downloads/img/record010/bag_001/` | 自选数据盘，例如 `omi_proj/local/bags/record010/bag_001/` | 5.3 GiB |
+| record010代表bag | `/home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001/` | 自选数据盘，保留metadata及其引用的压缩MCAP | 约1.6 GiB；未压缩副本另存移动盘 |
 | marvin_msgs源码 | `local/ros2/marvin_msgs_ws/src/marvin_msgs/` | 新ROS工作区的 `src/marvin_msgs/` | 按需 |
 | 机器人模型 | `omi_proj/local/assets/robot_assets/`、`omi_proj/local/assets/MarvinCCS/` | 两目录保持相邻，连同provenance.json保留 | 按需 |
 | Stand原始归档 | 用户提供的 `Marvin_Stand_2026.2.2.rar` | 自选本地资源目录，命令显式传入 | 按需 |

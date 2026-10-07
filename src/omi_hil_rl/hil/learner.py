@@ -10,11 +10,12 @@ from omi_hil_rl.training.transition_replay import TransitionReplay
 from .config import HILConfig, load_config
 from .exchange import atomic_json, import_ready, owner_lock, publish
 from .networks import SAC
+from .shutdown import graceful_stop
 
 
 def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
-                batch_size=32, min_online=1, min_demo=1, updates=None, publish_every=50,
-                device="cpu", wait_seconds=None):
+                batch_size=256, min_online=1, min_demo=1, updates=None, publish_every=50,
+                device="cpu", wait_seconds=None, should_stop=lambda: False):
     if min(capacity, batch_size, publish_every) < 1 or min_online < 0 or min_demo < 0 or (updates is not None and updates < 1):
         raise ValueError("invalid learner counts")
     if config.transport == "ros" and (min_demo < 1 or min_online < 1):
@@ -40,19 +41,24 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
         replay_dir = run / "replay"
         replay = (TransitionReplay.reopen(replay_dir, expected_contract=contract, prefetch=False)
                   if replay_dir.exists() else TransitionReplay(replay_dir, contract, capacity, prefetch=False))
+        update_in_progress = False
         try:
             publish(run, agent)
             started = time.monotonic()
             target_updates = None if updates is None else agent.updates + updates
             print("learner 已发布初始策略；等待保留回合和训练数据。", flush=True)
             while target_updates is None or agent.updates < target_updates:
+                if should_stop():
+                    break
                 if wait_seconds is not None and time.monotonic() - started >= wait_seconds:
                     raise TimeoutError("learner run deadline reached before requested updates")
                 imported = import_ready(run, replay)
                 counts = replay.buffer.stream_counts()
                 ready = counts["online"] >= min_online and counts["demonstration"] >= min_demo
                 if ready and replay.buffer.size():
+                    update_in_progress = True
                     metrics = agent.update(replay.buffer.sample(batch_size))
+                    update_in_progress = False
                     if agent.updates % publish_every == 0:
                         publish(run, agent)
                     if agent.updates == 1 or agent.updates % 10 == 0:
@@ -65,7 +71,10 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
             return dict(updates=agent.updates, streams=replay.buffer.stream_counts())
         finally:
             replay.close()
-            publish(run, agent)
+            # OOM or another exception may have interrupted one of several
+            # optimizer steps. Keep the last good checkpoint in that case.
+            if not update_in_progress:
+                publish(run, agent)
 
 
 def main():
@@ -75,7 +84,7 @@ def main():
     parser.add_argument("--recipe", type=Path)
     parser.add_argument("--pretrained", type=Path)
     parser.add_argument("--capacity", type=int, default=1000)
-    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--min-online", type=int, default=1)
     parser.add_argument("--min-demo", type=int, default=1)
     parser.add_argument("--updates", type=int)
@@ -87,11 +96,12 @@ def main():
     if args.threads < 1:
         parser.error("threads must be positive")
     torch.set_num_threads(args.threads)
-    result = run_learner(args.run, load_config(args.config) if args.config else HILConfig(),
-        recipe=json.loads(args.recipe.read_text()) if args.recipe else None, pretrained=args.pretrained,
-        capacity=args.capacity, batch_size=args.batch_size, min_online=args.min_online,
-        min_demo=args.min_demo, updates=args.updates, publish_every=args.publish_every,
-        device=args.device, wait_seconds=args.wait_seconds)
+    with graceful_stop() as should_stop:
+        result = run_learner(args.run, load_config(args.config) if args.config else HILConfig(),
+            recipe=json.loads(args.recipe.read_text()) if args.recipe else None, pretrained=args.pretrained,
+            capacity=args.capacity, batch_size=args.batch_size, min_online=args.min_online,
+            min_demo=args.min_demo, updates=args.updates, publish_every=args.publish_every,
+            device=args.device, wait_seconds=args.wait_seconds, should_stop=should_stop)
     print(json.dumps(result), flush=True)
 
 

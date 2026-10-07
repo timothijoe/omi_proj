@@ -149,15 +149,15 @@ def test_sac_gradients_ratio_checkpoint_and_contract(tmp_path):
     config = HILConfig()
     agent = SAC(dict(encoder="synthetic-test"), config.replay_contract())
     obs = FakeTransport()._observation()
-    before_actor = [v.detach().clone() for v in agent.actor.parameters()]
+    before_actor = [v.detach().clone() for v in agent.actor.head.parameters()]
     before_critic = [v.detach().clone() for v in agent.critic.parameters()]
     first = agent.update(make_batch(obs))
     assert "actor_loss" not in first
-    assert all(torch.equal(a, b) for a, b in zip(before_actor, agent.actor.parameters()))
+    assert all(torch.equal(a, b) for a, b in zip(before_actor, agent.actor.head.parameters()))
     assert any(not torch.equal(a, b) for a, b in zip(before_critic, agent.critic.parameters()))
     second = agent.update(make_batch(obs))
     assert all(np.isfinite(value) for value in second.values())
-    assert any(not torch.equal(a, b) for a, b in zip(before_actor, agent.actor.parameters()))
+    assert any(not torch.equal(a, b) for a, b in zip(before_actor, agent.actor.head.parameters()))
     action = agent.act(obs, deterministic=True)
     assert action.shape == (6,) and np.max(np.abs(action)) <= 1
     checkpoint = agent.checkpoint()
@@ -226,6 +226,28 @@ def test_actor_learner_in_separate_processes(tmp_path):
         import_ready(run, replay)
         assert replay.buffer.stream_counts()["online"] == 10
     assert len(list((run / "episodes").glob("*/ready.json"))) == 2
+
+
+def test_signal_during_update_finishes_saves_and_resumes_without_duplicate_import(tmp_path, monkeypatch):
+    import os
+    import signal
+    from omi_hil_rl.hil.learner import run_learner
+    from omi_hil_rl.hil.shutdown import graceful_stop
+    run = tmp_path / 'run'
+    collect(run, human=True)
+    update = SAC.update
+    def interrupted(agent, batch):
+        os.kill(os.getpid(), signal.SIGINT)
+        return update(agent, batch)
+    monkeypatch.setattr(SAC, 'update', interrupted)
+    with graceful_stop() as stop:
+        result = run_learner(run, HILConfig(), capacity=8, batch_size=2, updates=10, should_stop=stop)
+    assert result['updates'] == 1
+    saved = torch.load(run/'learner.pt', weights_only=True)
+    assert saved['updates'] == 1
+    monkeypatch.setattr(SAC, 'update', update)
+    result = run_learner(run, HILConfig(), batch_size=2, updates=1)
+    assert result['updates'] == 2 and result['streams']['online'] == 1
 
 
 def test_success_pressed_before_deadline_survives_feedback_latency():

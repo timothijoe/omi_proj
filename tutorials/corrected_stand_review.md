@@ -7,10 +7,11 @@
 该归档的ament构建描述尚未实跑，当前下列已验证回放命令仍读取原RAR并生成派生模型。
 
 ```bash
-bash scripts/view_corrected_stand_observation_3d.sh /path/record001.zip /path/Marvin_Stand_2026.2.2.rar
+bash scripts/view_corrected_stand_observation_3d.sh /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip /home/zhoutong/Downloads/oct2/Marvin_Stand_2026.2.2.rar
 ```
 
 与[Stand教程](stand_urdf_review.md)相同的依赖和参数；固定localhost domain94。
+本机代表命令使用 bag_004；下文 record001 坐标差与测试数字仍为当时原包实验结果，不能当作 bag_004 的新测量。
 关闭RViz或Ctrl+C停止。其他回放入口保留。原始RAR不修改，派生文件位于
 `local/robot_state/stand_models/stand-*/`，`model.json`中记录符号映射。
 

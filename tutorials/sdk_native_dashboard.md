@@ -63,7 +63,7 @@ bash scripts/view_sdk_observation.sh --bag local/run_001/bag --loop \
 **record010旧包不含这些原生数值字段，不能直接用于新看板。** 程序会提示使用旧命令：
 
 ```bash
-bash scripts/view_observation_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+bash scripts/view_observation_bag.sh /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001
 ```
 
 新看板不暗中调用重建来填补缺失字段。纯触觉bag可用 `realsense.enabled=false` 的配置；

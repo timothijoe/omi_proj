@@ -10,10 +10,10 @@
 在项目根目录运行：
 
 ```bash
-bash scripts/view_wrist_observation_3d.sh /path/bag_004.zip
+bash scripts/view_wrist_observation_3d.sh /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip
 ```
 
-本机数据路径为 `/home/zhoutong/Downloads/oct03/bag_004.zip`。
+本机代表数据路径为 `/home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip`；完整一行式命令见[三包 RViz 操作页](rviz_representative_bags.md)。旧 Downloads 路径只保留兼容链接。
 可加`0.5`半速；`1 --no-rviz`只启动显示数据发布。关闭RViz或Ctrl+C结束。
 固定localhost domain93，不能在相同domain重复启动。无设备连接、无控制指令回放。
 

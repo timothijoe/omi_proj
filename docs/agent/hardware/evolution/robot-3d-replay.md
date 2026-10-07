@@ -1,5 +1,11 @@
 # 机器人3D录包回放
 
+## 当前代表录包与操作入口（2026-10-07）
+
+历代录包回放现统一从[三包 RViz 操作页](../../../../tutorials/rviz_representative_bags.md)选择完整命令：旧 record010 使用 `/home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001/`，原生触觉、腕部与 Stand/Hybrid 对照使用同目录 `native_wrist_bag_004.zip`，24×16 grid 回放使用 `grid24x16_bag_001.zip`。本机旧 Downloads 路径仅为兼容链接；新文档和人工启动应使用上述真实路径。Stand/Hybrid 另需 `/home/zhoutong/Downloads/oct2/Marvin_Stand_2026.2.2.rar`，旧重建看板另需零载荷基准和 Daimon SDK。
+
+这三种包覆盖现有**录包驱动**的主要 RViz 版本；实时看板读取现场话题，不使用代表包。其他历史录包归档于 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，位置和校验见[本次编年](../chronicles/2026-10-07-rviz-bag-relocation.md)。下文的 record001/record010 实验数字仍指当时使用的原包，不改写为本次三包的测试结果。
+
 当前两路相机裁剪以[ROI第一版](../../../design/camera-roi-v1.md)为文字基线，
 记录外部/腕部的固定框及插值区别。bag_004腕部近乎静止问题已定位到录包内容层，
 未发现缓存或发布取帧错误；怀疑现场采集，但根因未确定，按用户要求暂缓。

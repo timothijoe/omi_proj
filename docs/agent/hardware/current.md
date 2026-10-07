@@ -1,5 +1,7 @@
 # Hardware 当前摘要
 
+2026-10-07：历代录包驱动 RViz 入口现用[本机三包操作页](../../../tutorials/rviz_representative_bags.md)中的完整命令；三包集中于 `/home/zhoutong/omi_folder/representative_rosbag/october/`，历史文件在移动硬盘 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`。旧 Downloads 路径为兼容链接。覆盖范围、实际验证边界及空间变化见[机器人回放纪传体](evolution/robot-3d-replay.md#当前代表录包与操作入口2026-10-07)和[本次编年](chronicles/2026-10-07-rviz-bag-relocation.md)。实时看板不需要录包。
+
 2026-10-05：已补齐[采集解耦实现纪传体](evolution/sensor-decoupling.md)，包含独立字段读取、力调度、腕部FIFO与双路发布、元数据及离线对齐。外部RGB的header年龄与本机接收年龄是两项检查，源时钟仍未确认；“接收新鲜但源时间不确定”不能等同无延迟。外部RGB专用接收时间策略尚未实施，见[时间基准说明](evolution/sensor-time-alignment.md)和[排查编年](chronicles/2026-10-05-rgb-clock-and-receive-age.md)。
 
 2026-10-05：[当前grid触觉与腕部采集已解耦](chronicles/2026-10-05-sensor-decoupling.md)。字段独立发布、六维力不再被其他字段拒绝连带丢弃；腕部增加有限FIFO可靠录制topic。短测三场约30 Hz、力约29.6 Hz，仍不保证设备端无丢帧或力源时间已知。操作见[教程](../../../tutorials/sensor_decoupling.md)。

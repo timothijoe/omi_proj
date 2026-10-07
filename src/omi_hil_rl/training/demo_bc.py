@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from omi_hil_rl.hil.demo import DEMO_VERSION, read_demo_step
 from omi_hil_rl.hil.exchange import atomic_json, atomic_torch
-from omi_hil_rl.hil.networks import Actor, VERSION, load_actor
+from omi_hil_rl.hil.networks import LegacyActor as Actor, LEGACY_VERSION as VERSION, load_actor
 from .eef_bc_data import sha256
 from .eef_bc_grid import GridProfile
 from .transition_replay import _spaces, _array

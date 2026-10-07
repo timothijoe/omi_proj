@@ -1,5 +1,28 @@
 # Training 当前摘要
 
+最新阶段归档：[2026-10-07：共享编码器、HIL-SERL对齐与中断恢复](chronicles/2026-10-07-shared-serl-resume.md)。
+包含实现范围、代码定位、版本兼容、测试证据和后续待办；给后续agent交接可先读此文。
+
+2026-10-07：RL升级为`omi-hil-sac-shared-serl-v2`，保留当前输入（离线wrench关闭），
+Actor/Critic真正共享编码器，Critic独占融合编码器梯度；官方式256×256头、LN/tanh、Xavier、
+std[1e-5,5]、softplus温度、随机裁剪增强；默认batch256（可显式32）。
+仍是PyTorch多模态适配，不是官方数值等价复现；输入融合/actor proprio梯度、限幅、奖励语义等差异明确保留。
+旧BC头/加载兼容保持，旧v1 Learner不能直接resume到v2。没有运行新策略控制真机。
+采集增加`--resume`按回合边界续写，staging孤立回合排除训练；离线支持多个`--source`目录。
+训练SIGINT/SIGTERM延迟至完整更新后保存，周期checkpoint保留；dirty replay不自动恢复。
+72项相关测试通过、2项CUDA跳过；含真实已采观测CPU更新/恢复及更新中中断测试。
+操作与边界：[采集教程](../../../tutorials/rl_episode_collection.md)、[架构对齐](../../../tutorials/hil_actor_learner.md)。
+以下2026-10-06训练结果属于v1，不代表v2已经完成正式训练或效果验证。
+
+2026-10-06新增离线RL实际训练闭环：用户授权暂按现有标签有效，最新采集10段按回合划分
+8段929条训练、2段222条留出；真实多模态SAC在GPU完成100次更新并保存重载，随后恢复续训2次至102。
+入口`scripts/train_rl_offline.sh`，产物`local/rl_training/offline_20261006_v1/`；
+操作及数值见[采集教程的离线训练部分](../../../tutorials/rl_episode_collection.md#2026-10-06离线sac训练流程已跑通)。
+磁盘池两流各929（同组人工数据，不是独立倍增），Actor参数变化、冻结参数不变，重载误差0。
+原始数据未变，不加载BC头、不发布机器人动作；按键缺陷未修复。
+留出动作MSE没有改善、222条最终dx均为负，不能视为策略学会插入，禁止将流程验证误作部署验收。
+下面“未训练/未入池”为此前阶段；此次新建了独立训练目录，未修改原session的ready/imported状态。
+
 2026-10-06阶段归档：[RL回合采集、异步写盘与首批数据检查](chronicles/2026-10-06-rl-episode-collection-audit.md)。
 用户已采3个session、16段1723条，全部通过只读结构/动作回执/观测连续性校验，未实际入池或训练。
 最新10段1151条：2成功、6超时、2提前结束；成功是否真实仍待用户确认，约56%零动作、旋转全零。

@@ -1,5 +1,7 @@
 # Hardware 编年索引
 
+- [2026-10-07 三包 RViz 样例、路径集中与移动硬盘归档](2026-10-07-rviz-bag-relocation.md)
+
 - [2026-10-05 外部RGB时钟与接收年龄排查](2026-10-05-rgb-clock-and-receive-age.md)
 
 - [2026-10-05 触觉独立字段、腕部录制队列与实测](2026-10-05-sensor-decoupling.md)

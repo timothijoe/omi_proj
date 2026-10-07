@@ -13,6 +13,14 @@ from omi_hil_rl.training.transition_replay import CONTRACT_KEYS
 from .networks import VERSION
 
 
+def sync_directory(directory):
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def atomic_json(path, value):
     path = Path(path)
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
@@ -21,6 +29,7 @@ def atomic_json(path, value):
         stream.flush()
         os.fsync(stream.fileno())
     temporary.replace(path)
+    sync_directory(path.parent)
 
 
 def atomic_torch(path, value):
@@ -31,6 +40,7 @@ def atomic_torch(path, value):
         stream.flush()
         os.fsync(stream.fileno())
     temporary.replace(path)
+    sync_directory(path.parent)
 
 
 @contextmanager
@@ -81,6 +91,7 @@ class EpisodeSpool:
             stream.flush()
             os.fsync(stream.fileno())
         destination.with_suffix(".tmp").replace(destination)
+        sync_directory(destination.parent)
         self.count += 1
         self.last = metadata
 
@@ -104,6 +115,7 @@ class EpisodeSpool:
             stream.flush()
             os.fsync(stream.fileno())
         destination.with_suffix(".tmp").replace(destination)
+        sync_directory(destination.parent)
         self.last = metadata
 
     def finish(self, keep, *, reason=None):

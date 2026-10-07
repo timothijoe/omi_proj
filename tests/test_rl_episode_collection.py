@@ -74,6 +74,27 @@ def test_interrupt_preserves_prefix_but_never_ready(tmp_path):
     assert len(list((tmp_path / 'run').glob('episodes/*/*.npz'))) == 1
 
 
+def test_resume_retains_completed_episodes_and_quarantines_orphans(tmp_path):
+    from omi_hil_rl.hil.exchange import atomic_json
+    from dataclasses import replace
+    config = HILConfig(review='auto')
+    run = tmp_path / 'run'
+    first = collect(run, config, Human(config, success_step=1), episodes=1)
+    original = (run/'episodes'/first[0]['episode']/'000000.npz').read_bytes()
+    orphan = run/'episodes'/'orphan'
+    orphan.mkdir()
+    atomic_json(orphan/'staging.json', dict(episode='orphan', contract=config.replay_contract()))
+    results = collect(run, config, Human(config, success_step=1), episodes=1, resume=True)
+    assert len(results) == 3
+    assert sum(r['keep'] for r in results) == 2
+    assert (orphan/'discarded.json').exists() and not (orphan/'ready.json').exists()
+    assert (run/'episodes'/first[0]['episode']/'000000.npz').read_bytes() == original
+    with pytest.raises(ValueError, match='mismatch'):
+        collect(run, replace(config, episode_seconds=30), Human(config), resume=True)
+    with pytest.raises(FileExistsError):
+        collect(run, config, Human(config))
+
+
 def test_success_before_send_stops_without_extra_motion():
     transport = RosTransport.__new__(RosTransport)
     transport._pump = lambda: None

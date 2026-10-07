@@ -1,5 +1,49 @@
 # 六维真机 HIL 环境、SAC 与 Actor/Learner
 
+## 2026-10-07：共享编码器与 HIL-SERL 参数对齐
+
+开发归档与交接见[2026-10-07阶段记录](../docs/agent/training/chronicles/2026-10-07-shared-serl-resume.md)。
+
+新 RL checkpoint 版本为 `omi-hil-sac-shared-serl-v2`。没有启动真机运动；
+架构/恢复测试通过不代表策略已经具备插入成功率。
+
+| 项目 | 新 RL 实现 |
+|---|---|
+| 输入 | 保留双相机、触觉网格、EEF、十帧历史与有效性掩码；当前离线入口 wrench 关闭 |
+| 共享 | Actor 与双 Q 使用同一个 Encoder 对象，目标 Q 是独立副本 |
+| 梯度归属 | Critic 优化器独占共享编码器；RL Actor 对融合特征 stop-gradient，只更新策略头 |
+| 策略头 | 128→256→256→12，最后12维分别为6维均值和log_std |
+| 双 Q 头 | 各自134→256→256→1（128维特征＋6维动作） |
+| 激活与初始化 | 官方 MLP 的 activate_final=False：仅第一层后 LayerNorm(eps=1e-6)+tanh；Dense Xavier uniform，零bias |
+| 分布 | tanh Gaussian，标准差范围[1e-5,5] |
+| SAC | lr=3e-4，gamma=.98，tau=.005，Critic/Actor更新比2:1；双Q最小值target，无entropy backup，Actor用平均Q |
+| 温度 | softplus参数化，初值.01，目标熵-3；用下一观测动作的熵更新 |
+| 图像增强 | 默认开启，replicate padding=4随机裁剪；每样本每相机独立，同一十帧窗口共用偏移；只用于训练 |
+| Batch | Learner/离线CLI默认256；显存受限可显式32，不会偷偷降级或缩放机器人动作 |
+
+这仍是 PyTorch 适配实现，不是官方 JAX 数值等价复现。保留的差异包括：
+当前多模态/历史融合适配器输出128维；融合编码器整体由Critic训练，而官方图像stop-gradient后
+还有可训练的独立proprio投影；保留梯度范数5限幅、现有人工奖励/timeout bootstrap、动作坐标和幅度。
+官方单帧USB配置无需照搬到我们的十帧输入上。没有增加夹爪。
+
+参考：[官方网络配置](https://github.com/rail-berkeley/hil-serl/blob/main/serl_launcher/serl_launcher/utils/launcher.py)、
+[MLP](https://github.com/rail-berkeley/hil-serl/blob/main/serl_launcher/serl_launcher/networks/mlp.py)、
+[编码器](https://github.com/rail-berkeley/hil-serl/blob/main/serl_launcher/serl_launcher/common/encoding.py)。
+
+v1 Learner/优化器不兼容v2，必须用新训练目录；原始采集数据可复用。
+为避免破坏已有BC流程，demo_bc继续使用LegacyActor；v1 actor仍按旧结构加载推理，
+但不能作为v2 Learner断点恢复。不是把旧权重硬塞进新网络。
+
+训练CLI的Ctrl+C/SIGTERM变成停止请求，完整更新结束后保存再退出。
+Learner在每50次更新发布完整模型/优化器/目标网络/RNG状态；正常结束保存最后进度。
+更新内部异常（如OOM）不发布可能半更新的参数，保留上一个完整checkpoint。
+这些机制不保证kill -9/断电零损失，也不自动接续机器人的物理动作。
+采集续写、多目录合并及限制见[采集教程](rl_episode_collection.md#2026-10-07断点续采与分次采集)。
+
+验证：72 passed、2 CUDA skipped；涵盖真实已采观测的CPU更新/重载/确定性续训，
+共享参数优化器不重叠、目标编码器独立、图像增强时间一致性、更新中SIGINT保存/恢复无重复导入、
+采集续写/孤立回合排除、多来源回合隔离及BC/Replay回归。未验证v2真机成功率或GPU batch256显存占用。
+
 若当前只验证“按钮开始、成功/超时停止、回合外手柄复位”，先用
 [人工RL回合采集](rl_episode_collection.md)。新入口不依赖模型或learner，
 自动保留有效成功/超时回合，通过独立手动话题采集；下文旧Actor的单话题路由仍是另一条路径。

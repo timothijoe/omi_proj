@@ -35,7 +35,7 @@ bash scripts/eef_bc.sh --help
 ## 2. 导出代理标签数据
 
 ```bash
-bash scripts/eef_bc.sh export /home/zhoutong/Downloads/oct03/bag_004.zip \
+bash scripts/eef_bc.sh export /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip \
   local/eef_bc/bag004_dataset --accept-future-state-proxy
 ```
 
@@ -110,7 +110,7 @@ EEF frame或时间校验失败时核实源数据；越界候选被拒绝时检�
 完整双相机可选模式示例：
 
 ```bash
-bash scripts/eef_bc.sh export /home/zhoutong/Downloads/oct03/bag_004.zip \
+bash scripts/eef_bc.sh export /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip \
   local/eef_bc/bag004_cameras_optional_selected \
   --accept-future-state-proxy --wrist-camera optional
 bash scripts/eef_bc.sh train --train local/eef_bc/bag004_cameras_optional_selected \

@@ -7,7 +7,7 @@
 在项目根目录运行（路径替换为本机文件）：
 
 ```bash
-bash scripts/view_stand_observation_3d.sh /path/record001.zip /path/Marvin_Stand_2026.2.2.rar
+bash scripts/view_stand_observation_3d.sh /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip /home/zhoutong/Downloads/oct2/Marvin_Stand_2026.2.2.rar
 ```
 
 可加 `0.5` 半速；无图形验证可加 `1 --no-rviz`。关闭 RViz 或终端 Ctrl+C 停止全部子进程。

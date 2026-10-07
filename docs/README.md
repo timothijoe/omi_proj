@@ -1,5 +1,7 @@
 # OMI 文档总目录
 
+历代 RViz 回放的本机代表数据与完整命令见[三包操作页](../tutorials/rviz_representative_bags.md)；历史 bag 已外置，迁移记录见[2026-10-07 编年](agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。
+
 最新真机RL采集阶段：[实现与首批数据检查](agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)
 → [采集操作教程](../tutorials/rl_episode_collection.md)。已采16段1723条并通过结构校验，成功标签待确认，短按漏检未修复；未启动在线RL训练。
 

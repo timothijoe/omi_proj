@@ -1,6 +1,57 @@
 # 真机RL：人工回合采集与复位
 
-最新实现、测试与现场数据结果见[2026-10-06阶段记录](../docs/agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)。
+## 2026-10-07：断点续采与分次采集
+
+不要求采集和训练始终在同一个进程中运行。完整回合先保存为独立文件，训练池是其派生数据。
+本次没有启动真机；以下执行命令由操作者确认现场安全后运行。
+
+**续采原目录**：使用原来的配置（含episode-seconds），显式加`--resume`。
+不会覆盖旧回合，启动后等315重新开始；不会续发中断前的动作。
+
+```bash
+bash scripts/collect_rl_episodes.sh \
+  --output local/rl_episodes/collect_20261006_001958 \
+  --episode-seconds 15 --resume --execute
+```
+
+完整ready/discarded清单是恢复依据，不依赖可能滞后的summary。
+上次崩溃遗留、没有ready的staging回合会标记discarded，只保留审计文件，不猜测成功/奖励。
+正常Ctrl+C仍先停止，再排空写盘线程；未结束回合不进入训练。
+
+**分次采集、合并训练**：可以使用多个新目录；`--source`后可列出多个路径。
+要求观测/动作/奖励/回合契约相同，重复目录/重复episode ID会报错；全局按回合划分训练/留出，
+归一化仅统计训练回合。替换下面的session_A/session_B为实际路径。
+
+```bash
+bash scripts/train_rl_offline.sh \
+  --source local/rl_episodes/session_A local/rl_episodes/session_B \
+  --output local/rl_training/shared_serl_v2_01 \
+  --updates 100 --batch-size 32 --device cuda
+```
+
+新版默认batch256对齐参考配置；以上显式32是十帧输入下显存受限的起步设置，
+不等于官方batch256，也不是梯度累积。新版架构详情见[Actor/Learner教程](hil_actor_learner.md)。
+
+**训练中断与恢复**：CLI收到Ctrl+C/SIGTERM后打印STOP_REQUESTED，完成当前更新再保存退出。
+模型、目标Q、优化器、温度、随机数状态一并保存。正常续训：
+
+```bash
+bash scripts/train_rl_offline.sh \
+  --output local/rl_training/shared_serl_v2_01 \
+  --updates 100 --batch-size 32 --device cuda --resume
+```
+
+这里updates是追加次数。`--resume`使用已有dataset快照和replay，不自动导入之后新增的回合，
+也不重新划分验证集；新增数据要新建训练目录，或后续接入在线Learner交接流程。
+新架构v2不能resume旧v1训练目录；原始采集文件可以原样再训练。
+
+边界：kill -9、断电不能排空内存队列；训练可能退回上次完整checkpoint（通常每50更新保存）。
+中途写坏的dirty replay仍拒绝打开，需要从已完成的episode文件重建；本次未实现自动dirty池恢复。
+不要删除原始episodes，也不要手工把clean标志改为true。
+恢复采集/训练不意味着恢复机器人位置，物理复位仍由人工完成。
+
+本次网络对齐与中断恢复见[2026-10-07阶段记录](../docs/agent/training/chronicles/2026-10-07-shared-serl-resume.md)；
+此前采集实现与现场数据检查见[2026-10-06阶段记录](../docs/agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)。
 
 ## 当前已知限制（开始正式采集前阅读）
 
@@ -135,7 +186,52 @@ Ctrl+C优先请求停止，保留已写文件；未完成回合标记排除，�
 
 后续夜间工作应是离线检查数据质量、训练/验证对照并保存候选模型，不会自动部署新策略或无人看守控制真机。
 
-## 本次验证边界
+## 2026-10-06：离线SAC训练流程已跑通
+
+用户确认本轮暂按已有标签有效处理。新增 `scripts/train_rl_offline.sh`，不导入ROS、
+不启动机器人Actor、不发布动作。调用现有SAC与磁盘经验池，对固定数据执行离线更新；
+不是已完成在线真机探索，也不是专门解决离线分布外动作问题的算法。
+
+首次训练（输出目录必须不存在）：
+
+```bash
+bash scripts/train_rl_offline.sh \
+  --source local/rl_episodes/collect_20261006_001958 \
+  --output local/rl_training/offline_new_run \
+  --updates 100 --batch-size 32 --device cuda
+```
+
+恢复同一训练目录，追加更新次数：
+
+```bash
+bash scripts/train_rl_offline.sh \
+  --output local/rl_training/offline_20261006_v1 \
+  --updates 100 --batch-size 32 --device cuda --resume
+```
+
+默认调用local/cuda-env；无CUDA直接报错，不暗中改为CPU。可显式使用`--device cpu`。
+默认seed7，按回合保留一个成功及一个非成功回合用于检查；本轮训练8段929条、留出2段222条。
+训练统计不使用留出数据。逐条校验并记录源文件SHA256，原始采集目录不修改。
+动作尺度继承session契约；不加载BC控制头，Actor/Critic从头初始化，冻结视觉骨干加载既有预训练权重。
+无wrench输入。当前real配方按完整双相机数据校验。
+
+已完成的实际运行：`local/rl_training/offline_20261006_v1`。
+RTX5060 Laptop GPU，batch32，100次更新约23秒（不含校验、导入和留出推理），
+随后从磁盘模型、优化器及经验池恢复续训2次，最终102次Critic、51次Actor更新。
+online和demonstration计数各929，指同一组人工样本属于两流，不是1858条独立数据。
+冻结Actor参数未变化、可训练Actor参数确实变化、保存重载推理最大误差0；峰值分配显存约1.13GB。
+
+产物：`config.json`、`recipe.json`、`dataset.json`（划分/来源哈希）、`replay/`、
+`metrics.jsonl`、`status.json`、`learner.pt`（含优化器/目标网络/RNG）、`actor.pt`及`report*.json`。
+`report_000100.json`和`report_000102.json`保留两个阶段；`report.json`指向最新结果内容。
+
+流程成功不代表策略质量提升：留出人工动作MSE从0.07175变为0.08372（100步），
+续训后0.08504；最终222条留出观测的dx均低于归一化-0.01。
+该指标只是动作一致性诊断，不是RL回报/成功率，不能作为真机部署依据。
+当前检查点明确标为流程测试候选，不自动部署。按键漏检仍是独立未修复事项。
+软件回归32通过、1跳过；实际GPU训练与重载/续训完成，没有机器人运动。
+
+## 采集阶段历史验证
 
 异步更新：生命周期/后台写盘等36项通过、2项跳过，回执/启动检查7项通过。
 用已有真实观测按10Hz提交30条，主线程快照提交耗时中位0.96ms、P95 1.42ms、最大1.58ms；

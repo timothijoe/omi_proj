@@ -5,7 +5,7 @@
 原[旧模型入口](robot_3d_replay.md)及[新URDF入口](stand_urdf_review.md)保留。
 
 ```bash
-bash scripts/view_hybrid_observation_3d.sh /path/record001.zip /path/Marvin_Stand_2026.2.2.rar
+bash scripts/view_hybrid_observation_3d.sh /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip /home/zhoutong/Downloads/oct2/Marvin_Stand_2026.2.2.rar
 ```
 
 参数与 Stand 入口相同：可加播放速率，以及 `--no-rviz`。固定 localhost domain95。

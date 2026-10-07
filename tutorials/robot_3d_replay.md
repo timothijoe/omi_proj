@@ -9,7 +9,7 @@
 项目根目录直接执行，无需每次export路径：
 
 ```bash
-bash scripts/view_observation_robot_3d_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+bash scripts/view_observation_robot_3d_bag.sh /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001
 ```
 
 参数为 `BAG [RATE=1.0] [--no-rviz]`。默认localhost domain96，Ctrl+C关闭全部子进程。
@@ -82,10 +82,11 @@ local/venvs/daimon312/bin/python scripts/check_robot_3d_replay.py /PATH/TO/BAG
 
 旧入口保持原样。对于包含 `/tj/dm_sensor/{a,b}_{deformation,shear}` 和
 `/tj/info/eef_left` 的新包，使用独立入口，可直接读取 ZIP：
+当前本机代表命令使用 bag_004；本节后文 record001 的数值和缺少腕部图像的结论仍只属于原 record001 实验。
 
 ```bash
 bash scripts/view_recorded_observation_3d.sh --help
-bash scripts/view_recorded_observation_3d.sh /YOUR_DATA_DISK/record001.zip
+bash scripts/view_recorded_observation_3d.sh /home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip
 # 第二个参数为倍速，第三个可选 --no-rviz。
 ```
 

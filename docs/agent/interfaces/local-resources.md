@@ -1,5 +1,7 @@
 # 本地资源定位
 
+历代 RViz 代表录包实际位于 `/home/zhoutong/omi_folder/representative_rosbag/october/`：`record010/bag_001/`、`native_wrist_bag_004.zip`、`grid24x16_bag_001.zip`。完整命令见[三包操作页](../../../tutorials/rviz_representative_bags.md)。历史文件移至 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，逐文件 SHA-256 和原路径在 `manifest.json`；旧 Downloads 路径保留符号链接。移动盘未挂载时，仅本机三包正常可用；四个手柄 BC 示范包及 RL 回合数据未迁移。
+
 双指wrench实时/历史记录：`local/wrench_live/session-*`，包含samples.jsonl、metadata.jsonl、
 manifest/status/report及实时/全程PNG；原始记录不能由截图恢复，转移请复制整个会话目录。
 见[教程](../../../tutorials/wrench_live.md)。
@@ -30,7 +32,7 @@ manifest/status/report及实时/全程PNG；原始记录不能由截图恢复，
 历史数据的移动硬盘归档根目录：
 `/media/zhoutong/zt-think-d1/legion_data/legion_omi_proj/local/oct_02/`，分别保留
 `tactile/`、`bc/`、`eef_bc/` 子目录。`oct_02` 是用户指定的归档分组名，并不表示内容仅来自10月2日。
-**`local/tactile/` 和 `local/bc/` 已完成迁移，本地源目录已移除，不留软链接。**
+**旧 `local/tactile/` 实验产物和 `local/bc/` 已完成迁移，不留指向该旧实验归档的软链接。**2026-10-07 为旧 RViz 回放重建了本地 `local/tactile/record010_zero_load_25_26_confirmed_v2/` 与 `local/tactile/replay_cache/`；这不代表旧实验产物已全部恢复。
 再次内容校验153个文件、8,007,932,419字节，无缺失或差异；历史产物需从归档路径读取，
 或按需复制回原相对路径。本机释放约7.46 GiB。
 **`local/eef_bc/` 保留不动。** 此前因 `oct3_formal_v3_run1/` 并行写入而暂停迁移，
@@ -77,7 +79,7 @@ Stand派生模型固定归档为 `local/models/omi_marvin_stand_axis_corrected_v
 模型资源、pip 缓存放在由 `.gitignore` 排除的 `local/`；生成文件写在 `data/`，虚拟环境在 `.venv/`，同样被忽略。已选的一张验证 PNG 和一段小 GIF 放在 `docs/evidence/` 作为可审阅证据。恢复过程复制已有资源，来源文件保留。`OMI_TIANJI_SDK_ROOT` 默认指向兄弟目录 `TJ_FX_ROBOT_CONTRL_SDK`；它表示包含 `SDK_PYTHON` 的目录，供将来显式配置 `TianjiConfig.sdk_root`，仿真不会加载或连接 SDK。
 
 工作区同级的 `ros2_camera_clip_tools/` 是相机 ROI/RViz 辅助工具；输入 rosbag 当前位于
-`/home/zhoutong/Downloads/img/record010/bag_001`，静态预览位于同级
+`/home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001`，静态预览位于工作区的
 `camera_roi_preview/`。它们都不在 `omi_proj/` Git 仓库内，路径、用途和恢复说明登记在
 [资源 manifest](../../../manifests/resources.yaml)，跨目录入口统一由[工作区总索引](../../../../README.md)维护。
 

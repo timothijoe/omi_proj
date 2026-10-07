@@ -39,7 +39,7 @@ Wrist 原图为 `1920×1080`，ROI 固定为 `389×389`：横向居中，左上�
 source scripts/env_marvin.sh  # 项目 local/ 下的消息包，详见 marvin_messages.md
 source scripts/env_ros.sh
 python -m omi_hil_rl.real.ros_bag_preflight \
-  /home/zhoutong/Downloads/img/record010/bag_001
+  /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001
 ```
 
 本次实际验证在 10 Hz 下得到 269 个 observation，0 个因缺失或过期被拒绝。腕部 RGB 是最慢的必要输入，实测最大年龄约 0.225 秒，因此默认 stale 阈值暂定为 0.25 秒。该数值只描述这份 bag，不是最终在线控制参数。
@@ -52,7 +52,7 @@ python -m omi_hil_rl.real.ros_bag_preflight \
 ```bash
 source scripts/env_ros.sh
 python -m omi_hil_rl.real.tactile_baseline \
-  /home/zhoutong/Downloads/img/record010/bag_001 \
+  /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001 \
   local/tactile/record010_zero_load_25_26_confirmed_v2 \
   --start-s 25 --end-s 26 \
   --serial-a X26040546 --physical-side-a right \
@@ -75,7 +75,7 @@ python -m omi_hil_rl.real.tactile_baseline \
 source /opt/ros/jazzy/setup.bash
 PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
   local/venvs/daimon312/bin/python -m omi_hil_rl.real.tactile_offline \
-  /home/zhoutong/Downloads/img/record010/bag_001 \
+  /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001 \
   local/tactile/record010_zero_load_25_26_confirmed_v2 \
   local/tactile/record010_offline_fields_confirmed_v3 \
   --sdk-root ../diamond/daimon_stuff/dm_gripper_tac_py
@@ -90,7 +90,7 @@ PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
 从 `omi_proj/` 执行：
 
 ```bash
-bash scripts/view_observation_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+bash scripts/view_observation_bag.sh /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001
 ```
 
 同一个 RViz Image 显示两部分：左侧上下分别是头部和腕部相机，每行有带 ROI 框的原图
@@ -121,7 +121,7 @@ QoS；默认 localhost domain 87。依然可以单独运行下面的纯触觉版
 从 `omi_proj/` 执行：
 
 ```bash
-bash scripts/view_tactile_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+bash scripts/view_tactile_bag.sh /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001
 ```
 
 打开独立 RViz，顶部为 A（右指），底部为 B（左指），每行从左到右为 raw、deformation、

@@ -17,7 +17,7 @@ bash scripts/view_grid_observation_3d.sh /path/to/bag_directory --rate 0.5
 本次验证用的文件：
 
 ```bash
-bash scripts/view_grid_observation_3d.sh /home/zhoutong/Downloads/oct03/oct3_022/bag_001.zip
+bash scripts/view_grid_observation_3d.sh /home/zhoutong/omi_folder/representative_rosbag/october/grid24x16_bag_001.zip
 ```
 
 首次生成10Hz图像缓存可能耗时，随后循环播放；Ctrl+C或关闭RViz可停止本次进程组。

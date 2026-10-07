@@ -10,7 +10,7 @@
 本机已在 `local/robot_state/viewer.env` 保存路径，无需手动export，直接运行：
 
 ```bash
-bash scripts/view_observation_robot_bag.sh /home/zhoutong/Downloads/img/record010/bag_001
+bash scripts/view_observation_robot_bag.sh /home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001
 ```
 
 换机器时，将 `scripts/robot_viewer.env.example` 复制到 `local/robot_state/viewer.env`，

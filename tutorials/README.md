@@ -1,5 +1,7 @@
 # 操作教程
 
+- [历代 RViz 回放：三包与完整一行式命令](rviz_representative_bags.md)
+
 - [真机RL人工回合：按钮成功、超时停止、手柄复位和连续采集](rl_episode_collection.md)
 
 - [当前无wrench模型：推理、RB接管、Ctrl+C观测保存](no_wrench_policy_record.md)
