@@ -123,14 +123,38 @@ def test_bc_ctrl_c_closes_components_without_learner(tmp_path, monkeypatch, faul
     monkeypatch.setattr(module, 'validate_run', lambda run: HILConfig(transport='ros', review='auto'))
     monkeypatch.setattr(module, 'make_transport', lambda *a: Transport())
     monkeypatch.setattr(module, 'FixedBCActor', Fixed)
+    monkeypatch.setattr(module, 'attach_wrench_monitor', lambda *a: events.append('monitor'))
     monkeypatch.setattr(module, 'run_periodic', lambda actor, count: actor.run_episodes(count))
     import subprocess
     monkeypatch.setattr(subprocess, 'Popen', lambda *a, **kw: pytest.fail('BC must not spawn learner'))
     monkeypatch.setattr(sys, 'argv', ['bc_rollout', '--output', str(tmp_path), '--resume', '--execute', '--control-mode', control_mode])
     module.main()
+    assert 'monitor' not in events
     assert events[-1] == 'CLOSED'
     assert events.index('stop') < events.index('join') < events.index('close')
     assert ('PAUSED' in events) == fault
+
+
+def test_periodic_bc_wrench_monitor_requires_explicit_flag(tmp_path, monkeypatch):
+    import omi_hil_rl.hil.bc_rollout as module
+    events = []
+    class Transport:
+        def stop(self): pass
+        def close(self): pass
+    class Fixed:
+        def __init__(self, *args, **kwargs): pass
+        def close_pipeline(self): pass
+        def state(self, *args, **kwargs): pass
+    atomic_json(tmp_path/'recipe.json', {})
+    monkeypatch.setattr(module, 'validate_run', lambda run: HILConfig(transport='ros', review='auto'))
+    monkeypatch.setattr(module, 'make_transport', lambda *args: Transport())
+    monkeypatch.setattr(module, 'FixedBCActor', Fixed)
+    monkeypatch.setattr(module, 'attach_wrench_monitor', lambda *args: events.append('attached'))
+    monkeypatch.setattr(module, 'run_periodic', lambda *args: signal.raise_signal(signal.SIGINT))
+    monkeypatch.setattr(sys, 'argv', ['bc_rollout', '--output', str(tmp_path), '--resume',
+                                    '--execute', '--control-mode', 'periodic', '--wrench-warning'])
+    module.main()
+    assert events == ['attached']
 
 
 def test_warmup_missing_camera_keeps_manual_reset_and_reports_reason(capsys):

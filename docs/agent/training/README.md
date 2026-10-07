@@ -2,6 +2,8 @@
 
 - [长期章程](charter.md)
 - [当前摘要](current.md)
+- [首批真机在线 RL 与 EEF 时序审计（编年）](chronicles/2026-10-08-first-online-rl-run.md)
+- [真机在线 RL 当前机制（纪传）](evolution/real-online-rl.md)
 - [新示范、BC 推理与下一步 RL 交接](chronicles/2026-10-07-new-bc-to-rl-handoff.md)
 - [新采人工周期数据的两阶段 BC 训练](chronicles/2026-10-07-new-periodic-human-bc.md)
 - [人工周期采集：功能、现场进展与多回合用法](chronicles/2026-10-07-human-periodic-collection.md)

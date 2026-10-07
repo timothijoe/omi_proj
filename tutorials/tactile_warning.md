@@ -1,5 +1,23 @@
 # 只读触觉阈值预警
 
+如果要按手柄 Start 记录每回合夹持基线，再看 `Fx/Fy` 与力矩的**差值**，使用：
+
+```bash
+bash scripts/watch_bc_wrench.sh \
+  --wrench-force-xy-warning 4.0 \
+  --wrench-torque-warning 1.2
+```
+
+这会每秒打印 `BC_WRENCH_LIVE`，按 Start(315) 后打印 `BC_WRENCH_BASELINE`，
+达到本次命令指定的 `ΔFxy=4.0` 或 `ΔT=1.2` 时打印 `BC_WRENCH_WARNING`。
+按 Start 前须离开接口并稳定夹持；两指任一侧缺流、全零或波动过大时不建基线。
+代码默认的 1.5 / 0.4 是早期候选值，用户当前临时试看使用上面的 4.0 / 1.2；
+都只是**只读预警**值，尚未选为保护阈值。力模长为
+`sqrt(ΔFx²+ΔFy²)`，力矩模长为 `sqrt(ΔTx²+ΔTy²+ΔTz²)`，每个 `Δ` 都是当前值减
+Start 基线。当前计划先暂缓预警和保护，只有主动运行此脚本才会开始只读监测。
+它不发布动作，也不改变 BC 成功标签或接收端保护开关；Ctrl+C 退出。
+下面的旧 `watch_tactile_warning.sh` 比较的是原始模长，语义不同。
+
 ```bash
 bash scripts/watch_tactile_warning.sh --force-limit 5 --torque-limit 1
 ```

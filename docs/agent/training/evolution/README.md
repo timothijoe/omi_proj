@@ -1,5 +1,7 @@
 # Training 纪传体
 
+- [真机在线 RL：BC 热启动、手柄接管与异步训练](real-online-rl.md)：当前三池、周期回合、Learner/Actor 版本、首批 1059 条真机 transition 与 EEF 因果配对边界。
+
 - [手柄示范录包、动作语义与 BC 数据入口](demo-collection-bc.md)：当前独立gamepad、集成collector和诊断数据的区别；触觉历史、wrench及可视化。
 
 - [六维真机HIL、SAC和Actor/Learner](hil-actor-learner.md)：当前进展、按钮回合、整段审核、验证边界与下一阶段；[操作教程](../../../../tutorials/hil_actor_learner.md)。

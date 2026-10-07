@@ -156,7 +156,7 @@ def test_prepare_new_bc_rl_seed(tmp_path):
         prepare(bc, destination)
 
 
-def test_periodic_success_stops_then_records_terminal_state_before_reset(tmp_path, monkeypatch):
+def test_periodic_success_stops_then_records_terminal_state_before_reset(tmp_path, monkeypatch, capsys):
     import omi_hil_rl.hil.periodic_control as module
     now = [100.]
     monkeypatch.setattr(module, 'time', SimpleNamespace(monotonic=lambda: now[0]))
@@ -210,6 +210,10 @@ def test_periodic_success_stops_then_records_terminal_state_before_reset(tmp_pat
     assert report['success_label_recorded'] and report['training_ready']
     assert len(finished) == 1
     assert max(np.diff([t for t, _ in sent])) < .12
+    printed = capsys.readouterr().out
+    assert 'RL 回合已开始' in printed
+    assert '正在保存 RL 回合' in printed
+    assert '本地保存完成' in printed and '训练片段待 Learner 异步导入' in printed
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason='CUDA required for real BC protection probe')

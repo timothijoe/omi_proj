@@ -215,10 +215,15 @@ def run_periodic(actor, episodes, *, training=False):
             if getattr(transport, 'collect_human', False):
                 print(f'采集进度：等待第 {episode_number}/{episodes} 回合 Start；'
                       f'本次运行已完成 {completed_episodes} 回合，累计有效动作 {total_transitions} 条。', flush=True)
+            elif training:
+                _banner(f'等待第 {episode_number}/{episodes} 个 RL 回合：按 Start 开始；RB 可随时接管', '36')
             started = transport.wait_start()
             transport.reset_history()
             episode = uuid.uuid4().hex
             audit = PeriodicAudit(actor.run, episode, config.replay_contract(), actor.version, training=training)
+            monitor_start = getattr(actor, 'periodic_monitor_start', None)
+            if monitor_start is not None:
+                monitor_start(episode, started)
             known = {}
             verified = {'human': False, 'policy': False}
             fault = None
@@ -263,6 +268,11 @@ def run_periodic(actor, episodes, *, training=False):
                           flush=True)
                     _banner('已开始采集：现在按住 RB 并推动摇杆控制机械臂', '36')
                     print('按 308 标记任务成功；按 307 提前结束；到时自动结束。\n', flush=True)
+                elif training:
+                    policy_hint = ('策略正在推理' if getattr(actor, 'policy', False) else
+                                   '策略未启用，默认发送零动作')
+                    _banner(f'RL 回合已开始：{policy_hint}；按住 RB 用摇杆接管', '36')
+                    print('按 308 标记成功；按 307 提前结束；到时自动结束。\n', flush=True)
                 while True:
                     transport._pump()
                     now = time.monotonic()
@@ -325,6 +335,9 @@ def run_periodic(actor, episodes, *, training=False):
                                      eef_receive_ns=getattr(transport, 'latest_eef_time', None),
                                      command_send_ns=transport.node.get_clock().now().nanoseconds), transport.latest[0])
                 transport.stop()
+                monitor_end = getattr(actor, 'periodic_monitor_end', None)
+                if monitor_end is not None:
+                    monitor_end(episode)
                 if getattr(transport, 'collect_human', False):
                     # A Start pressed during the active episode is not a request
                     # to restart. Only presses after the stop may be queued.
@@ -348,6 +361,15 @@ def run_periodic(actor, episodes, *, training=False):
                     print(f"EPISODE_RESULT: {english_result} success={outcome['success']} "
                           f"reason={outcome['reason']}", flush=True)
                     _banner(verdict, color)
+                elif training:
+                    if outcome['reason'] == 'success':
+                        _banner('RL 回合已标记成功：收到 308；正在核对成功奖励能否入池', '32')
+                    elif outcome['reason'] == 'manual_stop':
+                        _banner('RL 回合未标记成功：收到 307 提前结束', '33')
+                    elif outcome['reason'] == 'timeout':
+                        _banner('RL 回合未标记成功：已达到回合时限', '33')
+                    else:
+                        _banner('RL 回合异常停止：' + outcome['reason'], '31')
                 # Stop first; callbacks may finish late. Never wait in the send loop.
                 try:
                     drain_until = time.monotonic()+.3
@@ -368,9 +390,23 @@ def run_periodic(actor, episodes, *, training=False):
                 finally:
                     transport.receipt_hook = None
                     # No reset is permitted until the boundary is captured.
+                    if training and not getattr(transport, 'collect_human', False):
+                        _banner('正在保存 RL 回合：等待本地写盘与有效片段校验完成', '33')
+                    save_started = time.monotonic()
                     result = audit.finish(boundary, outcome, tick=transport.idle_tick)
+                    save_seconds = time.monotonic() - save_started
                     actor.state('EPISODE_RECORDED', audit=result)
                     print('PERIODIC_SAVED: '+json.dumps(result), flush=True)
+                    if training and not getattr(transport, 'collect_human', False):
+                        transitions = result.get('transitions', 0)
+                        if result.get('training_ready'):
+                            label = ('成功奖励已记录' if result.get('success_label_recorded') else
+                                     '没有成功奖励标签')
+                            _banner(f'本地保存完成（{save_seconds:.1f} 秒）：有效动作 {transitions} 条；'
+                                    f'{label}；训练片段待 Learner 异步导入', '32')
+                        else:
+                            _banner(f'本地审计已保存（{save_seconds:.1f} 秒）：有效动作 {transitions} 条；'
+                                    '本回合没有可训练片段', '33')
                     if getattr(transport, 'collect_human', False):
                         completed_episodes += 1
                         total_transitions += result.get('transitions', 0)

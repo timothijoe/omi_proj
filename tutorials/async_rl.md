@@ -1,9 +1,54 @@
 # 异步真机 RL：每 10 个完整回合检查新策略
 
-本页下面的已准备双池命令仍使用早先 BC11795 和 1296 条示范。
-新采 `demo_new_20261007_213643` 的 BC version12045 尚未建立对应 RL 会话；
-准备新 RL 前先看[新 BC 到 RL 交接](../docs/agent/training/chronicles/2026-10-07-new-bc-to-rl-handoff.md)，
-不要把下面旧目录当作新模型测试。
+## 2026-10-07 新 BC12045 热启动
+
+新批次 `demo_new_20261007_213643` 已准备独立 RL 种子
+`local/rl_training/bc_demo_new_20261007_213643_rl_seed_01`：11 个周期人工段、
+1387 条固定示范；初始 Actor 参数与 BC12045 逐项完全一致。Critic 新建，编码器冻结，
+前 1000 次更新只训练 Critic。`rl_probe_01` 是独立离线并发测试副本，
+不要拿它当第一次真机运行目录。真机运行副本是 `rl_live_01`。
+
+离线检查：新副本做 20 次 Critic 更新时，55 次录制观测推理的最长耗时为
+11.52 ms，超 100 ms 为 0；没有创建机器人命令发布者。8 秒现场传感器只读检查
+得到 62 次完整候选，0 次超过 100 ms，RGB、腕部图像、双指触觉和 EEF 均有消息；
+它不验证实际接收端回执、运动效果或并发真机端到端时序。
+本次接收端只读检查确认策略和手柄通道各有一个订阅者，检查时两个通道均无动作发布者，
+`tactile_guard_enabled=false`。这些都是检查时的快照，正式启动前如现场状态变动需重查。
+
+操作者在机械臂旁、确认路径和停止方式后，**只运行一个** RL Actor：
+
+```bash
+bash scripts/run_async_rl.sh \
+  --run local/rl_training/bc_demo_new_20261007_213643_rl_live_01 \
+  --reload-every-episodes 10 --batch-size 2 --publish-every 50 \
+  --execute --enable-policy
+```
+
+Start(315) 开始每个回合；未按 RB 时用当前固定版本的 BC/RL 策略，按住 RB(311)
+立即切到摇杆人工控制，松开后恢复策略。308 标记成功，307 提前结束，Back(314)
+仅在回合外回 home，Ctrl+C 退出 Actor 和 Learner。Learner 从启动即并行运行：
+前 1000 次 Critic 预热可只用固定示范；其后须有至少 100 条有效在线 transition
+才更新 Actor。完整且有效的源回合累计 10 个后，Actor 才检查并加载最新已发布权重；
+这期间仍运行初始策略。Learner 状态见运行目录 `status.json` 和 `learner.log`，
+回合状态见 `async_state.json`、`PERIODIC_SAVED` 和 `periodic_episodes/`。
+RL 现在会在等待 Start、进入回合、收到成功/结束标记、写盘中和本地保存完成时，
+追加彩色中文提示；原有英文及 JSON 状态行保留。结束后控制线程先停止动作，
+再等待本地审计和训练片段写完，才允许进入下一回合。保存完成提示里的
+“待 Learner 异步导入”表示片段已经写盘，**不表示** Learner 已经完成导入或更新；
+实际导入和训练进度以 `status.json` 与 `learner.log` 为准。下一回合请等到
+“等待第 … 个 RL 回合”出现后再按 Start；保存期间按 Start 不会跳过写盘。
+
+这批 BC 的 12 个既有真机评估审计没有成功标记，离线拟合误差不能证明真机效果。
+第一次运行应短时、有人随时握住 RB，并用 `PERIODIC` 行确认 `source`、`gate`、
+`nonzero_action`、`receiver_verified`；若效果或回执异常，立即按 RB 接管或 Ctrl+C 停止。
+触觉预警与触觉拦截仍保持关闭，不参与 BC/RL 动作决策。
+
+以下章节保留早先 BC11795、1296 条示范的运行记录和机制说明；不要把旧目录
+当作新模型测试。
+当前 RL Actor 不启动 BC 的触觉差值预警；接收端触觉拦截默认关闭，最近一次现场只读查询
+`tactile_guard_enabled=false`。只有操作者在**接收端启动命令**显式设置
+`tactile_guard_enabled:=true` 才会让触觉保护影响模型动作。下文“BC保护式RL”指
+BC参考约束与编码器/示范池机制，不表示触觉保护已经打开。
 
 入口 `scripts/run_async_rl.sh`。Actor 与 Learner 同时运行；不再等待“本回合训练 N 步”。
 用户确认的“10 条”是 **10 个完整有效回合**，不是 10 条 transition。

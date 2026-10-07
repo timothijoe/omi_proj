@@ -84,7 +84,7 @@ def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, int
     now = [100.]
     monkeypatch.setattr(module, 'time', SimpleNamespace(monotonic=lambda: now[0]))
     config = HILConfig(episode_seconds=1.2)
-    sent, pending, states = [], [], []
+    sent, pending, states, monitor_events = [], [], [], []
     interrupted = [False]
     class Transport:
         def __init__(self):
@@ -122,7 +122,11 @@ def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, int
     tr = Transport()
     actor = SimpleNamespace(transport=tr, config=config, run=tmp_path, version=295,
                             load=lambda: None, close_pipeline=lambda: None,
-                            state=lambda phase, **details: states.append(phase))
+                            state=lambda phase, **details: states.append(phase),
+                            periodic_monitor_start=lambda episode, started:
+                                monitor_events.append(('start', episode, started)),
+                            periodic_monitor_end=lambda episode:
+                                monitor_events.append(('end', episode)))
     if interrupt:
         with pytest.raises(KeyboardInterrupt):
             run_periodic(actor, 1)
@@ -137,6 +141,8 @@ def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, int
     assert not report['training_ready']
     assert not list(tmp_path.rglob('ready.json'))
     assert 'EPISODE_RECORDED' in states
+    assert monitor_events[0][0] == 'start' and monitor_events[0][2] == 100.
+    assert monitor_events[-1] == ('end', monitor_events[0][1])
 
 
 def test_human_periodic_exports_valid_accepted_command_segments(tmp_path, monkeypatch):

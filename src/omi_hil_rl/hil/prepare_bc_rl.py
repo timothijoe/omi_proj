@@ -8,7 +8,7 @@ import torch
 from .config import HILConfig
 from .exchange import atomic_json, publish, read_episode
 from .networks import SAC
-from .demo import validate_command_label
+from .periodic_bc_label import validate_bc_label
 from omi_hil_rl.training.eef_bc_data import sha256
 from omi_hil_rl.training.dual_replay import DualTransitionReplay, VERSION as REPLAY_VERSION
 
@@ -56,7 +56,10 @@ def prepare(bc_run, run, *, capacity=4000, intervention_capacity=2000, warmup=10
             for record in read_episode(path, manifest):
                 if sha256(path/f"{record['step']:06d}.npz") != hashes[record['step']]:
                     raise ValueError('seed sample changed')
-                validate_command_label(config.replay_contract(), record['executed_action'], record)
+                # Seed import reads the BC training index. Keep periodic label
+                # checks scoped to that BC data path; runtime replay rules stay
+                # unchanged.
+                validate_bc_label(config.replay_contract(), record['executed_action'], record)
                 if record['action_source'] != 'human':
                     raise ValueError('BC anchor seed must contain human actions')
                 replay.append_seed(record, origin=manifest['origin'])
