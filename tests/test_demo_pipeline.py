@@ -120,6 +120,35 @@ def test_causal_label_matches_sent_wire_units_axes_and_receipt():
         validate_command_label(config.replay_contract(), action, bad)
 
 
+def test_periodic_bc_label_requires_causal_acceptance_and_eef():
+    from omi_hil_rl.hil.periodic_bc_label import validate_bc_label
+    config, action, old = command_metadata()
+    trace = old['command_audit']['command_trace']
+    trace.update(observation_reference_ns=1_000_000_000,
+                 command_send_ns=1_030_000_000, execution_confirmed=False)
+    receipt = dict(old['command_audit']['receipt'], status='queue_accepted',
+                   timestamp_ns=1_031_000_000, arm='A', delta_frame='base',
+                   control_mode='velocity_hold', action_source='human', nominal_duration_s=.1)
+    metadata = dict(episode='source-segment-000010', action_source='human',
+        command_status='periodic_accepted_command', observation_time_ns=1_000_000_000,
+        next_observation_time_ns=1_100_000_000,
+        command_audit=dict(source_episode='source', periodic_tick=10, command_id='hil:test',
+                           command_trace=trace, receipts=[receipt],
+                           next_eef_receive_ns=1_080_000_000,
+                           semantics='accepted_command_not_measured_displacement'))
+    with pytest.raises(ValueError, match='missing command label'):
+        validate_command_label(config.replay_contract(), action, metadata)
+    validate_bc_label(config.replay_contract(), action, metadata)
+    bad = copy.deepcopy(metadata)
+    bad['command_audit']['receipts'][0]['accepted'] = False
+    with pytest.raises(ValueError, match='acceptance'):
+        validate_bc_label(config.replay_contract(), action, bad)
+    bad = copy.deepcopy(metadata)
+    bad['command_audit']['next_eef_receive_ns'] = 1_030_000_000
+    with pytest.raises(ValueError, match='causal'):
+        validate_bc_label(config.replay_contract(), action, bad)
+
+
 def test_bc_training_and_evaluation_do_not_need_reward(tmp_path):
     collect(tmp_path / "capture", HILConfig(), episodes=4, fake_steps=3)
     plan_path = tmp_path / "plan.json"

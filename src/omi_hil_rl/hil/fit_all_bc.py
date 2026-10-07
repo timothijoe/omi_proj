@@ -35,6 +35,8 @@ def evaluate(prediction, target, ids, scale):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--checkpoint', type=Path, required=True)
+    p.add_argument('--dataset', type=Path,
+                   help='validated BC dataset.json; defaults to the checkpoint directory')
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--prepare-output', type=Path)
     p.add_argument('--coarse-updates', type=int, default=4000)
@@ -52,9 +54,10 @@ def main():
     checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=True)
     if checkpoint.get('training_method') != 'behavior_cloning':
         raise ValueError('start from a BC model, not SAC')
-    index = json.loads((args.checkpoint.parent/'dataset.json').read_text())
-    if len(index['episodes']) != 8:
-        raise ValueError('this experiment requires exactly the eight reviewed episodes')
+    dataset_path = args.dataset or args.checkpoint.parent/'dataset.json'
+    index = json.loads(dataset_path.read_text())
+    if len(index['episodes']) < 2:
+        raise ValueError('fit requires at least two indexed human segments')
     contract = checkpoint['contract']
     data = load_data(index, contract)  # Original hashes, observations and command receipts validated.
     observations, labels, ids = combine_splits(data)
@@ -66,7 +69,7 @@ def main():
     for entry in training_index['episodes']:
         entry['original_split'] = entry['split']
         entry['split'] = 'training'
-    training_index['evaluation_note'] = 'all eight episodes used for fitting; no held-out set'
+    training_index['evaluation_note'] = 'all indexed human segments used for fitting; no held-out set'
     atomic_json(args.output/'dataset.json', training_index)
     atomic_json(args.output/'recipe.json', recipe)
     atomic_json(args.output/'config.json', contract['config'])
@@ -74,9 +77,11 @@ def main():
     prediction = predict(actor, observations, args.batch_size, args.device)
     baseline = evaluate(prediction, labels, ids, scale)
     np.savez_compressed(args.output/'before_predictions.npz', prediction=prediction, target=labels, sample_ids=ids)
-    report = dict(training_method='all_eight_episodes_coarse_fine_bc',
+    report = dict(training_method='all_indexed_segments_coarse_fine_bc',
         source_checkpoint=str(args.checkpoint.resolve()), source_sha256=sha256(args.checkpoint),
-        episodes=8, samples=len(labels), success_episodes=sum(e['manifest']['episode_success'] for e in index['episodes']),
+        source_dataset=str(dataset_path.resolve()), source_dataset_sha256=sha256(dataset_path),
+        episodes=len(index['episodes']), samples=len(labels),
+        success_episodes=sum(e['manifest']['episode_success'] for e in index['episodes']),
         same_data_train_and_evaluate=True, generalization_validated=False, learner_enabled=False,
         original_version=original_version, batch_size=args.batch_size, seed=7, before=baseline, stages=[])
     history, total = [], 0
@@ -87,7 +92,7 @@ def main():
     def save_best():
         atomic_torch(args.output/'actor.pt', dict(version=VERSION, actor=best_state,
             recipe=recipe, contract=contract, updates=original_version+best_update,
-            training_method='behavior_cloning', training_scope='all_eight_episodes_fit',
+            training_method='behavior_cloning', training_scope='all_indexed_segments_fit',
             generalization_validated=False, not_for_autonomous_deployment=True))
         np.savez_compressed(args.output/'fit_predictions.npz', prediction=prediction, target=labels, sample_ids=ids)
         report.update(best_update=best_update, policy_version=original_version+best_update, after=best_scores)
@@ -140,7 +145,7 @@ def main():
     atomic_json(args.output/'report.json', report)
     if args.prepare_output:
         prepare(args.output/'actor.pt', args.prepare_output, args.device)
-        atomic_json(args.prepare_output/'overfit_evaluation.json', dict(kind='all_eight_episodes_fit',
+        atomic_json(args.prepare_output/'overfit_evaluation.json', dict(kind='all_indexed_segments_fit',
             source_training=str(args.output.resolve()), source_episodes=[e['path'] for e in index['episodes']],
             supervised_evaluation_only=True, generalization_validated=False,
             fit_mse=best, policy_version=report['policy_version']))

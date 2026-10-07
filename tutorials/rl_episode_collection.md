@@ -56,7 +56,9 @@ bash scripts/collect_rl_episodes.sh \
 最近现场出现`receiver rejected/modified command or uses a different frame`。
 该通用报错不能直接确认为包络限制；当前按用户要求保留保护设置、暂缓排查。
 `keep=false`不用于训练；`keep=true`也需核实实际运动及标签后再作为新BC示范。
-本次新数据尚未训练，新BC训练/热启动目录待审核后单独建立。
+`demo_new_20261007_213643` 已完成独立两阶段 BC 拟合，训练产物和方法见
+[新采周期数据 BC 记录](../docs/agent/training/chronicles/2026-10-07-new-periodic-human-bc.md)。
+训练 MSE 是同数据拟合指标，不代表真机成功率；新 BC 尚未自动导入旧 RL 双池。
 
 ## 2026-10-07：断点续采与分次采集
 

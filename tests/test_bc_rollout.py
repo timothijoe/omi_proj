@@ -64,6 +64,44 @@ def test_fixed_bc_does_not_reload_at_ten_episodes(tmp_path):
         assert json.loads(path.read_text())['policy_version'] == 295
 
 
+@pytest.mark.parametrize('reason,color,verdict', [
+    ('success', '32', '任务成功'),
+    ('manual_stop', '33', '提前结束'),
+    ('timeout', '33', '回合时限'),
+    ('receiver fault', '31', '异常停止'),
+])
+def test_fixed_bc_periodic_status_keeps_english_and_explains_audit(
+        tmp_path, monkeypatch, capsys, reason, color, verdict):
+    import omi_hil_rl.hil.bc_rollout as module
+    actor = object.__new__(FixedBCActor)
+    actor.run = tmp_path
+    actor.version = 12045
+    actor.completed = 0
+    actor.periodic_status = True
+    banners = []
+    original_banner = module._banner
+    def record_banner(message, shade):
+        banners.append((message, shade))
+        original_banner(message, shade)
+    monkeypatch.setattr(module, '_banner', record_banner)
+
+    actor.state('WAIT_START', control_mode='periodic_100ms')
+    actor.state('ACTIVE', control_mode='periodic_100ms')
+    audit = dict(reason=reason, ticks=200, matched_pairs=189, invalid_pairs=11)
+    actor.state('EPISODE_RECORDED', audit=audit)
+
+    output = capsys.readouterr().out
+    assert '"phase": "WAIT_START"' in output
+    assert '"phase": "ACTIVE"' in output
+    assert '"phase": "EPISODE_RECORDED"' in output
+    assert verdict in output and '评估审计已保存' in output
+    assert any('固定 BC 推理已开始' in message and shade == '36'
+               for message, shade in banners)
+    assert any(verdict in message and shade == color for message, shade in banners)
+    assert any('符合配对条件 189 次' in message and shade == '36' for message, shade in banners)
+    assert json.loads((tmp_path/'bc_state.json').read_text())['audit'] == audit
+
+
 @pytest.mark.parametrize('fault', [False, True])
 @pytest.mark.parametrize('control_mode', ['receipt', 'periodic'])
 def test_bc_ctrl_c_closes_components_without_learner(tmp_path, monkeypatch, fault, control_mode):

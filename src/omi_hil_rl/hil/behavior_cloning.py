@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
-from .demo import validate_command_label
+from .periodic_bc_label import validate_bc_label
 from .exchange import atomic_json, atomic_torch, read_episode
 from .networks import Actor, VERSION, load_actor
 from .shutdown import graceful_stop
@@ -44,7 +44,7 @@ def load_data(index, contract):
                 if sha256(path/f"{record['step']:06d}.npz") != ep['sample_sha256'][record['step']]:
                     raise ValueError('source sample changed')
                 validator.validate(record, origin=ep['manifest']['origin'])
-                validate_command_label(contract, record['executed_action'], record)
+                validate_bc_label(contract, record['executed_action'], record)
                 if record['action_source'] != 'human':
                     raise ValueError('BC accepts human labels only, not policy-generated actions')
                 if previous is not None and any(not np.array_equal(previous[k], v)

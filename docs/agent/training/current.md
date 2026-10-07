@@ -1,5 +1,19 @@
 # Training 当前摘要
 
+下一次 RL 框架讨论从[新示范、BC推理与RL交接](chronicles/2026-10-07-new-bc-to-rl-handoff.md)
+开始：新 BC version12045 已准备固定真机评估，但新双池 RL 尚未建立；旧 RL 双池仍是
+早先 BC11795/1296 条示范。周期数据到新 RL 初始种子的准备路径需要独立核对，
+不能直接复用当前只懂旧同步回执的 `prepare_bc_rl.sh`。本次核查时 BC 评估已关闭，
+目录有 3 个到时未标成功的 audit-only 回合；下次启动 RL 前仍须确认无其他动作发布者。
+
+2026-10-07 新采示范 BC 已完成：`demo_new_20261007_213643` 的10个原始回合导出11个
+有效人工片段、1387条动作；从旧BC295开始两阶段全量拟合，最佳version12045，
+同训练数据归一化动作MSE `0.650336→0.004515`。模型在
+`local/rl_training/bc_demo_new_20261007_213643_coarse_fine_01/`，独立评估快照在
+`local/bc_episodes/demo_new_20261007_213643_eval_01/`。无独立验证集、无真机成功率结论，
+尚未导入旧RL双池。周期格式校验只接入BC读取和BC索引工具，通用校验与RL导入不变。
+[训练方法、数据与验证边界](chronicles/2026-10-07-new-periodic-human-bc.md)。
+
 2026-10-07 最新人工采集：`collect_rl_episodes.sh --control-mode periodic --execute` 已由操作者
 现场确认 Start→ACTIVE、RB+摇杆非零动作、Back回位和 A/B 夹爪提交。20 秒样例第一回合
 200 个周期命令中导出 189 条有效动作，105 次非零动作；到时结束，未标成功。

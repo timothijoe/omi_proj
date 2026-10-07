@@ -12,7 +12,7 @@ from .alternating import make_transport
 from .config import HILConfig
 from .exchange import atomic_json, atomic_torch, owner_lock, read_episode
 from .networks import VERSION, load_actor
-from .periodic_control import run_periodic
+from .periodic_control import _banner, run_periodic
 from omi_hil_rl.training.eef_bc_data import sha256
 
 
@@ -72,6 +72,30 @@ class FixedBCActor(AsyncActor):
                      policy_selection='fixed_bc_checkpoint', **details)
         atomic_json(self.run/'bc_state.json', value)
         print(json.dumps(value, ensure_ascii=False), flush=True)
+        if getattr(self, 'periodic_status', False):
+            self._periodic_status(phase, details)
+
+    def _periodic_status(self, phase, details):
+        if phase == 'WAIT_START':
+            _banner('等待开始固定 BC 评估：按 Start(315)；按住 RB 可人工接管', '36')
+        elif phase == 'ACTIVE':
+            _banner('固定 BC 推理已开始：按 308 标记成功，按 307 提前结束', '36')
+        elif phase == 'EPISODE_RECORDED':
+            audit = details['audit']
+            reason = audit['reason']
+            if reason == 'success':
+                message, color = '任务成功：已收到 308 成功按键', '32'
+            elif reason == 'manual_stop':
+                message, color = '任务未标记成功：已收到 307 提前结束按键', '33'
+            elif reason == 'timeout':
+                message, color = '任务未标记成功：已达到回合时限', '33'
+            else:
+                message, color = f'回合异常停止：{reason}', '31'
+            _banner(message, color)
+            _banner(f"评估审计已保存：周期指令 {audit['ticks']} 次，"
+                    f"符合配对条件 {audit['matched_pairs']} 次，其他 {audit['invalid_pairs']} 次；非训练数据", '36')
+        elif phase == 'PAUSED':
+            _banner(f"固定 BC 评估已暂停：{details['reason']}", '31')
 
     def finished(self, result):
         if not result['keep']:
@@ -124,6 +148,7 @@ def main():
             recipe = json.loads((args.output/'recipe.json').read_text())
             transport = make_transport(config, recipe, args)
             actor = FixedBCActor(args.output, config, transport, device=args.device, policy=True)
+            actor.periodic_status = args.control_mode == 'periodic'
             print('FIXED_BC: learner=OFF; deterministic=ON; 315=start, RB=human, 308=success, 307=stop', flush=True)
             if (args.output/'overfit_evaluation.json').exists():
                 print('OVERFIT_EVAL: training-set fit; generalization NOT validated; '+

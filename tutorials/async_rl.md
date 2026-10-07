@@ -1,5 +1,10 @@
 # 异步真机 RL：每 10 个完整回合检查新策略
 
+本页下面的已准备双池命令仍使用早先 BC11795 和 1296 条示范。
+新采 `demo_new_20261007_213643` 的 BC version12045 尚未建立对应 RL 会话；
+准备新 RL 前先看[新 BC 到 RL 交接](../docs/agent/training/chronicles/2026-10-07-new-bc-to-rl-handoff.md)，
+不要把下面旧目录当作新模型测试。
+
 入口 `scripts/run_async_rl.sh`。Actor 与 Learner 同时运行；不再等待“本回合训练 N 步”。
 用户确认的“10 条”是 **10 个完整有效回合**，不是 10 条 transition。
 
