@@ -2,7 +2,7 @@
 
 适用于本次 OpticalModule 控制接收端迁移后的现场验证。默认配置：ROS Jazzy、A 左臂、控制器 IP `192.168.14.190`，机器人接收端与手柄程序运行在同一台电脑。IP 不同时替换命令中的地址。
 
-实际操作两端统一使用 `ROS_DOMAIN_ID=13` 和 `/omi/controller_test/decision`；第 1 节的离线 preview 脚本使用隔离 domain 114。本教程使用直接手柄入口，不启动策略模型。RB 键码为 311；回位键以预览中显示的实际键码为准，下方示例使用 314。
+直接手柄操作使用 `ROS_DOMAIN_ID=13` 和手动话题 `/omi/controller_test/decision`；第 1 节的离线 preview 脚本使用隔离 domain 114。第 6 节给出网络推理入口，模型动作使用 `/omi/action/decision`，手柄接管使用接收端配置的手动话题。RB 键码为 311；回位键以预览中显示的实际键码为准，下方示例使用 314。
 
 本教程的自定义话题是手动入口，接收端使用 `manual_delta_topic` 配置。
 手柄执行模式默认从接收端读取该参数并自动匹配；显式传入 `--topic` 时会验证两端一致。
@@ -55,8 +55,8 @@ ros2 launch arm_delta_cmd delta_ctrl.launch.py \
   motion_authorized:=true \
   manual_delta_topic:=/omi/controller_test/decision \
   delta_frame:=base \
-  ctrl_rate:=200.0 \
-  delta_splits:=20 \
+  ctrl_rate:=500.0 \
+  delta_splits:=50 \
   start_mode:=3 \
   calib_mode:=measure \
   tool_xyzabc:=[5.0,0.0,200.0,-180.0,-90.0,0.0] \
@@ -64,6 +64,9 @@ ros2 launch arm_delta_cmd delta_ctrl.launch.py \
 ```
 
 上述命令使用 `calib_mode:=measure`，根据 `tool_xyzabc` 初始化计算侧工具 TCP；这些参数需与现场工具一致，初始化成功本身不代表已完成实测标定。改成 `calib_mode:=identity` 时 TCP 与法兰重合。`publish_root_tf:=none` 仅关闭静态 TF 发布，EEF 计算仍使用代码中的固定安装矩阵。
+2026-10-07 起，左臂 A 的固定安装平移为 `(0, 0.0260, 1.121) m`，旋转仍为 `Rx(-90°)`；
+实时 RViz 看板不再叠加旧 EEF 显示偏移。运行此命令前需重建并重启接收端，详见
+[安装变换更新说明](robot_controller.md#左臂-eef-安装变换修正2026-10-07)。
 
 正常日志应包含：
 
@@ -204,7 +207,7 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 | 目标超出包络 | 接收端拒绝目标；核对目标与现场工作空间配置 |
 | 返回增量发布完成 | 仅表示增量已发完，不代表实测到达 |
 
-七关节冗余臂通过末端增量返回目标 TCP 位姿，不保证七个关节角逐一等于给定值。详细行为见[RB+X 返回说明](gamepad_control.md#rb--x-返回初始末端位姿)。
+七关节冗余臂通过末端增量返回目标 TCP 位姿，不保证七个关节角逐一等于给定值。详细行为见[回位说明](gamepad_control.md#按键314返回初始末端位姿)。本页使用直接手柄入口，默认仍需按住RB再按回位键；推理入口单按314即可返回，见[无wrench推理教程](no_wrench_policy_record.md)。
 
 程序有默认回位键码；本教程的 314 是待预览核对的示例。换手柄时重新在预览模式检查键码。Shell 多行命令每行末尾仅保留一个 `\`，不要输入 `\ \`。
 
@@ -274,9 +277,118 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 更多接口细节见[夹爪 SDK 配置与启动示例](gamepad_control.md#夹爪-sdk-与-ab-按键)。
 
-## 6. 停止
+## 网络推理前：启动传感器
 
-1. 松开 RB 和 A/B，在终端 C 按 `Ctrl+C` 退出手柄程序；启用夹爪时同时释放夹爪 SDK 连接，保留当前力矩上限。
+运行第 6 节前，先启动外部彩色相机、腕部相机和双指触觉采集。三个采集进程分别占用一个终端，并在推理期间保持运行；终端 A 的 `delta_ctrl_node` 还须持续发布左臂 EEF 反馈 `/tj/info/eef_left`。无 wrench 检查点不需要启动六维 wrench 发布。
+
+外部 RealSense 彩色相机终端（需要已安装 `realsense2_camera` ROS 包；缺包时先按[传感器安装说明](sensor_collection.md#安装)安装）：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=13
+export ROS_LOCALHOST_ONLY=0
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+ros2 launch realsense2_camera rs_launch.py \
+  camera_namespace:=camera camera_name:=camera \
+  enable_color:=true enable_depth:=false \
+  rgb_camera.color_profile:=640x480x30
+```
+
+腕部相机终端，使用模型要求的 128×128 ROI：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+bash scripts/start_daimon_live.sh camera --image-mode roi --transport network --domain 13
+```
+
+双指触觉终端，默认发布 A/B 两侧的 deformation、shear、depth 网格：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+bash scripts/start_daimon_live.sh tactile --transport network --domain 13
+```
+
+启动后在另一终端使用第 6 节相同的 ROS domain 和发现设置，核对 `/camera/camera/color/image_raw`、`/omi/wrist/color/image_roi`、`/omi/tactile_grid24x16/{a,b}/{deformation,shear,depth}` 这六路触觉话题，以及 `/tj/info/eef_left` 均存在且持续更新。`{a,b}` 和字段花括号只是简写，不是实际话题名。先用话题列表检查六路触觉，再逐条读取样本；每条命令收到一条消息后自行退出，超时则检查对应采集进程：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=13
+export ROS_LOCALHOST_ONLY=0
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+ros2 topic list
+ros2 topic echo /camera/camera/color/image_raw --once --timeout 5 --no-arr --qos-reliability best_effort
+ros2 topic echo /omi/wrist/color/image_roi --once --timeout 5 --no-arr --qos-reliability best_effort
+ros2 topic echo /omi/tactile_grid24x16/a/deformation --once --timeout 5 --no-arr --qos-reliability best_effort
+ros2 topic echo /omi/tactile_grid24x16/b/deformation --once --timeout 5 --no-arr --qos-reliability best_effort
+ros2 topic echo /tj/info/eef_left --once --timeout 5 --no-arr --qos-reliability best_effort
+```
+
+如果话题存在但推理状态仍显示输入不完整或过期，检查对应发布端和相机画面，并以第 6 节预览生成的 `policy/status.json` 中 `history_mask`、`candidate_gate` 为准。腕部和触觉的更多参数见[实时传感器命令](sensor_commands.md)。
+
+## 6. 网络推理与手柄接管
+
+这一节在第 1–3 节的接收端和反馈检查，以及上面的传感器启动步骤完成后使用。**先退出第 5 节的 `gamepad_test.py`**；网络推理启动器自身会读取手柄并发布最终动作，不要同时运行两个发送端。
+
+推理脚本固定使用 `ROS_DOMAIN_ID=13`、`ROS_LOCALHOST_ONLY=0`、`ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET`。如果终端 A 按第 2 节的 `LOCALHOST` 配置启动了接收端，先退出该节点，把终端 A 的两项发现设置改成下面的值，再执行第 2 节相同的 `ros2 launch` 命令。终端 B 和传感器发布端也使用这些设置；运行中的节点不会继承后来修改的环境变量。
+
+```bash
+export ROS_DOMAIN_ID=13
+export ROS_LOCALHOST_ONLY=0
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+```
+
+接收端保持 `delta_frame:=base`，模型话题 `delta_topic` 默认为 `/omi/action/decision`，手动话题沿用本页的 `/omi/controller_test/decision`。推理入口的 `--manual-topic auto` 会在执行模式读取接收端参数并核对两个实际订阅，无需把手动话题改回默认值。可在终端 B 核对：
+
+```bash
+ros2 param get /delta_ctrl_node delta_topic
+ros2 param get /delta_ctrl_node manual_delta_topic
+ros2 service list | grep home_poses
+```
+
+在新终端先运行无 wrench 模型**预览**；输出目录必须尚不存在，重跑时换目录名：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+bash scripts/run_no_wrench_policy_record.sh \
+  --output local/policy_gamepad/no_wrench_preview_01 \
+  --duration 60
+```
+
+旧版加载器曾在启动前报 `unsupported live passive wrench BC checkpoint contract`：
+这份第1000步检查点保存的采集成功键为307，而当前采集配置改为成功键308、停止键307；
+完整契约直接比较因此误拒绝旧权重。加载器现只兼容这组已知历史按键字段，
+观测结构、动作尺度和 SDK 约定仍严格检查。默认检查点已验证能加载，
+且 `wrench_history=False`；遇到同样错误时先确认运行的是更新后的源码和上述默认检查点，
+退出旧推理进程后重试，不要修改检查点或跳过契约检查。该错误发生在创建输出目录和动作发布者之前；
+若目录确实尚不存在，可以沿用原目录名。其他门控/输入错误看下方状态文件。
+
+预览会运行网络推理和手柄仲裁，但不发布最终机械臂动作。查看 `local/policy_gamepad/no_wrench_preview_01/policy/status.json`：十帧 `history_mask` 全为真且 `candidate_gate=ok` 才表明该步候选通过门控。`policy/predictions.jsonl` 记录原始 m/rad 网络动作、限幅和 SDK 转换预览；`selected_actions.jsonl` 记录仲裁来源与最终 `[dx,dy,dz,dA,dB,dC]`，预览时 `published=false`。预览中按住 RB 应看到 `source=human`，松开后等待新的 `source=policy`；按键码314应看到 `home_waiting` 或 `human_home`，但不会驱动机械臂。
+
+要实际发布，确认第 2 节的接收端已连接且允许运动，现场工作空间和手柄状态均已核对，然后使用**新输出目录**显式加 `--execute`：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+bash scripts/run_no_wrench_policy_record.sh \
+  --output local/policy_gamepad/no_wrench_execute_01 \
+  --duration 60 \
+  --execute
+```
+
+`--execute` 没有额外回车确认：输入完整、手柄连接且 RB 松开时，模型动作可能立即发出。按住 RB（311）由手柄控制，摇杆回中也保持人工零动作；松开 RB 后等待新模型候选。**单按键码314**从当前反馈开始回 home，不需同时按 RB；返回期间覆盖模型和摇杆，手柄断开会取消。启动后先核对终端的 `返回触发键码=314` 和 `按下按钮=[314]`；实际手柄键码不同可加 `--home-button-code`。回位依赖 `/delta_ctrl_node/home_poses` 服务，返回的是目标 TCP 位姿，不保证七个关节角逐一回到指定值。
+
+网络候选是 `base_link` 下每步 m/rad 增量；仲裁后仅在最终出口换轴并转换为 SDK Base 下 mm/ABC 度。模型输出发 `/omi/action/decision`，RB 和314动作发接收端的手动话题；`delta_ctrl_node` 分别订阅两路。可在两个已配置好 domain/发现设置的终端分别观察消息：
+
+```bash
+ros2 topic echo /omi/action/decision std_msgs/msg/Float64MultiArray
+ros2 topic echo /omi/controller_test/decision std_msgs/msg/Float64MultiArray
+```
+
+每条 `data` 是 `[dx,dy,dz,dA,dB,dC]`；模型与手柄名义上限均为 5 mm/s、5°/s，10 Hz 下每步范数最多 0.5 mm、0.5°。收到 ROS 消息只能证明传输，需结合终端 A 日志与 `/tj/info/eef_left` 反馈判断实际执行。当前模型离线回放仍有后退，不能把链路打通视为插入任务成功；完整门控、录制与候选过期设置见[无 wrench 推理教程](no_wrench_policy_record.md)，带 wrench 入口见[带 wrench 模型教程](wrench_policy_gamepad.md)。
+
+## 7. 停止
+
+1. 松开 RB 和 A/B，在终端 C 按 `Ctrl+C` 退出直接手柄程序；若运行第 6 节的推理入口，按 `Ctrl+C` 等待终端打印“观测保存结果”后退出。启用夹爪时同时释放夹爪 SDK 连接，保留当前力矩上限。
 2. 在终端 A 按 `Ctrl+C` 退出接收端，程序释放 SDK 连接。
 3. 按现场规程停止机器人。
 

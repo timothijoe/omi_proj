@@ -13,6 +13,7 @@ class LinuxGamepad:
         self.fd = None
         self.axes, self.buttons = {}, {}
         self.error = ''
+        self.button_events = []
 
     def close(self):
         if self.fd is not None:
@@ -22,6 +23,7 @@ class LinuxGamepad:
         self.buttons.clear()
 
     def poll(self):
+        self.button_events = []
         try:
             if self.fd is None:
                 self.fd = os.open(self.path, os.O_RDONLY | os.O_NONBLOCK)
@@ -46,9 +48,12 @@ class LinuxGamepad:
                 if len(event) != 8:
                     raise OSError('Joystick disconnected or partial event')
                 _, value, kind, index = struct.unpack('IhBB', event)
+                initial = bool(kind & 0x80)
                 kind &= 0x7f
                 if kind == 1:
-                    self.buttons[self.button_map[index]] = bool(value)
+                    code = self.button_map[index]
+                    self.buttons[code] = bool(value)
+                    self.button_events.append((code, bool(value), initial))
                 elif kind == 2:
                     self.axes[self.axis_map[index]] = max(-1., value/32767.)
             raise OSError('Joystick event backlog')

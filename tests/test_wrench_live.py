@@ -6,7 +6,7 @@ import torch
 
 from omi_hil_rl.training.demo_wrench import align_history
 from omi_hil_rl.training.eef_bc_grid import GridProfile
-from omi_hil_rl.training.wrench_live import WrenchObservations, infer_wrench_window, load_wrench_policy
+from omi_hil_rl.training.wrench_live import WrenchObservations, infer_wrench_window, load_wrench_policy, supported_live_contract
 from omi_hil_rl.real.policy_gamepad import commands
 from omi_hil_rl.real.gamepad_control import Arbiter, Mapping
 
@@ -107,6 +107,21 @@ def test_wrong_checkpoint_fails_before_ros(tmp_path):
     path=tmp_path/'actor.pt'
     torch.save(dict(contract={},recipe={}),path)
     with pytest.raises(ValueError):load_wrench_policy(path,'cpu')
+
+
+def test_archived_button_mapping_keeps_action_and_sensor_contract_strict():
+    from copy import deepcopy
+    from omi_hil_rl.training.passive_bc import contract_for
+    current = contract_for(dict(rate_hz=10, effective_translation_mm_s=5,
+        effective_rotation_deg_s=5, output_convention='sdk-x-forward-z-left'))
+    archived = deepcopy(current)
+    archived['config']['success_button'] = 307
+    archived['config'].pop('stop_button')
+    assert supported_live_contract(archived, current) == archived
+    changed = deepcopy(archived)
+    changed['physical_action_scale'][0] *= 2
+    with pytest.raises(ValueError, match='unsupported live'):
+        supported_live_contract(changed, current)
 
 
 def test_launcher_and_rb_precedence_with_wrench_policy(tmp_path):

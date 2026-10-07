@@ -87,7 +87,9 @@ def main():
         ap.error(str(exc))
     print(f'平移最大 {mapping.translation_m_s*1000:g} mm/s，'
           f'旋转最大 {math.degrees(mapping.rotation_rad_s):g} degree/s，{args.rate:g} Hz。')
-    print('按住 RB 移动；RB+X 返回初始末端位姿，松开 RB 取消；右摇杆 XY，十字键上下 Z，左摇杆 Rx/Ry，十字键左右 Rz。')
+    home_hint = ('单按回位键返回初始末端位姿' if args.home_button_alone
+                 else 'RB+回位键返回初始末端位姿，松开 RB 取消')
+    print('按住 RB 移动；'+home_hint+'；右摇杆 XY，十字键上下 Z，左摇杆 Rx/Ry，十字键左右 Rz。')
     print('输出约定:', args.output_convention)
     if args.output_convention != 'legacy':
         print('SDK 输出为 [dx,dy,dz,dA,dB,dC]；接收端使用 FRAME_BASE=0 并核对 UserFrame。')
@@ -117,11 +119,12 @@ def main():
         else:
             print('仅手柄预览，无 ROS 发布；加 --execute 发送。Ctrl+C 退出。')
         gripper.start()
-        home = GamepadHome(node, button_code=args.home_button_code)
+        home = GamepadHome(node, button_code=args.home_button_code,
+                           require_rb=not args.home_button_alone)
         print(f'返回触发键码={args.home_button_code}；按 X 核对“按下按钮”，'
               '若键码不同，用 --home-button-code 指定。', flush=True)
         if args.execute and args.rate != 10.:
-            print('RB+X 返回要求 --rate 10；当前频率下禁用返回。')
+            print('回位要求 --rate 10；当前频率下禁用返回。')
         period = 1/args.rate
         previous, last_print = None, 0.
         previous_buttons, previous_status = None, None

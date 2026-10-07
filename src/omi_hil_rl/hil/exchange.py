@@ -82,6 +82,7 @@ class EpisodeSpool:
             observation_time_ns=int(info["observation_time_ns"]), next_observation_time_ns=int(info["next_observation_time_ns"]),
             action_source=info["action_source"], command_status=info["command_status"], episode_success=bool(terminated))
         metadata['command_audit'] = info.get('command_audit', {})
+        metadata['policy_version'] = info.get('policy_version', self.metadata['policy_version'])
         arrays = {"observation__" + k: v for k, v in observation.items()}
         arrays.update({"next_observation__" + k: v for k, v in next_observation.items()})
         arrays.update(executed_action=info["executed_action"], metadata=np.asarray(json.dumps(metadata)))
@@ -163,6 +164,8 @@ def import_ready(run, replay):
     no automatic partial-write recovery is claimed. With a clean checkpoint the
     pending journal verifies every imported slot before completing its receipt.
     """
+    if getattr(replay, 'is_dual', False):
+        return replay.import_ready(run)
     run = Path(run)
     journal = run / "import_pending.json"
     if journal.exists():

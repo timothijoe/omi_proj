@@ -1,5 +1,9 @@
 # Hardware 编年索引
 
+- [2026-10-07 左臂 EEF 安装平移修正与实时显示补偿移除](2026-10-07-eef-mount-and-view.md)
+
+- [2026-10-07 实时grid看板外部RGB接收时间显示判定](2026-10-07-grid-camera-receive-freshness.md)
+
 - [2026-10-07 三包 RViz 样例、路径集中与移动硬盘归档](2026-10-07-rviz-bag-relocation.md)
 
 - [2026-10-05 外部RGB时钟与接收年龄排查](2026-10-05-rgb-clock-and-receive-age.md)

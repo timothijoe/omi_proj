@@ -52,7 +52,7 @@ flowchart LR
 - 反馈50 Hz，SDK关节度转为弧度发布14维 `positions/velocities/efforts`，另一臂填零。
 - EEF50 Hz，从反馈关节 FK 得到计算侧 TCP，mm转m，再左乘固定安装矩阵，
   发布 `PoseStamped` 的 xyz/xyzw、frame=`base_link`。
-- A 安装矩阵为平移 `(0,0.2005,1.121)m`、旋转 `Rx(-90°)`；其旋转逆变换正是
+- A 安装矩阵为平移 `(0,0.0260,1.121)m`、旋转 `Rx(-90°)`（Y 为现场修正值）；其旋转逆变换正是
   当前 policy wrapper 的 `(x,y,z)→(x,-z,y)`。这是代码关系核对，不能替代现场标定。
 - `publish_root_tf=none` 只关闭静态 TF 发布；EEF计算仍使用写死的安装矩阵，
   并不会读取外部 TF。原代码部分注释与实际实现不一致。

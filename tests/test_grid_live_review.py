@@ -30,6 +30,39 @@ def test_missing_stale_invalid_and_clock_checks(monkeypatch):
     assert m.report(10**9+60_000_000,10**9)['eef']['state']=='OLD_HEADER'
 
 
+def test_external_camera_uses_local_receive_time_despite_header_clock_skew(monkeypatch):
+    monkeypatch.setattr('omi_hil_rl.real.grid_live_review.grid.decode', decoder)
+    m = Monitor()
+    image = np.zeros((4, 4, 3), np.uint8)
+    for source_stamp in (0, 2_000_000_000):
+        m.receive('camera', msg(image, stamp=source_stamp), 1_000_000_000, 1_000_000_000)
+        report = m.report(1_100_000_000, 1_100_000_000)['camera']
+        assert report['state'] == 'LIVE'
+        assert report['freshness_basis'] == 'local_receive'
+        assert report['receive_age_ms'] == 100
+        assert report['header_age_ms'] != report['receive_age_ms']
+    assert m.report(1_300_000_000, 1_300_000_000)['camera']['state'] == 'STALE'
+
+
+def test_external_camera_panel_labels_receive_age_without_changing_source_stamp(monkeypatch):
+    monkeypatch.setattr('omi_hil_rl.real.grid_live_review.grid.decode', decoder)
+    m = Monitor()
+    m.receive('camera', msg(np.zeros((4, 4, 3), np.uint8), stamp=1),
+              1_000_000_000, 1_000_000_000)
+    report = m.report(1_100_000_000, 1_100_000_000)
+    captured = {}
+
+    def capture(latest, *_):
+        captured['stamp'] = latest['camera']['stamp']
+        from PIL import Image
+        return Image.new('RGB', (1536, 1030))
+
+    monkeypatch.setattr('omi_hil_rl.real.grid_live_review.grid.render', capture)
+    render(m, report, 1_100_000_000, 0, 13)
+    assert captured['stamp'] == 1_000_000_000
+    assert m.latest['camera']['stamp'] == 1
+
+
 def test_rate_window_and_optional_inputs(monkeypatch):
     monkeypatch.setattr('omi_hil_rl.real.grid_live_review.grid.decode',decoder)
     m=Monitor()
@@ -74,13 +107,3 @@ def test_live_joint_schema_validation():
         m.receive('joints',NS(positions=values,header=header),10**9,10**9)
         assert m.report(10**9,10**9)['joints']['state']=='BAD_DATA'
         assert 'joints' not in m.latest
-
-
-def test_display_offset_preserves_raw_pose_and_orientation():
-    from omi_hil_rl.real.grid_live_review import shifted_eef,TEMP_EEF_OFFSET
-    raw=np.array([.537833,.312462,.843373,0.,0.,0.,1.])
-    saved=raw.copy();display=shifted_eef(raw,TEMP_EEF_OFFSET)
-    np.testing.assert_array_equal(raw,saved)
-    np.testing.assert_allclose(display[:3],[.475674,.141233,.843397])
-    np.testing.assert_array_equal(display[3:],raw[3:])
-    np.testing.assert_array_equal(shifted_eef(raw,(0,0,0)),raw)

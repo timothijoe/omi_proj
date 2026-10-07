@@ -1,0 +1,45 @@
+digraph execution {
+  graph [bgcolor="#FFFFFF", pad="0.35", ranksep="0.38", nodesep="0.38", fontname="Noto Sans CJK SC", fontsize=23, labelloc=t, label="01  人工干预的真机 RL：执行与采集\n2026-10-07  |  目标闭环与当前实现状态", rankdir=TB];
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2FB", color="#A9BED6", fontcolor="#172D43", fontname="Noto Sans CJK SC", fontsize=14, margin="0.20,0.13", penwidth=1.2];
+  edge [fontname="Noto Sans CJK SC", fontsize=11, color="#60758B", fontcolor="#34495E", arrowsize=0.75];
+
+  legend [shape=plaintext, fillcolor=white, label="蓝：已有模块    黄：待统一 / 待联调    红：待补 / 已知缺陷\n已有代码 ≠ 已完成真机验收；本图不表示系统已全部接通", fontsize=12];
+  checks [fillcolor="#FFF2D7", color="#D8AE5D", label="启动检查【待统一】\n传感器 / 手柄 / 接收端 / 动作契约 / 保护配置"];
+  idle [label="等待开始 / 人工复位【已有】\nRB 遥操作有效；复位动作不入训练池"];
+  start [label="按 315 开始新回合【已有模块】\n回合边界加载策略版本；清理并预热十帧历史；开始计时"];
+  event [shape=diamond, style=filled, fillcolor="#FFF2D7", color="#D8AE5D", label="回合仍有效？\n发送前检查结束事件与设备状态", fontsize=13];
+  obs [label="构建策略观测【已有】\n双相机 + 触觉网格 + EEF + 历史 / 掩码\n当前六维力 / 力矩不作为网络输入"];
+  rb [shape=diamond, style=filled, label="RB 按住？", fontsize=14];
+  human [label="人工优先：采用手柄动作\naction_source = human"];
+  policy [label="Actor 根据当前观测推理\naction_source = policy"];
+  contract [fillcolor="#FFF2D7", color="#D8AE5D", label="统一动作与控制接口【待统一】\n动作范围 / 单位 / 坐标 / 控制周期\n人工 → 实际手动话题；模型 → 策略话题"];
+  execute [label="控制端采用命令并执行【已有】\n人工绕过模型触觉保护；模型保护按配置启用\n两者仍受其他控制端安全限制"];
+  receipt [shape=diamond, style=filled, label="回执与后继观测有效？", fontsize=13];
+  record [fillcolor="#FFF2D7", color="#D8AE5D", label="记录 transition，后台写盘【在线 Actor 待接】\n观测 / 实际采用的命令 / 来源 / 奖励 / 后继观测\n新人工采集入口已有异步写盘"];
+  finish [label="正常结束：先停止自动动作【已有模块】\n308 成功：最后有效样本 r=1，terminated=true\n307 / 超时：r=0，truncated=true，保留 bootstrap"];
+  save [label="完成后台保存，发布 ready【已有模块】\n有效回合默认保留；交给 Learner（见图 02）\n不自动开始下一轮；返回等待开始 / 人工复位"];
+  fault [fillcolor="#FDEBEC", color="#D89399", label="异常退出：停止自动执行\n坏观测 / 断连 / 拒绝或缺少回执\n异常回合仅保留审计，不进入训练池"];
+  gap [shape=note, fillcolor="#FDEBEC", color="#D89399", label="仍需补齐\n• 307 / 308 短按漏检与冲突优先级\n• 旧 RL Actor 的 RB 动作仍走策略话题\n• 手柄范数限制与网络逐分量范围不同", fontsize=12];
+
+  legend -> checks [style=invis];
+  checks -> idle -> start;
+  start -> event;
+  event -> obs [label="正常"];
+  event -> finish [label="308 / 307 / 超时"];
+  event -> fault [label="异常", style=dashed];
+  obs -> rb;
+  rb -> human [label="是"];
+  rb -> policy [label="否"];
+  {rank=same; human; policy;}
+  human -> contract;
+  policy -> contract;
+  contract -> execute -> receipt;
+  receipt -> record [label="有效"];
+  receipt -> fault [label="无效", style=dashed];
+  record -> event [label="下一步：重新检查事件与 RB", constraint=false];
+  finish -> save;
+  save -> idle [label="人工确认下一次开始", style=dashed, constraint=false];
+  fault -> idle [label="恢复条件后人工重启回合", style=dashed, constraint=false];
+  record -> gap [style=invis];
+  save -> gap [style=invis];
+}

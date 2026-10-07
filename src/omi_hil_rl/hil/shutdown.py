@@ -1,6 +1,15 @@
 """Defer SIGINT/SIGTERM until a complete learner update (never half an Adam step)."""
 from contextlib import contextmanager
 import signal
+from pathlib import Path
+
+
+def interpreter_path(path):
+    """Keep the venv path: resolving its symlink would discard pyvenv.cfg."""
+    executable = Path(path).absolute()
+    if not executable.is_file():
+        raise ValueError('learner interpreter missing: ' + str(executable))
+    return str(executable)
 
 
 @contextmanager

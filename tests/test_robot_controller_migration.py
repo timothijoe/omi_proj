@@ -121,7 +121,7 @@ def test_mount_matches_left_policy_inverse(node):
     pose = [[1., 0., 0., 1000.], [0., 1., 0., 2000.],
             [0., 0., 1., 3000.], [0., 0., 0., 1.]]
     transformed, frame = node._transform_to_root(pose)
-    assert [row[3] for row in transformed[:3]] == pytest.approx([1., 3.2005, -0.879])
+    assert [row[3] for row in transformed[:3]] == pytest.approx([1., 3.0260, -0.879])
     assert frame == 'base_link'
     root_delta = [transformed[i][3] - node.root_mount[i][3] for i in range(3)]
     assert module.output_action(root_delta + [0., 0., 0.], 'sdk-x-forward-z-left')[:3] == pytest.approx(

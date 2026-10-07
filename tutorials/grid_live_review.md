@@ -28,18 +28,20 @@ bash scripts/view_grid_observation_live.sh --no-rviz --duration 12
 
 ## 状态解释
 
-- LIVE：数据形状合法，本机接收年龄和header年龄在检查阈值内。
+- LIVE：数据形状合法且未超过新鲜度阈值。第三视角外部RGB只按本机接收年龄判断；其他输入仍同时检查本机接收年龄和源header年龄。
 - NO_PUBLISHER：本机ROS图尚未发现发布者，不代表设备物理不存在。
 - WAITING：发现发布者但尚未收到可解码数据；检查域、网络、消息定义与QoS。
 - STALE：距上次有效接收超过阈值；图像/场面板不继续显示旧图。
-- OLD_HEADER / CLOCK_AHEAD：源header太旧或超前超过100ms，包含跨机器时钟偏差的影响。
+- OLD_HEADER / CLOCK_AHEAD：非外部RGB输入的源header太旧或超前超过100ms。外部RGB的header年龄仍显示在表格与status.json中，仅作时钟和传输诊断，不控制此看板的显示。
 - BAD_DATA：形状、非有限值、时间戳或四元数等解码检查失败；详细原因在status JSON。
 - FRAME_CHECK：末端frame不是训练约定base_link，不能仅改名字绕过。
 
-末端阈值50ms、其余250ms，用来提示当前推理契约可能拒绝数据；不是端到端时延测量。
+末端阈值50ms、其余250ms；外部RGB以本机单调接收时钟判断250ms内是否持续到达。
+外部RGB显示为LIVE只说明最近收到图像，不证明曝光到接收的端到端延迟小于250ms。
+本次规则只适用于只读看板；policy的源header检查和输入契约没有改变。
 各传感器独立取最新帧，不保证同时采样、同SDK帧或完整policy输入一致性。
 统计Hz为最近3秒收到消息的间隔估计，消息计数包含随后被判为异常的消息。
-旧header等异常图像不显示，但底部保留状态及最后末端数值并标记状态。
+非外部RGB的旧header等异常图像不显示，但底部保留状态及最后末端数值并标记状态。
 
 必需检查项按双相机无关节方案：外部RGB、腕部ROI、双指三场、左臂EEF。
 关节、wrench、raw仅供检查，为可选项；这不是checkpoint自动识别器。
@@ -125,24 +127,14 @@ bash scripts/view_grid_observation_live.sh --hz 2 --model-hz 30
 
 此修改不应用任何EEF平移补偿，原始坐标与模型假设不变。
 
-## 临时实时 EEF 显示补偿（用户授权，2026-10-04）
+## 实时 EEF 显示坐标（2026-10-07）
 
-corrected模型模式默认在实时EEF的base_link位置上加 `[-0.062159, -0.171229, +0.000024] m`，
-即 `[-62.159, -171.229, +0.024] mm`。方向为从原始EEF移向回放包基准所期望的位置。
-基准是当时播放的 `oct03/oct3_022/bag_001.zip` 的L7局部关系（该历史包现按归档清单放在移动硬盘 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`），
-`[+0.000267516, -0.232966802, -0.000120683] m`，不是旧record001，也不是直接对齐L7原点。
-这是按此前实时姿态算出的固定基座平移，未做多姿态标定；姿态改变后残差可能增大。
+corrected 模型模式直接显示 `/tj/info/eef_left` 的原始 `base_link` 位姿，不再叠加
+2026-10-04 使用的临时平移 `[-0.062159, -0.171229, +0.000024] m`。
+品红球、坐标轴及 L7 连线均使用原始 EEF；`--eef-offset-base-m` 参数已移除。
+发布端左臂 A 的固定安装平移改为 `(0, 0.0260, 1.121) m`，因此新 EEF
+比旧安装变换的 Y 坐标减少 174.5 mm。历史录包内容不变；`model_status.json`
+的 `display.eef` 记录当前显示所用的原始位姿。
 
-品红球和主EEF坐标轴显示补偿结果；灰球标为RAW EEF，保留原始位置对照。
-黄色线从L7指向补偿后EEF，文字额外显示相对回放包局部关系的残差。
-四元数不变，补偿仅用于实时RViz；原ROS话题、影子推理输入与录包回放均不修改。
-底部数值仍明确标为RAW EEF。每次会话保存 `eef_display_config.json`，
-`model_status.json` 中display字段同时记录原始和补偿后的位姿。
-
-取消临时补偿：
-
-```bash
-bash scripts/view_grid_observation_live.sh --eef-offset-base-m 0 0 0
-```
-
-也可通过该参数显式指定另一组以米为单位的显示补偿。existing/none模式不应用这个偏移。
+黄色线仍显示 L7 到 EEF 的距离；相对旧回放包局部关系的残差仅供对照，
+不能视为多姿态 TCP 标定结果。

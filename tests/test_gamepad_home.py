@@ -138,6 +138,43 @@ def test_legacy_physical_x_code_can_be_configured():
     assert len(requests) == 1
 
 
+def test_314_alone_starts_home_and_rb_release_does_not_cancel():
+    home, now, requests = controller()
+    home.button_code = 314
+    home.require_rb = False
+    home.tick(True, {})
+    assert home.tick(True, {314: True})[0] == 'home_waiting'
+    resolve(requests[0])
+    assert home.tick(True, {314: True, 311: True})[0] == 'human_home'
+    now[0] = .1
+    assert home.tick(True, {})[0] == 'human_home'
+    assert not requests[0].cancelled()
+    assert len(requests) == 1
+
+
+def test_314_alone_disconnect_cancels_home():
+    home, _, requests = controller()
+    home.button_code = 314
+    home.require_rb = False
+    home.tick(True, {})
+    assert home.tick(True, {314: True})[0] == 'home_waiting'
+    assert home.tick(False, {}) is None
+    assert requests[0].cancelled()
+    assert home.future is home.plan is None
+
+
+def test_314_press_and_release_in_one_poll_starts_home_once():
+    home, _, requests = controller()
+    home.button_code = 314
+    home.require_rb = False
+    home.tick(True, {})
+    transitions = [(314, True, False), (314, False, False)]
+    assert home.tick(True, {}, transitions)[0] == 'home_waiting'
+    assert len(requests) == 1
+    home.tick(True, {})
+    assert len(requests) == 1
+
+
 def test_invalid_fk_rejected():
     current, target = poses()
     target[0, 0] = 5

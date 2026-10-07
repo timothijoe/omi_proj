@@ -108,8 +108,8 @@ class DeltaCtrlNode(Node):
         self.declare_parameter('root_frame', 'base_link')
         self.declare_parameter('arm_base_frame', '')
         # base_link -> 臂基安装变换来源:
-        #   'urdf'   = 按 Marvin_Stand_2026.2.2 URDF J1 安装原点发布静态 TF
-        #              (左: xyz(0, 0.2005, 1.121) rpy(-90°,0,0);
+        #   'urdf'   = 按 Stand URDF J1 安装姿态/高度发布静态 TF; 左臂 Y 已修正
+        #              (左: xyz(0, 0.0260, 1.121) rpy(-90°,0,0), Y 为现场修正值;
         #               右: xyz(0, -0.2005, 1.121) rpy(+90°,0,0))
         #   'none'   = 不发布, 依赖外部节点提供 root_frame -> arm_base_frame
         self.declare_parameter('publish_root_tf', 'urdf')
@@ -272,7 +272,7 @@ class DeltaCtrlNode(Node):
                 1.0 / self.eef_rate, self.publish_eef_pose)
             self.get_logger().info(
                 f'eef_left 发布启用: {self.root_frame} <- {self.arm_base_frame} '
-                f'(SDK TCP FK @臂基系 -> URDF J1 安装变换复合)')
+                f'(SDK TCP FK @臂基系 -> 固定安装变换复合)')
 
         # 200Hz 控制定时器
         self.ctrl_timer = self.create_timer(
@@ -884,10 +884,10 @@ class DeltaCtrlNode(Node):
         return x, y, z, w
 
     def _publish_root_mount_tf(self):
-        """按 Marvin_Stand_2026.2.2 URDF 发布 base_link -> 臂基 的静态安装 TF。
+        """发布 base_link -> 臂基的静态安装 TF（左臂 Y 为修正值）。
 
         URDF 根连杆 ZJ_Robot_link 即 base_link, J1 安装原点给出根坐标系到臂基:
-          Arm_L1_Joint: xyz(0, 0.2005, 1.121) rpy(-90°, 0, 0)   (arm=A)
+          Arm_L1_Joint: xyz(0, 0.0260, 1.121) rpy(-90°, 0, 0)   (arm=A, Y 修正值)
           Arm_R1_Joint: xyz(0, -0.2005, 1.121) rpy(+90°, 0, 0)  (arm=B)
         rpy(-90°,0,0) 的四元数为 (x=-√2/2, w=√2/2), (+90°,0,0) 取反号。
         publish_root_tf='none' 时不发布 (由外部 static_transform_publisher 提供)。
@@ -895,7 +895,7 @@ class DeltaCtrlNode(Node):
         if str(self.get_parameter('publish_root_tf').value).lower() != 'urdf':
             return
         if self.arm == 'A':
-            x, y, z = 0.0, 0.2005, 1.121
+            x, y, z = 0.0, 0.0260, 1.121
             qx, qw = -math.sqrt(2.0) / 2.0, math.sqrt(2.0) / 2.0
         else:
             x, y, z = 0.0, -0.2005, 1.121
@@ -913,12 +913,12 @@ class DeltaCtrlNode(Node):
         self.tf_static_broadcaster.sendTransform(t)
         self.get_logger().info(
             f'静态安装 TF 已发布: {self.root_frame} -> {self.arm_base_frame} '
-            f'xyz=({x}, {y}, {z}) rpy=(±90°, 0, 0) (来源: Marvin_Stand_2026.2.2 URDF J1)')
+            f'xyz=({x}, {y}, {z}) rpy=(±90°, 0, 0) (左臂 Y 为修正值)')
 
     def _root_mount_matrix(self):
-        """base_link -> 臂基 的固定安装变换 (4x4, m), 取自 Marvin_Stand_2026.2.2
-        URDF 的 J1 安装原点 (URDF 根连杆 ZJ_Robot_link 即 base_link):
-          Arm_L1_Joint: xyz(0, 0.2005, 1.121) rpy(-90°, 0, 0)   (arm=A)
+        """base_link -> 臂基的固定安装变换 (4x4, m)。
+        旋转及高度基于 Stand URDF J1；左臂 Y 为修正值。根连杆 ZJ_Robot_link 即 base_link:
+          Arm_L1_Joint: xyz(0, 0.0260, 1.121) rpy(-90°, 0, 0)   (arm=A, Y 修正值)
           Arm_R1_Joint: xyz(0, -0.2005, 1.121) rpy(+90°, 0, 0)
         URDF 手臂 4 关节等连杆系定义不采用, 仅用此根安装变换; 臂内正运动学
         一律以 SDK FK 为准。
@@ -926,7 +926,7 @@ class DeltaCtrlNode(Node):
         if self.arm == 'A':
             return [
                 [1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.2005],
+                [0.0, 0.0, 1.0, 0.0260],
                 [0.0, -1.0, 0.0, 1.121],
                 [0.0, 0.0, 0.0, 1.0],
             ]
@@ -1003,8 +1003,8 @@ class DeltaCtrlNode(Node):
     def publish_eef_pose(self):
         """发布左臂末端工具位姿 /tj/info/eef_left (geometry_msgs/PoseStamped)。
 
-        FK 自当前反馈关节角得到 TCP 位姿 (臂基坐标系, mm/度矩阵), 再通过
-        /tf 中 root_frame -> arm_base_frame 的变换转换到机器人根坐标系,
+        FK 自当前反馈关节角得到 TCP 位姿 (臂基坐标系, mm/度矩阵), 再
+        通过程序内固定安装矩阵转换到机器人根坐标系,
         位置 xyz 为米, 姿态旋转矩阵转换为四元数 (x, y, z, w)。
         """
         if self.robot is None or self.dcss is None or self.kine is None:

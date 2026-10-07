@@ -14,6 +14,8 @@ HOME_SERVICE = '/delta_ctrl_node/home_poses'
 def add_home_arguments(parser):
     parser.add_argument('--home-button-code', type=int, default=BTN_X,
                         help='Linux code for physical X: standard 308; legacy drivers may use 307')
+    parser.add_argument('--home-button-alone', action='store_true',
+                        help='Trigger home with the configured button without holding RB')
 
 
 def pose_delta(current, target):
@@ -60,10 +62,12 @@ class HomeSteps:
 
 
 class GamepadHome:
-    """Asynchronous read-only FK request; RB release invalidates pending responses."""
-    def __init__(self, node=None, clock=time.monotonic, button_code=BTN_X):
+    """Asynchronous read-only FK request with configurable RB requirement."""
+    def __init__(self, node=None, clock=time.monotonic, button_code=BTN_X,
+                 require_rb=True):
         self.clock = clock
         self.button_code = button_code
+        self.require_rb = require_rb
         self.client = None
         if node is not None:
             from std_srvs.srv import Trigger
@@ -74,13 +78,24 @@ class GamepadHome:
         self.next_step = 0.
         self.status = ''
 
-    def tick(self, connected, buttons):
+    def tick(self, connected, buttons, transitions=()):
         x, rb = bool(buttons.get(self.button_code, False)), bool(buttons.get(311, False))
-        rising = x and not self.previous_x
-        self.previous_x = x if connected else True
-        if not connected or not rb:
+        rising = False
+        if connected:
+            for code, pressed, initial in transitions:
+                if code == self.button_code:
+                    if pressed and not initial and not self.previous_x:
+                        rising = True
+                    self.previous_x = bool(pressed)
+            if x and not self.previous_x:
+                rising = True
+            self.previous_x = x
+        else:
+            self.previous_x = True
+        if not connected or (self.require_rb and not rb):
             if self.future is not None or self.plan is not None:
-                self.status = '返回已取消：RB 松开或手柄断开'
+                self.status = ('返回已取消：RB 松开或手柄断开' if self.require_rb
+                               else '返回已取消：手柄断开')
             if self.future is not None:
                 self.future.cancel()
             self.future = self.plan = None

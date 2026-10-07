@@ -1,6 +1,112 @@
 # Training 当前摘要
 
-最新阶段归档：[2026-10-07：共享编码器、HIL-SERL对齐与中断恢复](chronicles/2026-10-07-shared-serl-resume.md)。
+2026-10-07 最新人工采集：`collect_rl_episodes.sh --control-mode periodic --execute` 已由操作者
+现场确认 Start→ACTIVE、RB+摇杆非零动作、Back回位和 A/B 夹爪提交。20 秒样例第一回合
+200 个周期命令中导出 189 条有效动作，105 次非零动作；到时结束，未标成功。
+周期模式独立审计回执与因果观测，英文状态和彩色中文提示并列，显示每回合及本次运行累计条数。
+旧进程在保存期间清除了第二次 Start；代码现会将停止后保存期间新按下的 Start 排队到下一回合，
+相关软件测试通过，重启后的现场多回合复验仍待完成。纯零动作也可能 `training_ready=true`，
+正式用于训练前须检查实际动作和标签。[当前用法与证据](chronicles/2026-10-07-human-periodic-collection.md)
+· [采集教程](../../../tutorials/rl_episode_collection.md)。
+下面早期“入口仍走同步 receipt”“短按尚未修复”属于历史阶段，不代表此周期采集入口的现状。
+
+2026-10-07本轮交接：双池开发及离线验证已完成；用户决定重新采集人工示范，再训练新BC并启动RL。
+新数据尚未用于BC训练或导入现有双池；当前BC11795/双池version8仍基于此前8回合。
+最近`demo_new_20261007_203257`共3回合：2段接收端拒绝而discarded，1段64条manual_stop保留。
+包络限制仅为待确认猜测，按用户要求暂缓排查，未修改保护；保留数据也尚未完成运动质量审核。
+完整交接见[双池记录末节](chronicles/2026-10-07-dual-replay.md#本轮交接重新采集示范再启动bcrl)，
+采集操作见[教程](../../../tutorials/rl_episode_collection.md#新一批示范采集2026-10-07)。
+
+2026-10-07最新：独立示范/在线双池已实现，初始人工示范固定保留，在线人工干预双写，
+正常RL严格50/50采样，BC约束仅采demo；旧单池兼容但不自动迁移。
+新运行目录`local/rl_training/bc_protected_dual_20261007_01`：1296条固定示范，online=0，干预=0。
+GPU离线probe追加4步demo-only预热，版本4→8，推理p95=11.03ms；没有真机动作。
+相关回归84通过、2跳过；RL version8全部Actor张量与BC11795逐项相等。
+预热1000步后若online不足默认100条有效transition则等待采集；不再把历史示范计入online门槛。
+[双池开发记录](chronicles/2026-10-07-dual-replay.md) · [运行及迁移教程](../../../tutorials/async_rl.md)。
+以下旧目录的单池计数与“尚未固定保留示范”属于之前阶段。
+
+模型选择与冻结范围已核对：[完整说明及最新RL开发记录](chronicles/2026-10-07-bc-protected-rl-and-encoder.md)。
+旧BC295加载验证动作MSE最佳的第5轮权重，不是最后第13轮；新BC11795按全部8回合训练MSE选择。
+两次BC均只冻结下载的视觉骨干，触觉、视觉历史输入/投影、融合层一直可训练，没有新增解冻。
+历史输入层由预训练卷积初始化但独立更新；下载骨干与新BC的38个张量逐项一致。
+BC→新RL才冻结整个Encoder，1000步后也不会自动解冻；低学习率部分解冻目前仅是后续建议。
+
+2026-10-07最新：已实现BC保护式RL热启动及periodic→后台校验→ready→replay链路。
+独立目录`local/rl_training/bc_protected_20261007_01`继承最新BC11795全部Actor/编码器/归一化，
+导入8回合1296条；新Critic/target/优化器，冻结共享编码器，前1000步只更新Critic头，
+之后Actor lr=1e-5、human标签BC约束权重10，保存固定BC参考及漂移指标。
+新会话标记`periodic_training_v1`启用非阻塞周期控制，旧BC审计入口与旧RL会话不改变。
+GPU并发离线验证4步预热，44次推理p95=9.62ms、max=12.65ms，机器人发布者0；
+真实BC CUDA单测另外验证预热输出逐项不变、预热后BC约束更新有效且编码器不变（不修改会话模型）。
+相关回归58通过、2跳过；CUDA保护测试另行通过。发布的RL version4全部Actor权重与BC11795逐项相等。
+这不是现场延迟或成功率验收。运行方式和限制见[异步教程](../../../tutorials/async_rl.md#bc保护式rl热启动最新)。
+以下“尚未实现热启动/periodic入池”描述属于之前阶段。
+
+2026-10-07最新（覆盖下文早期BC控制/记录说明）：已完成periodic BC控制、成功动作label replay、
+单回合过拟合与全8回合两阶段BC拟合。最新评估目录`local/bc_episodes/all8_coarse_fine_eval_01`，
+version11795，8回合1296样本全部用于训练，MSE=0.00088644，无独立验证集。
+原version295及单回合version3295保留；用户反馈单回合模型运动与此前有区别，未有成功率结论。
+BC默认periodic按100ms目标发送，回执/观测审计异步保存到`periodic_episodes/`，training_ready=false，
+BC审计尚不自动入RL池；旧同步记录为`--control-mode receipt`。新保护式RL的periodic路径见上文。
+历史动作回放必须使用`replay_success_episode.sh`，BC脚本不是label replay。
+完整[开发记录](chronicles/2026-10-07-periodic-replay-bc-fitting.md)与[现场测试教程](../../../tutorials/bc_replay_testing.md)。
+
+2026-10-07补充：异步 RL 入口已接通 Back（314）回 home 与 A/B（304/305）夹爪控制，
+修复传输层漏传控制对象、home 路由参数未转发，并补齐本机 CUDA 环境夹爪 SDK 依赖。
+Back 仅回合外有效，A/B 回合内外有效；修改后需结束旧进程并重启。
+67项相关软件测试通过，尚未验证真机运动。见[修复日志](chronicles/2026-10-07-async-gamepad-home-gripper-fix.md)
+及[现场教程](../../../tutorials/async_rl.md)。
+
+2026-10-07最新可运行里程碑：`scripts/run_bc_episodes.sh`固定BC自主执行+RB接管+回合落盘。
+准备目录`local/bc_episodes/bc_ready_20261007_01`，恢复运行用`--resume --execute`；
+GPU模型校验通过，版本295（BC第5轮）；没有启动机器人、没有Learner子进程。
+独立模型快照/哈希防混用；不随10回合更换权重。20秒回合、315/308/307，后台推理与动作检查复用。
+这只是BC_EVAL，Critic预训练及RL+BC更新尚未实现，不应声称完整BC热启动RL已完成。
+运行方法见[异步教程的固定BC入口](../../../tutorials/async_rl.md)。
+
+2026-10-07最新：新增HIL同结构的确定性BC入口`scripts/train_hil_bc.sh`。
+仅原8个人工回合，6段944训练/2段352验证；不将自主动作当示范、不覆盖现有RL目录。
+产物`local/rl_training/bc_20261007_20s_01/actor.pt`，验证最佳第5轮，13轮早停。
+训练/验证动作MSE=0.03382/0.07961，均值基线验证MSE=0.10422；移动dx符号一致率86.57%。
+仍有零旋转示范上的非零预测，尚未真机验证；仅BC Actor，没有已训练Critic或校准探索方差。
+不能直接替换现有SAC checkpoint，后续需要纯BC评估或明确设计的RL热启动流程。详见异步教程BC段。
+
+2026-10-07最新补充：异步RL的Actor内部新增专用推理线程，`--enable-policy`自动启用。
+回执等待期间预计算最新观测，只执行与当前输入严格配对的候选；交付观测年龄<50ms，
+发送100ms检查、回执确认和训练相邻观测连续性保留。RB/重置使旧候选失效，退出回收线程。
+实传感器无动作测试：模拟125ms回执延迟，167次交接无超100ms，年龄最大49.28ms。
+尚未真机执行或与Learner同时现场验收；现有启动命令不变，详情见异步教程。
+
+2026-10-07最新：以 `test_20261007_161750` 的8个有效回合初始化新的20秒异步RL会话。
+6段944条训练、2段352条验证，两段discarded排除；无wrench输入，replay容量4000。
+`local/rl_training/seed_20261007_20s_01` 完成100步CUDA更新，重载误差0；
+`local/rl_training/async_20261007_20s_01` 并发probe再更新20步，当前版本120。
+55次已录观测推理p95=10.76ms、max=11.88ms，机器人发布者0；未启动真机。
+100步后验证集315/352条dx为负，不能认为策略学会插接；默认先人工采集+后台训练。
+现场命令见[异步教程最新20秒配置](../../../tutorials/async_rl.md)。旧15秒目录仍保留，不混用契约。
+
+2026-10-07后续：用户改为异步Actor/Learner；新增 `scripts/run_async_rl.sh`。
+Learner达到数据门槛后持续训练，Actor不等训练；每10个完整有效回合加载最新有效权重（不是best）。
+支持独立seed复制、并发离线probe、每步策略版本审计、受监督子进程退出；未启动真机运动。
+一条命令自动启动Actor/手柄采集和独立Learner子进程；外部传感器与接收端仍需提前运行。
+Ctrl+C关闭本次采集/手柄读取/训练，等待保存后退出；不关闭外部设备服务。默认人工，模型需`--enable-policy`。
+已准备 `local/rl_training/async_20261007_01`；开发验证时版本22，106项测试通过、1跳过；
+GPU并发probe推理p95约10.5ms，未验证真机ROS端到端延迟或策略成功率。
+[最新教程](../../../tutorials/async_rl.md) · [开发记录](chronicles/2026-10-07-async-rl.md)。
+
+2026-10-07：新增按回合交替 RL 最小入口 `scripts/run_alternating_rl.sh`。
+完整回合保存后独立进程训练固定步数、核对版本并重载，再等315；默认人工，显式 `--enable-policy` 才启用模型。
+训练/保存期间RB人工复位；异常任务暂停且拒绝自动恢复。修复RL结束键短按丢失。
+尚未真机联调，不代表策略效果或统一动作物理标定验收。
+[运行教程](../../../tutorials/alternating_rl.md) · [本次开发记录](chronicles/2026-10-07-alternating-rl.md)。
+
+2026-10-07：`run_no_wrench_policy_record.sh` 与带wrench推理脚本现默认支持按住RB手柄接管、
+单按键码314回home。回位期间模型候选被暂停，松开314后才等待新候选；
+真机回位尚未验收。用法见[当前推理教程](../../../tutorials/no_wrench_policy_record.md)，
+仲裁实现与测试证据见[手柄记录](../hardware/evolution/gamepad-control.md#2026-10-07推理期间-rb-接管与单按314回位)。
+
+此前网络阶段归档：[2026-10-07：共享编码器、HIL-SERL对齐与中断恢复](chronicles/2026-10-07-shared-serl-resume.md)。
 包含实现范围、代码定位、版本兼容、测试证据和后续待办；给后续agent交接可先读此文。
 
 2026-10-07：RL升级为`omi-hil-sac-shared-serl-v2`，保留当前输入（离线wrench关闭），

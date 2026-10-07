@@ -56,12 +56,33 @@ def calibration_from_args(args, parser):
 class GripperButtons:
     def __init__(self):
         self.ready = False
+        self.held = {BTN_A: False, BTN_B: False}
 
-    def select(self, connected, buttons):
+    def select(self, connected, buttons, transitions=()):
         a, b = bool(buttons.get(BTN_A)), bool(buttons.get(BTN_B))
         if not connected:
             self.ready = False
+            self.held = {BTN_A: False, BTN_B: False}
             return None
+        button_transitions = [(code, bool(pressed), initial) for code, pressed, initial in transitions
+                              if code in self.held]
+        if button_transitions:
+            conflict = {code for code, pressed, initial in button_transitions if pressed and not initial} == {BTN_A, BTN_B}
+            action = None
+            for code, pressed, initial in button_transitions:
+                self.held[code] = pressed
+                if not any(self.held.values()):
+                    self.ready = True
+                elif pressed:
+                    if not initial and self.ready and not conflict and action is None:
+                        action = 'close' if code == BTN_A else 'open'
+                    self.ready = False
+                else:
+                    self.ready = False
+            self.held = {BTN_A: a, BTN_B: b}
+            self.ready = not a and not b
+            return action
+        self.held = {BTN_A: a, BTN_B: b}
         if not a and not b:
             self.ready = True
             return None
@@ -119,13 +140,13 @@ class GamepadGripper:
         if self.sdk.move_to_pos(position) is not True:
             raise RuntimeError('Gripper position rejected')
 
-    def tick(self, connected, buttons):
+    def tick(self, connected, buttons, transitions=()):
         if not self.args.gripper_server:
             return None
         if self.pending is not None and self.pending.done():
             self.pending.result()  # fail closed; do not retry an old target
             self.pending = None
-        action = self.buttons.select(connected, buttons)
+        action = self.buttons.select(connected, buttons, transitions)
         if action is None:
             return None
         position = (self.args.gripper_close_position if action == 'close'

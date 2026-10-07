@@ -1,5 +1,22 @@
 # Hardware 当前摘要
 
+2026-10-07：左臂 A 的固定安装平移改为 `(0,0.0260,1.121)m`，旋转保持
+`Rx(-90°)`；接收端内部 EEF 复合矩阵和可选静态 TF 同步更新。实时 corrected
+RViz 看板移除旧的 EEF 平移补偿，直接显示新发布的原始位姿。
+需重建、重启接收端并重启看板；本轮尚未完成真机多姿态标定或现场 RViz 复核。
+详见[本次编年](chronicles/2026-10-07-eef-mount-and-view.md)及
+[操作教程](../../../tutorials/grid_live_review.md#实时-eef-显示坐标2026-10-07)。
+
+2026-10-07：实时grid看板的第三视角外部RGB改按本机接收年龄判断显示新鲜度，
+避免跨机器源header时钟偏差导致LIVE/OLD_HEADER交替闪烁。header年龄仍显示供排查；
+接收新鲜不代表曝光到接收的实际延迟已测定，policy时间门控未改。
+见[看板机制](evolution/grid-live-review.md)及[本次编年](chronicles/2026-10-07-grid-camera-receive-freshness.md)。
+
+2026-10-07：推理手柄仲裁已支持按住RB接管、单按键码314回home；带wrench与无wrench推理脚本默认启用。
+回位期间使用手动话题并暂停模型候选，结束并松开314后才接收新候选；断连取消回位。
+直接手柄入口默认仍是RB+回位键。代码、测试与真机验证边界见
+[手柄实现记录](evolution/gamepad-control.md#2026-10-07推理期间-rb-接管与单按314回位)，操作见[无wrench推理教程](../../../tutorials/no_wrench_policy_record.md)。
+
 2026-10-07：历代录包驱动 RViz 入口现用[本机三包操作页](../../../tutorials/rviz_representative_bags.md)中的完整命令；三包集中于 `/home/zhoutong/omi_folder/representative_rosbag/october/`，历史文件在移动硬盘 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`。旧 Downloads 路径为兼容链接。覆盖范围、实际验证边界及空间变化见[机器人回放纪传体](evolution/robot-3d-replay.md#当前代表录包与操作入口2026-10-07)和[本次编年](chronicles/2026-10-07-rviz-bag-relocation.md)。实时看板不需要录包。
 
 2026-10-05：已补齐[采集解耦实现纪传体](evolution/sensor-decoupling.md)，包含独立字段读取、力调度、腕部FIFO与双路发布、元数据及离线对齐。外部RGB的header年龄与本机接收年龄是两项检查，源时钟仍未确认；“接收新鲜但源时间不确定”不能等同无延迟。外部RGB专用接收时间策略尚未实施，见[时间基准说明](evolution/sensor-time-alignment.md)和[排查编年](chronicles/2026-10-05-rgb-clock-and-receive-age.md)。

@@ -117,6 +117,26 @@ policy_command_rate:=10.0 delta_timeout:=0.25 ctrl_rate:=200.0
 A/B夹爪在直接手柄入口默认启用项目配置；原手柄命令重启后可用，
 `--no-gripper`关闭，详见[夹爪操作](robot_gamepad_startup.md#同时启用夹爪a-关闭b-张开)。
 
+### 左臂 EEF 安装变换修正（2026-10-07）
+
+左臂 A 的 `Base_L` 到机器人根 `base_link` 的固定安装平移现在为
+`(0, 0.0260, 1.121) m`，旋转仍为 `Rx(-90°)`。原 Y=`0.2005 m`；
+因此相同关节反馈与 TCP 标定下，新 `/tj/info/eef_left` 的 Y 比旧版本减少
+`0.1745 m`，X、Z 和姿态不因本次安装平移修正而变化。代码内 FK 复合矩阵和
+可选静态安装 TF 使用同一个新值。`publish_root_tf:=none` 仅关闭静态 TF 发布，
+不改变 EEF 计算。
+
+此修正要在重建并重启接收端后才会进入新 ROS 消息；已录制的 bag 不会被重算。
+可在接收端启动后读取一条位姿并检查 `header.frame_id` 和位置：
+
+```bash
+ros2 topic echo /tj/info/eef_left --once
+```
+
+实时 RViz 看板已取消旧的固定 EEF 显示平移，操作与检查见
+[实时看板教程](grid_live_review.md#实时-eef-显示坐标2026-10-07)。
+这一数值是当前代码使用的安装修正，尚未完成多姿态实测标定。
+
 ### HIL回执和验证边界
 
 `velocity_window_sent`的`finished=true`表示一个名义控制观察周期结束；

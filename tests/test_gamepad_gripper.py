@@ -35,6 +35,16 @@ def test_edges_release_conflict_and_reconnect():
     assert b.select(True, a) == 'close'  # RB is not required
 
 
+def test_short_ab_presses_in_one_poll_and_simultaneous_conflict():
+    b = GripperButtons()
+    b.select(True, {})
+    assert b.select(True, {}, [(BTN_A, True, False), (BTN_A, False, False)]) == 'close'
+    assert b.select(True, {}, [(BTN_B, True, False), (BTN_B, False, False)]) == 'open'
+    assert b.select(True, {}, [(BTN_A, True, False), (BTN_B, True, False),
+                               (BTN_A, False, False), (BTN_B, False, False)]) is None
+    assert b.select(True, {}, [(BTN_A, True, False), (BTN_A, False, False)]) == 'close'
+
+
 @pytest.mark.parametrize('flag,value', [
     ('close-speed', '9'), ('close-speed', '101'), ('close-torque', '0'),
     ('close-torque', '101'), ('close-torque', 'nan'), ('close-position', '-1'),

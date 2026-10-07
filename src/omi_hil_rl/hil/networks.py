@@ -156,7 +156,8 @@ class SAC:
     The caller controls critic/actor update ratio, by default two to one.
     """
     def __init__(self, recipe, contract, *, device="cpu", learning_rate=3e-4,
-                 gamma=.98, tau=.005, critic_actor_ratio=2, pretrained=None, image_augmentation=True):
+                 gamma=.98, tau=.005, critic_actor_ratio=2, pretrained=None, image_augmentation=True,
+                 freeze_encoder=False, critic_warmup_updates=0, bc_weight=0., actor_learning_rate=None):
         if recipe["encoder"] == "synthetic-test" and contract["config"]["transport"] != "fake":
             raise ValueError("synthetic encoder is forbidden for real observations")
         if not 0 <= gamma <= 1 or not 0 < tau <= 1 or critic_actor_ratio < 1:
@@ -169,10 +170,23 @@ class SAC:
                 raise ValueError("recipe and transport SDK conversions disagree")
         self.recipe, self.contract = deepcopy(recipe), deepcopy(contract)
         self.device = torch.device(device)
+        if critic_warmup_updates < 0 or not math.isfinite(bc_weight) or bc_weight < 0:
+            raise ValueError('invalid BC protection settings')
+        if critic_warmup_updates and not freeze_encoder:
+            raise ValueError('critic warmup requires a frozen shared encoder')
+        self.freeze_encoder = freeze_encoder
+        self.critic_warmup_updates, self.bc_weight = critic_warmup_updates, bc_weight
+        self.actor_learning_rate = learning_rate if actor_learning_rate is None else actor_learning_rate
+        if not math.isfinite(self.actor_learning_rate) or self.actor_learning_rate <= 0:
+            raise ValueError('invalid actor learning rate')
+        self.bc_reference = None
+        self.bc_provenance = None
         encoder = Encoder(recipe)
         self.actor, self.critic = Actor(recipe, encoder), Critics(recipe, encoder)
         if pretrained is not None:
             encoder.initialize_pretrained(pretrained)
+        if freeze_encoder:
+            encoder.requires_grad_(False)
         self.actor.to(self.device).eval()
         self.critic.to(self.device).eval()
         self.target = deepcopy(self.critic).requires_grad_(False).eval()
@@ -180,7 +194,7 @@ class SAC:
         # Only the critic optimizer owns the shared fused encoder. The actor
         # detaches it; our fused proprio adapter differs from the reference's
         # separately trainable proprio branch. Standalone BC can still train it.
-        self.actor_optimizer = torch.optim.Adam(self.actor.head.parameters(), lr=learning_rate)
+        self.actor_optimizer = torch.optim.Adam(self.actor.head.parameters(), lr=self.actor_learning_rate)
         self.critic_optimizer = torch.optim.Adam([p for p in self.critic.parameters() if p.requires_grad], lr=learning_rate)
         self.alpha_optimizer = torch.optim.Adam([self.temperature_raw], lr=learning_rate)
         self.gamma, self.tau, self.ratio = gamma, tau, critic_actor_ratio
@@ -205,7 +219,21 @@ class SAC:
         nn.utils.clip_grad_norm_(parameters, 5., error_if_nonfinite=True)
         optimizer.step()
 
-    def update(self, batch):
+    def initialize_bc(self, state, *, provenance=None):
+        """Fresh SAC only: copy the entire BC actor and synchronize target encoder."""
+        if self.updates or self.actor_optimizer.state or self.critic_optimizer.state:
+            raise ValueError('BC initialization requires a fresh learner')
+        if state['version'] != VERSION or state['contract'] != self.contract or state['recipe'] != self.recipe:
+            raise ValueError('BC architecture/contract/recipe mismatch')
+        self.actor.load_state_dict(state['actor'], strict=True)
+        self.target.load_state_dict(self.critic.state_dict(), strict=True)
+        self.bc_reference = deepcopy(self.actor).requires_grad_(False).eval()
+        self.bc_provenance = deepcopy(provenance)
+
+    def update(self, batch, human_batch=None):
+        actor_update = self.updates + 1 > self.critic_warmup_updates and (self.updates + 1) % self.ratio == 0
+        if self.bc_weight and actor_update and (human_batch is None or self.bc_reference is None):
+            raise ValueError('protected actor update requires human batch and frozen BC reference')
         obs, nxt = self.observation(batch.observations), self.observation(batch.next_observations)
         if self.image_augmentation and self.recipe['encoder'] == 'current9stack':
             obs, nxt = augment_images(obs), augment_images(nxt)
@@ -218,13 +246,20 @@ class SAC:
         self._optimize(self.critic_optimizer, critic_loss, self.critic.parameters())
         self.updates += 1
         metrics = dict(update=self.updates, critic_loss=float(critic_loss.detach()), alpha=float(F.softplus(self.temperature_raw).detach()))
-        if self.updates % self.ratio == 0:
+        metrics['critic_warmup'] = self.updates <= self.critic_warmup_updates
+        if actor_update:
             # Freeze critic parameters while retaining dQ/da for the actor.
             flags = [p.requires_grad for p in self.critic.parameters()]
             self.critic.requires_grad_(False)
             try:
                 sampled, log_prob = self.actor.sample(obs, detach_encoder=True)
                 actor_loss = (F.softplus(self.temperature_raw).detach() * log_prob - self.critic(obs, sampled).mean(0)).mean()
+                if self.bc_weight:
+                    human_obs = self.observation(human_batch.observations)
+                    human_prediction = self.actor.sample(human_obs, True, detach_encoder=True)[0]
+                    bc_loss = F.mse_loss(human_prediction, human_batch.actions.to(self.device))
+                    actor_loss = actor_loss + self.bc_weight * bc_loss
+                    metrics['bc_loss'] = float(bc_loss.detach())
                 self._optimize(self.actor_optimizer, actor_loss, self.actor.head.parameters())
             finally:
                 for parameter, flag in zip(self.critic.parameters(), flags):
@@ -235,12 +270,20 @@ class SAC:
         with torch.no_grad():
             for target_param, param in zip(self.target.parameters(), self.critic.parameters()):
                 target_param.lerp_(param, self.tau)
+            if self.bc_reference is not None:
+                drift = self.actor.sample(obs, True)[0] - self.bc_reference.sample(obs, True)[0]
+                metrics.update(bc_reference_mse=float(drift.square().mean()),
+                               bc_reference_max_abs=float(drift.abs().max()))
         return metrics
 
     def checkpoint(self):
         return dict(version=VERSION, recipe=self.recipe, contract=self.contract, updates=self.updates,
             hyperparameters=dict(learning_rate=self.learning_rate, gamma=self.gamma, tau=self.tau, critic_actor_ratio=self.ratio,
-                                 image_augmentation=self.image_augmentation),
+                                 image_augmentation=self.image_augmentation, freeze_encoder=self.freeze_encoder,
+                                 critic_warmup_updates=self.critic_warmup_updates, bc_weight=self.bc_weight,
+                                 actor_learning_rate=self.actor_learning_rate),
+            bc_reference=None if self.bc_reference is None else self.bc_reference.state_dict(),
+            bc_provenance=self.bc_provenance,
             actor=self.actor.state_dict(), critic=self.critic.state_dict(), target=self.target.state_dict(),
             temperature_raw=self.temperature_raw.detach(), actor_optimizer=self.actor_optimizer.state_dict(),
             critic_optimizer=self.critic_optimizer.state_dict(), alpha_optimizer=self.alpha_optimizer.state_dict(),
@@ -259,6 +302,10 @@ class SAC:
         agent = cls(state["recipe"], state["contract"], device=device, **state["hyperparameters"])
         for name in ("actor", "critic", "target"):
             getattr(agent, name).load_state_dict(state[name], strict=True)
+        if state.get('bc_reference') is not None:
+            agent.bc_reference = deepcopy(agent.actor).requires_grad_(False).eval()
+            agent.bc_reference.load_state_dict(state['bc_reference'], strict=True)
+        agent.bc_provenance = state.get('bc_provenance')
         with torch.no_grad():
             agent.temperature_raw.copy_(state["temperature_raw"])
         for name in ("actor_optimizer", "critic_optimizer", "alpha_optimizer"):

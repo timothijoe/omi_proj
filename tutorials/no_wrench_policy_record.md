@@ -16,6 +16,7 @@ local/passive_bc_20261005_no_wrench_no_third_train_v1/actor_train_best.pt
 默认CUDA、domain13、手柄`/dev/input/js0`、raw EEF、policy-scale=1.0。
 手柄与模型上限5mm/s、5°/s，10Hz动作；候选年龄拒绝默认off，外部RGB年龄500ms。
 RB按住优先人工，松开只接收松开后的新候选；断开手柄暂停；不重复执行同一个候选。
+推理入口默认将键码314设为独立回位键：单按一次即可从当前位姿返回home，不需同时按RB。
 取消候选年龄拒绝意味着旧候选可能延迟执行一次，不是无风险模式。
 
 ## 2. 先预览并录制
@@ -30,6 +31,10 @@ bash scripts/run_no_wrench_policy_record.sh \
 ```
 
 不加`--execute`时，模型和RB仲裁正常运行，但不发布最终机器人动作。
+若旧版启动时在`load_wrench_policy`报`unsupported live passive wrench BC checkpoint contract`，
+原因是当前采集按键默认值改变，而此检查点保留训练时的成功键307。加载器已兼容这一已知历史按键配置，
+仍逐项核对观测、动作尺度及SDK约定；本机默认`actor_train_best.pt`已实际加载验证为第1000步、`wrench_history=False`。
+更新源码并退出旧进程后重试；该错误发生在创建输出目录和发布者之前，目录不存在时可复用原路径。
 确保没有其他独立手柄/策略程序同时控制机器人；本脚本不能阻止其他进程运动。
 正常时应看到完整历史和`candidate_gate=ok`；关注模型原始dx，不把`paused_no_policy`零动作误认为网络零输出。
 无wrench模型的manifest应有`wrench_input_enabled=false`，topics里没有wrench。
@@ -43,7 +48,9 @@ bash scripts/run_no_wrench_policy_record.sh \
 启动时检查不等于持续监控，也不证明SDK执行成功；不要运行中重配接收端。
 
 按住RB（311）再操作摇杆；不是摇杆一动就自动接管。
-RB+X现场键码307保留既有返回功能，不要无意触发。
+单按键码314触发返回home；返回时由手动通道发送增量，覆盖模型和摇杆动作，手柄断开会取消。
+回位键按住不重复触发；返回结束或失败后，松开314才重新等待新的模型候选。
+启动后先在终端核对`返回触发键码=314`及`按下按钮=[314]`，不同手柄可用`--home-button-code`覆盖。
 执行无额外确认：输入齐全、手柄连接且RB松开时可能立即运动。
 软件零动作/退出不等于硬件急停，接收端工作空间和现场安全要求仍适用。
 峰值触觉保护与网络wrench输入是两回事：接收端保护默认关闭，关闭网络分支不会替你更改它。

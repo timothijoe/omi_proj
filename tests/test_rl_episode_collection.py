@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from omi_hil_rl.hil.config import HILConfig
-from omi_hil_rl.hil.environment import FakeTransport, EpisodeTimeout, EpisodeSuccess
-from omi_hil_rl.hil.collect_episodes import collect
+from omi_hil_rl.hil.environment import FakeTransport, EpisodeTimeout, EpisodeSuccess, ButtonEvents, InteractionUnavailable
+from omi_hil_rl.hil.collect_episodes import collect, collect_periodic
 from omi_hil_rl.hil.exchange import read_episode
 from omi_hil_rl.hil.ros_transport import RosTransport
 
@@ -24,12 +24,61 @@ def test_requested_episode_keys_are_distinct():
         assert buttons.poll(True, {code: True}) == set()
 
 
+def test_start_pressed_during_save_starts_next_episode_after_save(monkeypatch):
+    import omi_hil_rl.hil.ros_transport as module
+    now = [100.]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now[0])
+    transport = RosTransport.__new__(RosTransport)
+    transport.config = HILConfig()
+    transport.home = None
+    transport.connected = True
+    transport.events = set()
+    transport.event_times = {}
+    transport.queue_start_during_save = True
+    transport.pad = SimpleNamespace(buttons={})
+    transport.publisher = None
+    transport.allow_manual_reset = False
+    transport.stop = lambda: None
+
+    def pump():
+        now[0] += .1
+        if now[0] == 100.1:
+            transport.events.add('start')
+            transport.event_times['start'] = now[0]
+
+    transport._pump = pump
+    transport.idle_tick()
+    assert transport.events == {'start'}
+    now[0] = 105.
+    started = transport.wait_start()
+    assert started == 105.
+    assert not transport.queue_start_during_save
+
+
 class Human(FakeTransport):
     def interact(self, *args):
         result = super().interact(*args)
         result.source = 'human'
         result.audit = {'command_id': 'test-id'}
         return result
+
+
+def test_human_periodic_session_is_separate_from_receipt_mode(tmp_path, monkeypatch):
+    import omi_hil_rl.hil.periodic_control as periodic
+    calls = []
+    monkeypatch.setattr(periodic, 'run_periodic',
+                        lambda actor, episodes, training: calls.append(
+                            (actor.transport.collect_human, episodes, training, actor.version)))
+    config = HILConfig(transport='ros', wrist_camera='required')
+    transport = SimpleNamespace(receiver_info={'manual_topic': '/omi/controller_test/decision'})
+    run = tmp_path / 'run'
+    collect_periodic(run, config, transport, episodes=2)
+    assert calls == [(True, 2, True, 0)]
+    session = json.loads((run / 'session.json').read_text())
+    assert session['mode'] == 'human_rl_periodic_v1'
+    assert session['control_mode'] == 'periodic_100ms_posthoc_validation'
+    collect_periodic(run, config, transport, episodes=1, resume=True)
+    assert calls[-1] == (True, 1, True, 0)
 
 
 def test_repeated_success_autosave_without_learner(tmp_path):
@@ -110,6 +159,33 @@ def test_success_before_send_stops_without_extra_motion():
     assert stops == [True]
 
 
+def test_pairing_timeout_records_missing_receipt_after_stop(tmp_path):
+    import time
+    transport = RosTransport.__new__(RosTransport)
+    transport._pump = lambda: None
+    transport.connected = True
+    transport.events = set()
+    transport.event_times = {}
+    transport.node = SimpleNamespace(get_clock=lambda: SimpleNamespace(
+        now=lambda: SimpleNamespace(nanoseconds=10_000_000)))
+    transport.pad = SimpleNamespace(buttons={}, axes={})
+    transport.config = HILConfig()
+    transport.collect_human = True
+    transport.human_only = False
+    transport.receipts = {}
+    transport.latest = None
+    transport.runtime = SimpleNamespace(counts={}, rejected={})
+    transport.pairing_report_path = tmp_path / 'pairing.json'
+    transport._publish = lambda *args, **kwargs: [0.0] * 6
+    stopped = []
+    transport.stop = lambda: stopped.append(True)
+    with pytest.raises(InteractionUnavailable, match='missing command receipt or causal next observation'):
+        transport.interact(np.zeros(6, np.float32), 0, time.monotonic() + 1)
+    report = json.loads(transport.pairing_report_path.read_text())
+    assert stopped and report['reason'] == 'no_command_receipt'
+    assert report['command_id'].startswith('hil:')
+
+
 def test_reset_requires_rb_release_then_repress():
     from omi_hil_rl.real.gamepad_control import BTN_TR, Mapping
     transport = RosTransport.__new__(RosTransport)
@@ -131,6 +207,167 @@ def test_reset_requires_rb_release_then_repress():
     transport.pad.buttons[BTN_TR] = True
     transport._manual_reset_tick()
     assert len(sent) == 1 and len(sent[0]) == 1  # no command ID, not a sample
+
+
+def test_back_home_takes_priority_over_rb_between_episodes():
+    from omi_hil_rl.real.gamepad_control import BTN_TR, Mapping
+    transport = RosTransport.__new__(RosTransport)
+    transport.allow_manual_reset = True
+    transport.publisher = object()
+    transport.connected = True
+    transport.pad = SimpleNamespace(buttons={BTN_TR: True, 314: True}, axes={})
+    transport.mapping = Mapping()
+    transport.config = HILConfig()
+    transport.home = SimpleNamespace(button_code=314, status='returning', future=None, plan=object(),
+                                     tick=lambda *_: ('human_home', np.array([.001, 0, 0, 0, 0, 0]), [1., 0, 0, 0, 0, 0]))
+    transport.home_active = False
+    transport.home_status = ''
+    transport.reset_held = True
+    sent, stopped = [], []
+    transport._publish = lambda action, **kwargs: sent.append((action.copy(), kwargs))
+    transport.stop = lambda: stopped.append(True)
+    assert transport._manual_reset_tick()
+    assert len(sent) == 1 and sent[0][1] == dict(convention='sdk-base-aligned', source='human_home')
+    assert sent[0][0][0] == pytest.approx(.001)
+    assert transport.reset_requires_release and not transport.reset_held
+    assert not stopped
+    transport.home.plan = None
+    transport.home.tick = lambda *_: None
+    transport.pad.buttons[314] = False
+    assert transport._manual_reset_tick()
+    assert stopped == [True]
+    assert len(sent) == 1
+
+
+def test_back_held_during_episode_requires_release_after_episode():
+    transport = RosTransport.__new__(RosTransport)
+    transport.allow_manual_reset = True
+    transport.publisher = object()
+    transport.connected = True
+    transport.pad = SimpleNamespace(buttons={314: True}, axes={})
+    transport.config = HILConfig()
+    transport.home = SimpleNamespace(button_code=314, previous_x=False, status='', future=None, plan=None)
+    calls = []
+    transport.home.tick = lambda *_: calls.append(True)
+    transport.home_active = False
+    transport.home_status = ''
+    transport.home_requires_release = True
+    transport.reset_requires_release = True
+    transport.stop = lambda: None
+    transport._publish = lambda *_: pytest.fail('held Back must not start home')
+    assert transport._manual_reset_tick()
+    assert not calls and transport.home.previous_x
+    transport.pad.buttons[314] = False
+    assert transport._manual_reset_tick()
+    assert not calls and not transport.home_requires_release
+    assert not transport._manual_reset_tick()
+    assert calls
+
+
+def test_collector_back_short_tap_reaches_home_service():
+    from concurrent.futures import Future
+    from omi_hil_rl.real.gamepad_control import Mapping
+    from omi_hil_rl.real.gamepad_home import GamepadHome
+    requests = []
+    home = GamepadHome(clock=lambda: 0., button_code=314, require_rb=False)
+    home.client = SimpleNamespace(service_is_ready=lambda: True,
+        call_async=lambda _: requests.append(Future()) or requests[-1])
+    home.request_type = lambda: None
+    transport = RosTransport.__new__(RosTransport)
+    transport.allow_manual_reset = True
+    transport.publisher = object()
+    transport.connected = True
+    transport.pad = SimpleNamespace(buttons={}, axes={}, button_events=())
+    transport.mapping = Mapping()
+    transport.config = HILConfig()
+    transport.home = home
+    transport.home_active = False
+    transport.home_requires_release = True
+    transport.home_status = ''
+    transport.reset_requires_release = True
+    transport.reset_held = False
+    transport.stop = lambda: None
+    transport._publish = lambda *_: pytest.fail('no motion before home response')
+    transport._manual_reset_tick()  # release after startup
+    transport.pad.button_events = ((314, True, False), (314, False, False))
+    assert transport._manual_reset_tick()
+    assert len(requests) == 1 and home.status == '正在读取当前关节并计算返回位姿'
+
+
+def test_back_home_wire_is_base_aligned_and_not_a_training_command(monkeypatch):
+    import sys
+    class Message:
+        def __init__(self, data=None):
+            self.data = data
+            self.layout = SimpleNamespace(dim=[])
+    monkeypatch.setitem(sys.modules, 'std_msgs.msg', SimpleNamespace(
+        Float64MultiArray=Message, MultiArrayDimension=Message))
+    transport = RosTransport.__new__(RosTransport)
+    transport.topic = '/omi/action/manual_decision'
+    transport.convention = 'sdk-x-forward-z-left'
+    transport.config = HILConfig(transport='ros')
+    transport.last_owner = None
+    transport.node = SimpleNamespace(count_publishers=lambda topic: 1 if topic == transport.topic else 0,
+        get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=123)))
+    sent = []
+    transport.publisher = SimpleNamespace(publish=sent.append)
+    transport.trace_publisher = None
+    wire = transport._publish(np.array([0., .001, 0., 0., 0., 0.]),
+                              convention='sdk-base-aligned', source='human_home')
+    assert wire == pytest.approx([0., 1., 0., 0., 0., 0.])
+    assert sent[0].data == wire and sent[0].layout.dim == []
+    trace = transport.last_command_trace
+    assert trace['action_source'] == 'human_home'
+    assert trace['output_convention'] == 'sdk-base-aligned'
+    assert trace['command_id'] is None and trace['label_candidate'] is False
+    assert trace['normalized_action'] is None
+
+
+def test_collector_polls_ab_gripper_without_episode_events():
+    from omi_hil_rl.real.gamepad_gripper import GripperButtons
+    states = iter([
+        ({}, ()),
+        ({}, ((304, True, False), (304, False, False))),
+        ({}, ()),
+        ({}, ((305, True, False), (305, False, False))),
+    ])
+    class Pad:
+        button_events = ()
+        axes = {}
+        buttons = {}
+        def poll(self):
+            self.buttons, self.button_events = next(states)
+            return True
+    selected = []
+    selector = GripperButtons()
+    transport = RosTransport.__new__(RosTransport)
+    transport.rclpy = SimpleNamespace(ok=lambda: True, spin_once=lambda *_, **__: None)
+    transport.node = SimpleNamespace(get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=1)))
+    transport.pad = Pad()
+    transport.gripper = SimpleNamespace(tick=lambda connected, buttons, transitions:
+        selected.append(selector.select(connected, buttons, transitions)))
+    transport.config = HILConfig(review='auto')
+    transport.buttons = ButtonEvents(transport.config)
+    transport.events = set()
+    transport.event_times = {}
+    transport.next_reference = None
+    transport.latest = None
+    transport.runtime = SimpleNamespace(window=lambda _: (None, None))
+    for _ in range(4):
+        transport._pump()
+    assert selected == [None, 'close', None, 'open']
+    assert transport.events == set()
+
+
+def test_transport_close_releases_gripper_even_if_ros_cleanup_fails():
+    transport = RosTransport.__new__(RosTransport)
+    closed = []
+    transport.pad = SimpleNamespace(close=lambda: closed.append('pad'))
+    transport.node = SimpleNamespace(destroy_node=lambda: (_ for _ in ()).throw(RuntimeError('ROS cleanup')))
+    transport.gripper = SimpleNamespace(close=lambda: closed.append('gripper'))
+    with pytest.raises(RuntimeError, match='ROS cleanup'):
+        transport.close()
+    assert closed == ['pad', 'gripper']
 
 
 def test_review_required_before_ready_and_next_episode(tmp_path):

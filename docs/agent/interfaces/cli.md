@@ -1,5 +1,25 @@
 # CLI 入口
 
+固定BC评估：`bash scripts/run_bc_episodes.sh --output SESSION --resume --control-mode periodic --episodes 1 --execute`。
+最新已准备SESSION为`local/bc_episodes/all8_coarse_fine_eval_01`（11795）；无Learner。
+默认periodic是100ms目标发布+独立审计，不逐条等待回执；审计不自动入训练池，receipt模式才用旧同步配对。
+成功动作label回放：`bash scripts/replay_success_episode.sh --episode EPISODE`默认只读；
+`--output NEW_DIR --execute`才启用真机，315开始、RB取消回放并接管，不加载神经网络。
+全8回合拟合：`python -m omi_hil_rl.hil.fit_all_bc --checkpoint BC_PT --output NEW_DIR [--prepare-output NEW_SESSION]`，
+仅离线，所有8回合用于训练，无独立验证成绩。详见[操作教程](../../../tutorials/bc_replay_testing.md)
+和[实现记录](../training/chronicles/2026-10-07-periodic-replay-bc-fitting.md)。
+
+异步真机RL：`bash scripts/run_async_rl.sh --run RUN --execute [--enable-policy]`。
+最新双池RUN：`local/rl_training/bc_protected_dual_20261007_01`。
+新建保护式双池：`bash scripts/prepare_bc_rl.sh --bc-run BC_DIR --run NEW_RUN --capacity 4000 --intervention-capacity 2000`。
+旧单池离线迁移：`bash scripts/migrate_dual_replay.sh --source OLD_RUN --run NEW_RUN --intervention-capacity 2000`，
+要求源会话已停止，拒绝覆盖目标或迁移dirty池；旧目录保留。
+一条命令同时启动Actor/手柄采集与独立Learner子进程；默认人工，加`--enable-policy`才允许模型动作。
+每10个完整有效回合检查最新有效权重；Learner达到数据门槛后持续训练，不等回合交替。
+Ctrl+C关闭本次Actor/采集/训练，不关闭外部传感器、控制接收端或RViz。
+现场需提前启动传感器和接收端，不要并开其他动作发布者。
+准备/并发无机器人验证参数与限制见[异步RL教程](../../../tutorials/async_rl.md)。
+
 wrench看板及历史录制：`bash scripts/view_wrench_live.sh [--window 15] [--duration SECONDS] [--no-rviz]`；
 本地全程图重建：`--review-session SESSION`。默认domain13，只订阅传感器并发布诊断图；
 逐条记录保存至local/wrench_live新会话。[教程](../../../tutorials/wrench_live.md)。

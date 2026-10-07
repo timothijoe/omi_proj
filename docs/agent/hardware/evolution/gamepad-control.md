@@ -1,5 +1,29 @@
 # 手柄末端控制与 SDK 坐标适配：开发记录
 
+## 2026-10-07：推理期间 RB 接管与单按314回位
+
+带wrench和无wrench的推理启动链分别经 `run_wrench_policy_gamepad.sh` 和
+`run_no_wrench_policy_record.sh` 进入同一个手柄仲裁节点。前者现在默认传入
+`--home-button-code 314 --home-button-alone`，后者复用该入口，因此两者操作一致：
+按住 RB（Linux键码311）时手柄控制，松开后等待新的模型候选；单按键码314时，
+从接收端 `/delta_ctrl_node/home_poses` 读取当前和目标 TCP 位姿并开始回home，
+无需同时按RB。回位动作走手动话题，优先于模型候选和摇杆动作。
+
+`gamepad_node.py` 在314按住或回位请求/轨迹仍在进行时，把仲裁器保持在人工侧并输出零摇杆动作；
+回位结束或失败后，松开314才重新接受新的模型候选。`gamepad_home.py` 的
+`require_rb` 参数控制按键组合：推理入口设为false，直接手柄入口默认仍为true。
+手柄断开会取消尚未完成的回位；按键启动和重连后须先释放再按下，长按不会反复触发。
+通用 `run_policy_gamepad.sh` 可显式传入相同两个参数。换手柄时先从
+`按下按钮=` 日志核对实际键码，再用 `--home-button-code` 覆盖。
+
+实现位置：`scripts/run_wrench_policy_gamepad.sh`、`src/omi_hil_rl/real/gamepad_node.py`、
+`src/omi_hil_rl/real/gamepad_home.py`；直接手柄脚本 `scripts/gamepad_test.py` 也接受
+`--home-button-alone`，但默认仍需RB+回位键。`tests/test_gamepad_home.py` 覆盖单按314、
+RB松开后继续回位和断连取消；相关手柄测试30项通过，脚本语法及差异检查通过。
+另一次扩大到 `test_wrench_live.py` 的测试有1项因当前环境缺少 `scipy` 而无法完成。
+这些是软件验证，尚未完成真机回home验收。操作命令与话题见
+[推理教程](../../../../tutorials/no_wrench_policy_record.md)及[手柄教程](../../../../tutorials/gamepad_control.md)。
+
 ## 当前结论与范围
 
 手柄六维增量控制、RB 人工接管选择、直接 ROS 发布、可配置 SDK 输出 wrapper，以及转换前后显示已实现。

@@ -1,0 +1,172 @@
+"""Fixed deterministic BC actor + human intervention + episodes; no learner."""
+import argparse
+import json
+from pathlib import Path
+import signal
+import time
+
+import torch
+
+from .async_training import AsyncActor
+from .alternating import make_transport
+from .config import HILConfig
+from .exchange import atomic_json, atomic_torch, owner_lock, read_episode
+from .networks import VERSION, load_actor
+from .periodic_control import run_periodic
+from omi_hil_rl.training.eef_bc_data import sha256
+
+
+def prepare(checkpoint, output, device='cpu'):
+    checkpoint, output = Path(checkpoint).resolve(), Path(output).resolve()
+    if output.exists():
+        raise ValueError('output already exists; use --resume or choose a new directory')
+    state = torch.load(checkpoint, map_location='cpu', weights_only=True)
+    if state.get('version') != VERSION or state.get('training_method') != 'behavior_cloning':
+        raise ValueError('a v2 behavior_cloning actor checkpoint is required, not a SAC checkpoint')
+    config = HILConfig(**state['contract']['config'])
+    if config.replay_contract() != state['contract']:
+        raise ValueError('BC config/contract mismatch')
+    if any(not torch.isfinite(v).all() for v in state['actor'].values() if torch.is_floating_point(v)):
+        raise ValueError('nonfinite BC weights')
+    index = json.loads((checkpoint.parent/'dataset.json').read_text())
+    if not index['episodes'] or any(e['manifest']['contract'] != state['contract'] for e in index['episodes']):
+        raise ValueError('BC dataset/contract mismatch')
+    # Verify loading and one recorded-observation inference BEFORE any ROS setup.
+    actor, version, _ = load_actor(checkpoint, state['contract'], device)
+    ep = index['episodes'][0]
+    observation = next(read_episode(ep['path'], ep['manifest']))['observation']
+    with torch.inference_mode():
+        result = actor.sample({k: torch.as_tensor(v, device=device)[None]
+                               for k, v in observation.items()}, True)[0]
+    if not torch.isfinite(result).all() or (result.abs() > 1).any():
+        raise ValueError('invalid BC probe output')
+    output.mkdir(parents=True, exist_ok=False)
+    atomic_torch(output/'actor.pt', state)
+    atomic_json(output/'config.json', state['contract']['config'])
+    atomic_json(output/'recipe.json', state['recipe'])
+    atomic_json(output/'dataset.json', index)
+    atomic_json(output/'bc_session.json', dict(mode='fixed_bc_eval_v1', stage='BC_EVAL',
+        source_checkpoint=str(checkpoint), source_sha256=sha256(checkpoint),
+        actor_sha256=sha256(output/'actor.pt'), policy_version=version,
+        contract=state['contract'], learner_enabled=False, deterministic=True,
+        reset_actions_in_replay=False))
+    print(f'BC_PREPARED: {output}; version={version}; learner=OFF; robot publishers=0', flush=True)
+
+
+def validate_run(run):
+    session = json.loads((run/'bc_session.json').read_text())
+    config = HILConfig(**json.loads((run/'config.json').read_text()))
+    if (session['mode'] != 'fixed_bc_eval_v1' or session['learner_enabled'] or
+            session['contract'] != config.replay_contract() or
+            session['actor_sha256'] != sha256(run/'actor.pt')):
+        raise ValueError('fixed BC session/checkpoint changed; refusing to execute')
+    if (run/'learner.pt').exists() or (run/'async_session.json').exists():
+        raise ValueError('cannot mix fixed BC collection and SAC training in one directory')
+    return config
+
+
+class FixedBCActor(AsyncActor):
+    def state(self, phase, **details):
+        value = dict(phase=phase, stage='BC_EVAL', policy_version=self.version,
+                     complete_episodes=self.completed, learner_enabled=False,
+                     policy_selection='fixed_bc_checkpoint', **details)
+        atomic_json(self.run/'bc_state.json', value)
+        print(json.dumps(value, ensure_ascii=False), flush=True)
+
+    def finished(self, result):
+        if not result['keep']:
+            raise RuntimeError('invalid BC episode paused: ' + str(result['reason']))
+        self.completed += 1
+        self.state('EPISODE_COMMITTED', episode=result['episode'])
+        # Deliberately never reload weights, even after ten episodes.
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--checkpoint', type=Path,
+        default=Path('local/rl_training/bc_20261007_20s_01/actor.pt'))
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--execute', action='store_true')
+    mode.add_argument('--prepare-only', action='store_true', help='verify/copy BC only; no ROS or robot connection')
+    parser.add_argument('--resume', action='store_true', help='resume an existing fixed BC output directory')
+    parser.add_argument('--device', choices=('cuda', 'cpu'), default='cuda')
+    parser.add_argument('--episodes', type=int, default=100000)
+    parser.add_argument('--gamepad', default='/dev/input/js0')
+    parser.add_argument('--rgb-max-age-ms', type=float, default=500.)
+    parser.add_argument('--home-button-code', type=int, default=314)
+    parser.add_argument('--log-buttons', action='store_true')
+    parser.add_argument('--control-mode', choices=('periodic', 'receipt'), default='periodic',
+                        help='periodic: 100ms publisher + independent audit; receipt: old synchronous transition collector')
+    args = parser.parse_args()
+    if args.episodes < 1 or not 0 < args.rgb_max_age_ms < float('inf'):
+        parser.error('positive episode count and finite positive RGB age required')
+    torch.set_num_threads(2)
+    args.output = args.output.resolve()
+    if not args.resume:
+        prepare(args.checkpoint, args.output, args.device)
+    config = validate_run(args.output)
+    if args.prepare_only:
+        return
+    if config.transport != 'ros' or config.review != 'auto':
+        parser.error('live execution requires ROS/auto-review contract')
+    interrupted = False
+    def interrupt(signum, frame):
+        nonlocal interrupted
+        if not interrupted:
+            interrupted = True
+            raise KeyboardInterrupt
+    handlers = {sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM)}
+    transport = actor = None
+    failed = None
+    try:
+        with owner_lock(args.output, 'actor'):
+            recipe = json.loads((args.output/'recipe.json').read_text())
+            transport = make_transport(config, recipe, args)
+            actor = FixedBCActor(args.output, config, transport, device=args.device, policy=True)
+            print('FIXED_BC: learner=OFF; deterministic=ON; 315=start, RB=human, 308=success, 307=stop', flush=True)
+            if (args.output/'overfit_evaluation.json').exists():
+                print('OVERFIT_EVAL: training-set fit; generalization NOT validated; '+
+                      (args.output/'overfit_evaluation.json').read_text(), flush=True)
+            try:
+                if args.control_mode == 'periodic':
+                    run_periodic(actor, args.episodes)
+                else:
+                    actor.run_episodes(args.episodes)
+            except KeyboardInterrupt:
+                print('STOP_REQUESTED: stopping BC output and draining episode writer...', flush=True)
+            except Exception as exc:
+                if interrupted:
+                    raise KeyboardInterrupt from exc
+                failed = str(exc)
+                transport.stop()
+                actor.close_pipeline()
+                actor.state('PAUSED', reason=failed)
+                transport.reset_requires_release = True
+                print('PAUSED: RB人工复位仍可用；Ctrl+C退出；没有Learner进程。', flush=True)
+                while True:
+                    transport.idle_tick()
+                    time.sleep(.01)
+    except KeyboardInterrupt:
+        print('BC_STOP_REQUESTED', flush=True)
+    finally:
+        try:
+            if transport is not None:
+                transport.stop()
+        finally:
+            try:
+                if actor is not None:
+                    actor.close_pipeline()
+            finally:
+                try:
+                    if transport is not None:
+                        transport.close()
+                finally:
+                    if actor is not None:
+                        actor.state('CLOSED', error=failed)
+                    for sig, handler in handlers.items():
+                        signal.signal(sig, handler)
+
+
+if __name__ == '__main__':
+    main()

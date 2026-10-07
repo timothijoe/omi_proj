@@ -101,7 +101,7 @@ bash scripts/run_wrench_policy_gamepad.sh \
 | 来源 | 接收端参数 | 话题 |
 | --- | --- | --- |
 | 模型 | `delta_topic` | `/omi/action/decision` |
-| RB手柄、RB+X | `manual_delta_topic` | 执行时读取接收端实际配置 |
+| RB手柄、314回位 | `manual_delta_topic` | 执行时读取接收端实际配置 |
 
 新入口默认`--manual-topic auto`。执行前只读查询`/delta_ctrl_node/get_parameters`，
 并核对两个实际订阅的节点名、类型和话题；原来的`/omi/controller_test/decision`可直接自动匹配，
@@ -145,7 +145,7 @@ bash scripts/run_wrench_policy_gamepad.sh \
 这是在线参数放宽，训练集和检查点契约没有修改；记录在session和policy manifest中。
 需要恢复旧限制可追加`--rgb-max-age-ms 250`。较旧图像可能造成滞后判断，这不修复相机延迟本身。
 
-- RB（311）按住：人工优先，即使摇杆居中也不执行模型。RB+X（现场键码307）仍可调用已有返回功能。
+- RB（311）按住：人工优先，即使摇杆居中也不执行模型。键码314单按触发回home，返回期间覆盖模型和摇杆；可用`--home-button-code`更改键码。
 - RB松开：丢弃接管期间的旧候选，只接收松开后的新模型候选。
 - 手柄断开或没有待执行候选：仲裁输出零增量；输入无效时模型停止产生新候选。
 - 按用户要求，新wrench脚本默认 `--candidate-expiry off`：模型发布前、仲裁接收和选取时均不再按100ms年龄拒绝候选。

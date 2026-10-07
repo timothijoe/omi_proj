@@ -74,7 +74,8 @@ def main():
                        t.angular.x, t.angular.y, t.angular.z], stamp, now()))
     node.create_subscription(TwistStamped, args.policy_topic, receive, qos)
     gripper = GamepadGripper(args, calibration, args.publish)
-    home = GamepadHome(node, button_code=args.home_button_code)
+    home = GamepadHome(node, button_code=args.home_button_code,
+                       require_rb=not args.home_button_alone)
     previous, last_print, last_clock = None, 0., None
     previous_buttons, previous_status = None, None
     def tick():
@@ -86,7 +87,12 @@ def main():
             arbiter.last_stamp = float('-inf')
         last_clock = clock
         connected = pad.poll()
-        mode, delta = arbiter.select(connected, pad.buttons.get(BTN_TR, False), pad.axes, clock)
+        home_override = (connected and args.home_button_alone and
+                         (pad.buttons.get(args.home_button_code, False) or
+                          home.future is not None or home.plan is not None))
+        mode, delta = arbiter.select(connected,
+                                     bool(pad.buttons.get(BTN_TR, False)) or home_override,
+                                     {} if home_override else pad.axes, clock)
         data = wire_action(delta, args.output_convention)
         home_command = home.tick(connected, pad.buttons)
         convention = args.output_convention
@@ -125,7 +131,7 @@ def main():
             print(format_action_trace(mode, delta, convention, data, bool(publisher))+
                   f' | 返回={home.status}'+
                   f' | 手柄连接={connected} | RB={bool(pad.buttons.get(BTN_TR,False))}'+
-                  f' | X={bool(pad.buttons.get(args.home_button_code,False))}'+
+                  f' | 回位键={bool(pad.buttons.get(args.home_button_code,False))}'+
                   f' | 返回触发键码={args.home_button_code}'+
                   f' | 按下按钮={pressed_buttons}'+
                   (f' | 错误={pad.error}' if pad.error else ''), flush=True)
@@ -135,7 +141,9 @@ def main():
     from rclpy.clock import Clock, ClockType
     node.create_timer(1/mapping.hz, tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
     print(('PUBLISH policy='+args.topic+' manual='+args.manual_topic if publisher else 'PREVIEW: no robot publisher')+
-          '; units mm/deg; hold RB to intervene; output='+args.output_convention, flush=True)
+          '; units mm/deg; hold RB to intervene; home key='+str(args.home_button_code)+
+          (' (single press)' if args.home_button_alone else ' (with RB)')+
+          '; output='+args.output_convention, flush=True)
     try:
         gripper.start()
         started=time.monotonic()

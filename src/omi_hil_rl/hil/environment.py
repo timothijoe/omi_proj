@@ -50,11 +50,17 @@ class ButtonEvents:
                           manual_stop=config.stop_button, keep=config.keep_button, discard=config.discard_button)
         self.previous = {key: True for key in self.codes}
 
-    def poll(self, connected, buttons):
+    def poll(self, connected, buttons, transitions=()):
         if not connected:
             self.previous = {key: True for key in self.codes}
             return {"disconnect"}
         events = set()
+        for code, pressed, initial in transitions:
+            for key, expected in self.codes.items():
+                if code == expected:
+                    if pressed and not initial and not self.previous[key]:
+                        events.add(key)
+                    self.previous[key] = pressed
         for key, code in self.codes.items():
             pressed = bool(buttons.get(code, False))
             if pressed and not self.previous[key]:
@@ -129,7 +135,8 @@ class RealHILEnv(gym.Env):
                 raise InteractionUnavailable("next observation must follow the command anchor")
             executed = self.config.normalized_action(result.action_m_rad)
             success_time = result.event_times.get("success", self.clock())
-            success = "success" in result.events and self.started <= success_time < self.deadline
+            success = ("success" in result.events and "manual_stop" not in result.events
+                       and self.started <= success_time < self.deadline)
             manual_stop = 'manual_stop' in result.events
             timed_out = (self.clock() >= self.deadline or manual_stop) and not success
             cancelled = "disconnect" in result.events or "abort" in result.events

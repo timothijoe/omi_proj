@@ -1,9 +1,13 @@
 # OMI 文档总目录
 
+当前人工真机 RL 采集：[周期模式功能与现场进展](agent/training/chronicles/2026-10-07-human-periodic-collection.md)
+→ [操作教程](../tutorials/rl_episode_collection.md)。
+
 历代 RViz 回放的本机代表数据与完整命令见[三包操作页](../tutorials/rviz_representative_bags.md)；历史 bag 已外置，迁移记录见[2026-10-07 编年](agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。
 
 最新真机RL采集阶段：[实现与首批数据检查](agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)
-→ [采集操作教程](../tutorials/rl_episode_collection.md)。已采16段1723条并通过结构校验，成功标签待确认，短按漏检未修复；未启动在线RL训练。
+→ [采集操作教程](../tutorials/rl_episode_collection.md)。旧批次已采16段1723条并通过结构校验，
+成功标签待确认；旧编年中的短按漏检为当时问题，现有按键处理与周期入口见上方新记录。
 
 当前policy阶段：[现场后退诊断、录制与无wrench训练对照](agent/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)
 → [无wrench推理与Ctrl+C保存教程](../tutorials/no_wrench_policy_record.md)。已完成BC与用户现场尝试，方向问题仍未解决。

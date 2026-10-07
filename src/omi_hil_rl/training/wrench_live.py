@@ -12,6 +12,18 @@ from omi_hil_rl.hil.networks import load_actor
 from omi_hil_rl.real.ros_topics import wrench_value
 
 
+def supported_live_contract(contract, current):
+    """Accept the archived BC button mapping without relaxing action or sensor fields."""
+    if contract == current:
+        return current
+    archived = dict(current, config=dict(current['config']))
+    archived['config'].pop('stop_button', None)
+    archived['config']['success_button'] = 307
+    if contract == archived:
+        return archived
+    raise ValueError('unsupported live passive wrench BC checkpoint contract')
+
+
 def load_wrench_policy(path, device):
     # Validate the full training contract before constructing any ROS publisher.
     from .passive_bc import contract_for
@@ -19,10 +31,11 @@ def load_wrench_policy(path, device):
     contract, recipe = checkpoint['contract'], checkpoint['recipe']
     expected = contract_for(dict(rate_hz=10, effective_translation_mm_s=5,
         effective_rotation_deg_s=5, output_convention='sdk-x-forward-z-left'))
+    expected = supported_live_contract(contract, expected)
     no_wrench = (recipe.get('wrench_history') is False
         and recipe.get('ablation') == 'without_wrench_retrained'
         and recipe.get('observation_inputs') == sorted(k for k in expected['observations'] if k not in ('wrench','wrench_mask')))
-    if (contract != expected or recipe.get('encoder') != 'current9stack'
+    if (recipe.get('encoder') != 'current9stack'
             or not (recipe.get('wrench_history') is True or no_wrench)
             or recipe.get('base_contract') != GridProfile('required').CONTRACT
             or recipe.get('sdk_convention') != 'sdk-x-forward-z-left'

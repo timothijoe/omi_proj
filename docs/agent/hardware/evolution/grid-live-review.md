@@ -1,5 +1,11 @@
 # 实时小矩阵观测看板
 
+2026-10-07 当前行为：corrected 模型模式直接显示 `/tj/info/eef_left` 的原始
+`base_link` 位姿；旧的临时平移 `(-0.062159,-0.171229,+0.000024)m`、
+`--eef-offset-base-m` 参数与原始/补偿双标记均已移除。左臂发布端安装平移 Y
+同步修正为 `0.0260m`。这改变新采集的 EEF 数值和实时显示，不改历史 bag；
+仍须现场多姿态核对 TCP 与模型的关系。详见[本次记录](../chronicles/2026-10-07-eef-mount-and-view.md)。
+
 2026-10-04新增`view_grid_observation_live.sh`，参考录包grid viewer的绘图布局，独立实现实时监测。
 使用`grid_live_review.py`，复用grid decoder/renderer；原回放文件没有修改。
 默认domain13、SUBNET、2Hz看板刷新；订阅直接来自现有ROS发布者，不打开SDK、不回放命令。
@@ -7,8 +13,11 @@
 
 输入为外部RGB、腕部ROI128、双指deformation/shear/depth、左臂EEF；关节、wrench、raw可选。
 每路保留最新合法样本及最多150个接收时刻，统计近期3秒Hz，显示接收/header年龄、发布者及状态。
-异常样本清除旧值，过期/时钟异常图像不继续显示；收到数据与形状合法、同步、标定分别说明。
-EEF50ms、其他250ms、header超前100ms提示阈值沿用在线契约。
+异常样本清除旧值，接收过期图像不继续显示；收到数据与形状合法、同步、标定分别说明。
+2026-10-07起，第三视角外部RGB仅按本机单调接收时刻的250ms年龄判定看板显示，
+源header年龄仍记录与显示，但跨机时钟偏差不会令画面在LIVE/OLD_HEADER之间闪烁。
+EEF50ms、其他250ms，以及非外部RGB的header超前100ms提示阈值保留。
+这只改变只读看板，不改变policy的严格时间检查；接收新鲜不证明源画面没有传输延迟。
 
 当前默认沿用原方向修正版Stand模型，以/omi/live_grid/model命名空间发布显示专用joint_states、TF与robot_description，另有model_markers。
 不发布运动命令或现场全局joint_states/TF。三维显示分别标注L7与ROS EEF，基座重合仍为原显示假设，不是标定结论。

@@ -2,6 +2,12 @@
 
 - [长期章程](charter.md)
 - [当前摘要](current.md)
+- [人工周期采集：功能、现场进展与多回合用法](chronicles/2026-10-07-human-periodic-collection.md)
+- [最新双池开发与迁移记录](chronicles/2026-10-07-dual-replay.md)
+- [周期控制、label回放与BC拟合开发记录](chronicles/2026-10-07-periodic-replay-bc-fitting.md)
+- [BC模型与成功label回放测试教程](../../../tutorials/bc_replay_testing.md)
+- [当前异步真机RL运行教程](../../../tutorials/async_rl.md)
+- [异步框架实现与交接记录](chronicles/2026-10-07-async-rl.md)
 - [HIL 训练数据链](evolution/hil-training.md)
 - [录包BC与ROS影子推理](evolution/bag-bc-shadow.md)
 - [磁盘经验池](evolution/disk-replay.md)

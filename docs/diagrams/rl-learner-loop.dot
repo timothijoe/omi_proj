@@ -1,0 +1,38 @@
+digraph learner {
+  graph [bgcolor="#FFFFFF", pad="0.35", ranksep="0.45", nodesep="0.45", fontname="Noto Sans CJK SC", fontsize=23, labelloc=t, label="02  人工干预的真机 RL：数据与学习\n2026-10-07  |  Learner 与执行端独立运行", rankdir=TB];
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2FB", color="#A9BED6", fontcolor="#172D43", fontname="Noto Sans CJK SC", fontsize=14, margin="0.20,0.15", penwidth=1.2];
+  edge [fontname="Noto Sans CJK SC", fontsize=11, color="#60758B", fontcolor="#34495E", arrowsize=0.75];
+  legend [shape=plaintext, fillcolor=white, fontsize=12, label="蓝：已有模块    黄：待统一 / 待联调    红：待补 / 已知缺陷\n当前离线训练使用固定数据快照；持续在线闭环尚未完成真机验证"];
+  demos [label="初始人工示范 / 历史回合\n按数据契约选择导入路径"];
+  online [fillcolor="#FFF2D7", color="#D8AE5D", label="真机新完成的 ready 回合\n新采集链路持续交接【待联调】"];
+  validate [label="校验与防重复导入【已有】\n观测 / 动作 / 奖励契约；完整回合；唯一 episode ID"];
+  replay [shape=cylinder, label="硬盘 Replay【已有】\n初始示范 → 示范流；在线经验 → 在线流\n在线人工接管同时属于两流，不代表独立双份数据"];
+  gate [shape=diamond, style=filled, fillcolor="#FDEBEC", color="#D89399", label="训练条件满足？\n最低启动量需完善\n新数据对应更新额度【待补】", fontsize=13];
+  wait [label="等待新回合 / 人工继续采集\n执行端不必等待每一次梯度更新"];
+  batch [label="从示范流与在线流混合抽样【已有】\n默认各半；目前全人工数据可能属于同一组样本"];
+  update [label="SAC 更新【已有软件测试】\n共享编码器 + 双 Q + Actor + 温度\nCritic / Actor 更新比 2:1，不等于环境采样比"];
+  checkpoint [label="保存完整断点，定期发布策略【已有】\n模型 / 目标 Q / 优化器 / 温度 / 随机状态 / 版本"];
+  load [fillcolor="#FFF2D7", color="#D8AE5D", label="下一回合边界加载新策略\n已有模块；与新执行链路的真机闭环【待验证】"];
+  run [fillcolor="#FFF2D7", color="#D8AE5D", label="策略执行 + RB 人工接管\n生成新经验（返回图 01）"];
+  interrupt [label="训练 Ctrl+C / SIGTERM【已有】\n完成当前更新后保存退出\n重启恢复；不自动恢复机器人动作"];
+  limits [shape=note, fillcolor="#FFF2D7", color="#D8AE5D", fontsize=12, label="恢复与验收边界\n• 离线 --resume 不自动吸收新增回合\n• 强杀 / 断电不保证零损失；dirty replay 拒绝加载\n• 保留原始回合，用于重建；不伪造 clean 标志\n• 尚需验证成功率、接管比例、异常停止与版本闭环"];
+
+  legend -> demos [style=invis];
+  legend -> online [style=invis];
+  {rank=same; demos; online;}
+  demos -> validate;
+  online -> validate;
+  validate -> replay -> gate;
+  gate -> wait [label="否"];
+  wait -> gate [label="收到新数据", constraint=false];
+  gate -> batch [label="是"];
+  batch -> update -> checkpoint;
+  checkpoint -> gate [label="继续训练", constraint=false];
+  checkpoint -> load [style=dashed, label="版本交接"];
+  load -> run;
+  run -> online [style=dashed, constraint=false, label="新回合"];
+  update -> interrupt [style=dashed, label="停止请求"];
+  interrupt -> gate [style=dashed, constraint=false, label="重启恢复"];
+  run -> limits [style=invis];
+  interrupt -> limits [style=invis];
+}

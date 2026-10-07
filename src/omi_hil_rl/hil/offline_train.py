@@ -141,7 +141,7 @@ def evaluate(agent, index):
 
 
 def train(source, output, pretrained, *, updates=100, batch_size=256, seed=7, device='cuda', resume=False,
-          should_stop=lambda: False):
+          should_stop=lambda: False, capacity=None):
     if updates < 2 or batch_size < 2:
         raise ValueError('at least two updates and batch size two required')
     if device == 'cuda' and not torch.cuda.is_available():
@@ -159,7 +159,10 @@ def train(source, output, pretrained, *, updates=100, batch_size=256, seed=7, de
             replay = TransitionReplay.reopen(output/'replay', expected_contract=contract, prefetch=False)
         else:
             config, contract, recipe, index = prepare(source, output, pretrained, seed)
-            capacity = sum(ep['manifest']['count'] for ep in index if ep['split']=='training')
+            required = sum(ep['manifest']['count'] for ep in index if ep['split']=='training')
+            if capacity is not None and capacity < required:
+                raise ValueError('capacity must fit all initial training records')
+            capacity = required if capacity is None else capacity
             bytes_per = 2*sum(np.prod(s['shape'])*np.dtype(s['dtype']).itemsize for s in contract['observations'].values())
             if shutil.disk_usage(output).free < capacity*bytes_per + 2_000_000_000:
                 raise RuntimeError('insufficient disk space for replay and checkpoints')
@@ -249,12 +252,13 @@ def main():
     p.add_argument('--seed', type=int, default=7)
     p.add_argument('--device', choices=['cpu', 'cuda'], default='cuda')
     p.add_argument('--resume', action='store_true')
+    p.add_argument('--capacity', type=int, help='reserve replay capacity for later online episodes')
     args = p.parse_args()
     torch.set_num_threads(2)
     with graceful_stop() as should_stop:
         train([p.resolve() for p in args.source], args.output.resolve(), args.pretrained.resolve(), updates=args.updates,
               batch_size=args.batch_size, seed=args.seed, device=args.device, resume=args.resume,
-              should_stop=should_stop)
+              should_stop=should_stop, capacity=args.capacity)
 
 
 if __name__ == '__main__':

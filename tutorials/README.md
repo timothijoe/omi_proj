@@ -1,14 +1,20 @@
 # 操作教程
 
-- [历代 RViz 回放：三包与完整一行式命令](rviz_representative_bags.md)
+- [BC模型与成功label回放测试：295/3295/11795模型切换、按键及记录边界](bc_replay_testing.md)
+
+- [异步真机RL：Actor/Learner并行，每10个完整回合刷新策略](async_rl.md)
+
+- [按回合交替RL：采集后训练、重载策略、RB复位与下一回合](alternating_rl.md)
+
+- [RViz 操作教程：现场传感器、手柄、实时看板与历代三包回放的一行式命令](rviz_representative_bags.md)
 
 - [真机RL人工回合：按钮成功、超时停止、手柄复位和连续采集](rl_episode_collection.md)
 
-- [当前无wrench模型：推理、RB接管、Ctrl+C观测保存](no_wrench_policy_record.md)
+- [当前无wrench模型：推理、RB接管、单按314回home、Ctrl+C观测保存](no_wrench_policy_record.md)
 
 - [独立传感器采集、腕部可靠录制与时间审计](sensor_decoupling.md)
 
-- [新wrench BC模型真机入口：默认预览、RB手柄优先](wrench_policy_gamepad.md)
+- [新wrench BC模型真机入口：默认预览、RB手柄优先、单按314回home](wrench_policy_gamepad.md)
 
 - [本次日期bag转训练集：双指六维力/力矩BC训练](passive_bag_bc_wrench.md)
 

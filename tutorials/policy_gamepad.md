@@ -22,6 +22,7 @@ bash scripts/run_policy_gamepad.sh \
 预览使用独立候选话题，仲裁器不创建机器人命令发布者。需要发送真机动作时，使用新输出目录并加 `--execute`；该参数会直接启动发布，没有额外回车确认。默认 domain 13，修改用 `OMI_POLICY_DOMAIN_ID`。手柄默认 `/dev/input/js0`，可用 `--gamepad` 指定。
 
 - RB（右侧上方肩键，按钮311，不是下方RT扳机）按住：人工接管；摇杆居中时也是人工零动作。用户已确认继续使用此键。
+- 推理专用的wrench/无wrench启动脚本默认单按键码314返回home；无需同时按RB。通用`run_policy_gamepad.sh`仍可用`--home-button-code 314 --home-button-alone`显式启用同样行为。
 - RB 松开：丢弃接管期间的旧候选，等待松开之后的新 policy 候选。
 - 手柄断开、候选缺失或过期：零动作。候选只消费一次，不重复最后一条。
 - Ctrl+C 或模型进程退出：联动停止；独占输出时仲裁器尝试发送最后一条零增量。
@@ -36,7 +37,7 @@ bash scripts/run_policy_gamepad.sh \
 
 1. 平移和旋转向量换轴 `(x,y,z) -> (x,-z,y)`。
 2. 旋转向量转旋转矩阵，再转 SDK ABC，满足 `R = Rz(C) Ry(B) Rx(A)`。
-3. 输出 mm/度；模型动作发布 `/omi/action/decision`，手动接管和 RB+X 返回发布
+3. 输出 mm/度；模型动作发布 `/omi/action/decision`，手动接管和回位动作发布
    `/omi/action/manual_decision`（均为 `Float64MultiArray`，空 layout）。
    接收端触觉保护默认关闭，显式开启后只拦截模型，手动通道不受影响。
 

@@ -39,6 +39,8 @@ def commands(args):
                 arbiter.extend(['--gripper-' + key.replace('_', '-'), str(value)])
     if args.execute:arbiter.append('--publish')
     arbiter.extend(['--home-button-code', str(getattr(args, 'home_button_code', 308))])
+    if getattr(args, 'home_button_alone', False):
+        arbiter.append('--home-button-alone')
     return [arbiter,actor],topic
 
 

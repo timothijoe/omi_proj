@@ -99,6 +99,11 @@ def test_launcher_preview_isolated_and_execute_uses_same_conversion(tmp_path):
     assert topic.startswith('/omi/policy/preview_') and '--publish' not in cmd[0]
     assert cmd[0][cmd[0].index('--frame')+1]=='base_link'
     assert cmd[0][cmd[0].index('--output-convention')+1]==SDK_CONVENTION
+    assert '--home-button-alone' not in cmd[0]
+    a.home_button_code=314;a.home_button_alone=True
+    cmd,_=commands(a)
+    assert cmd[0][cmd[0].index('--home-button-code')+1]=='314'
+    assert '--home-button-alone' in cmd[0]
     a.execute=True;cmd,topic=commands(a)
     assert topic=='/omi/policy/candidate' and '--publish' in cmd[0]
     a.candidate_expiry='off';cmd,_=commands(a)
