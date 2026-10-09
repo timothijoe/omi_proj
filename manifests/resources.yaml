@@ -1,18 +1,40 @@
 schema_version: 1
 # tactile and bc historical outputs migrated on 2026-10-03; a record010 baseline and replay cache were regenerated locally on 2026-10-07 for RViz review.
-# eef_bc remains local by user request; its archive copy is not a complete current snapshot.
+# The oct_02 eef_bc copy remains incomplete; the current directory is relocated separately on 2026-10-09.
 # Resource path fields below retain logical working paths for reproducible commands.
 historical_data_archive:
-  status: tactile_and_bc_completed_eef_retained_locally
+  status: tactile_and_bc_completed_oct02_eef_copy_incomplete
   root: /media/zhoutong/zt-think-d1/legion_data/legion_omi_proj/local/oct_02
   planned_directory_mapping:
     local/tactile: tactile
     local/bc: bc
     local/eef_bc: eef_bc
   completed_source_removals: [local/tactile, local/bc]
-  retained_local_directories: [local/eef_bc]
-  restore: For tactile and bc pass archive paths explicitly or copy needed experiments back; no symlinks remain. Continue using local/eef_bc, whose archive is incomplete. New outputs belong in separate directories. Latest native-field bags do not require historical tactile baselines or BC artifacts.
+  retained_local_directories_at_20261003: [local/eef_bc]
+  restore: Historical tactile and bc use this archive explicitly; no links point to this oct_02 archive. Current eef_bc and regenerated tactile replay_cache use the separate 2026-10-09 local_data_storage mapping below. The oct_02 eef_bc copy is not a complete current snapshot.
+local_data_storage:
+  status: complete_sha256_verified
+  date: '2026-10-09'
+  working_root: /home/zhoutong/omi_folder/omi_proj/local
+  external_root: /media/zhoutong/zt-think-d1/omi_proj_data/local
+  external_filesystem: exfat
+  mapping: Selected directories retain the same path relative to local; original directory paths are symlinks on local ext4. Parent session directories remain local.
+  inventory: manifests/local-storage-20261009.json
+  evidence: local/storage_migrations/20261009_202357
+  external_evidence: /media/zhoutong/zt-think-d1/omi_proj_data/migrations/20261009_202357
+  retained_current_rl: local/rl_training/bc_demo_new_20261007_213643_rl_live_01
+  retained_current_seed: local/rl_training/bc_demo_new_20261007_213643_rl_seed_01
+  retained_current_bc: local/rl_training/bc_demo_new_20261007_213643_coarse_fine_01
+  retained_current_demonstrations: local/rl_episodes/demo_new_20261007_213643
+  retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
+  restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: external-local-cold-data
+    path: /media/zhoutong/zt-think-d1/omi_proj_data/local
+    tracked: false
+    source: Selected inactive local datasets, old RL runs, acquisition sessions and review caches
+    purpose: Free SSD space while preserving logical working paths through local directory symlinks
+    restore: Use manifests/local-storage-20261009.json and migration evidence for exact relative mappings and per-file SHA256. This is a cold data archive, not a complete project backup or a qualified live replay volume.
   - id: rviz-representative-bags
     path: ../representative_rosbag/october
     tracked: false

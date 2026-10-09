@@ -1,5 +1,16 @@
 # Training 当前摘要
 
+2026-10-09 存储更新：选定旧 RL 会话、旧人工采集、旧 BC 评估和离线数据已迁往
+`/media/zhoutong/zt-think-d1/omi_proj_data/local/`，原路径用软链接兼容。
+当前 `rl_live_01`、BC12045、对应 seed/索引、新示范和最新 BC 评估保留本机；
+外置旧会话续训前需恢复到 SSD。完整范围和状态见[存储契约](../interfaces/local-storage.md)
+与[本次编年](chronicles/2026-10-09-local-data-relocation.md)。
+
+2026-10-09 新增[真机 RL 回合逐帧只读查看器](../../../tutorials/rl_episode_visual_review.md)：
+按原始周期浏览外部/腕部相机十帧历史、触觉场、动作来源和训练片段状态；当前会话识别
+10 个完整审计回合及 1 个中断暂存目录。该入口不改变入池判定，也不能凭看图证明
+EEF 因果时序或策略成功率。实现及检查见[编年记录](chronicles/2026-10-09-rl-episode-visual-review.md)。
+
 2026-10-08 最新：新 BC12045 热启动的真机 RL 已完成首批 10 个完整回合，
 8 个回合导出 1059 条有效 transition（约 54.1%）、172 个片段；
 在线池 1059、固定初始示范 1387、在线人工干预 548。Learner 在现场完成

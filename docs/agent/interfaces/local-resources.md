@@ -1,6 +1,10 @@
 # 本地资源定位
 
-历代 RViz 代表录包实际位于 `/home/zhoutong/omi_folder/representative_rosbag/october/`：`record010/bag_001/`、`native_wrist_bag_004.zip`、`grid24x16_bag_001.zip`。完整命令见[三包操作页](../../../tutorials/rviz_representative_bags.md)。历史文件移至 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，逐文件 SHA-256 和原路径在 `manifest.json`；旧 Downloads 路径保留符号链接。移动盘未挂载时，仅本机三包正常可用；四个手柄 BC 示范包及 RL 回合数据未迁移。
+2026-10-09 新存储层：选定冷数据已迁入 `/media/zhoutong/zt-think-d1/omi_proj_data/local/`，
+项目原目录通过软链接兼容。目录映射、当前本机保留资源与最终状态见[存储契约](local-storage.md)
+及[操作教程](../../../tutorials/local_data_storage.md)。下文 `local/...` 是逻辑工作路径，不能仅凭名称判断物理位置。
+
+历代 RViz 代表录包实际位于 `/home/zhoutong/omi_folder/representative_rosbag/october/`：`record010/bag_001/`、`native_wrist_bag_004.zip`、`grid24x16_bag_001.zip`。完整命令见[三包操作页](../../../tutorials/rviz_representative_bags.md)。历史文件移至 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，逐文件 SHA-256 和原路径在 `manifest.json`；旧 Downloads 路径保留符号链接。三份代表 bag 本体留本机，但原生场、腕部、grid 和旧 record010 的显示缓存均已外置，现有录包回放入口仍需挂载盘。现场实时看板不使用这些录包缓存。四个手柄 BC 示范包随 `local/bags` 迁出；RL 原始回合按新存储清单选择迁出，当前新示范保留本机。
 
 双指wrench实时/历史记录：`local/wrench_live/session-*`，包含samples.jsonl、metadata.jsonl、
 manifest/status/report及实时/全程PNG；原始记录不能由截图恢复，转移请复制整个会话目录。
@@ -35,13 +39,15 @@ manifest/status/report及实时/全程PNG；原始记录不能由截图恢复，
 **旧 `local/tactile/` 实验产物和 `local/bc/` 已完成迁移，不留指向该旧实验归档的软链接。**2026-10-07 为旧 RViz 回放重建了本地 `local/tactile/record010_zero_load_25_26_confirmed_v2/` 与 `local/tactile/replay_cache/`；这不代表旧实验产物已全部恢复。
 再次内容校验153个文件、8,007,932,419字节，无缺失或差异；历史产物需从归档路径读取，
 或按需复制回原相对路径。本机释放约7.46 GiB。
-**`local/eef_bc/` 保留不动。** 此前因 `oct3_formal_v3_run1/` 并行写入而暂停迁移，
-用户随后明确要求保留该目录；移动盘 `eef_bc/` 仅为首批副本，不能替代本地当前完整数据。
+**`local/eef_bc/` 当前完整数据已迁往新的 `omi_proj_data/local/eef_bc/`，原路径保留软链接。**
+10 月 3 日因并行训练及用户要求而保留本机，是当时阶段；上面 oct_02 归档中的
+`eef_bc/` 仍仅为首批副本，不能替代本次新的完整目录。执行状态见本页顶部存储契约。
 
 当前开发以最新bag的原生topic为准，不要求恢复旧record010零载基准或历史训练结果。
 但旧图像重建入口仍依赖其基准，不能把“当前流程不需要”解释为“旧入口不需要”。
 新训练输出应另选目录，不覆盖归档；旧报告内嵌路径未重写，重跑前需核对输入、缓存和权重路径。
-程序、SDK、运行模型、机器人资产、消息构建环境以及原始bag均未包含在这次迁移中。
+程序、SDK、运行模型、机器人资产、消息构建环境以及原始bag均未包含在上述 10 月 3 日迁移中；
+本次 10 月 9 日的新迁移范围包含 `local/bags` 下四个手柄示范包。
 操作说明见[迁移清单](../../../tutorials/machine_transfer_checklist.md#历史实验数据的归档位置)，
 阶段记录见[首次复制](../training/chronicles/2026-10-03-experiment-data-archive.md)
 及[完成两个目录迁移](../training/chronicles/2026-10-03-tactile-bc-archive-complete.md)。
@@ -69,7 +75,7 @@ Stand派生模型固定归档为 `local/models/omi_marvin_stand_axis_corrected_v
 应复制匹配源码并在目标机重建；纯schema2 SDK传感器看板不需要。
 
 新外部录包看板使用命令参数指定ZIP/目录，不依赖原机器Downloads布局。
-`local/recorded_review`存生成显示缓存；`local/robot_state/models`存本机生成URDF，
+`local/recorded_review`存生成显示缓存，当前经软链接写入外盘；`local/robot_state/models`存本机生成URDF，
 `local/robot_state/viewer.env`存本机Marvin overlay等可信Shell配置，均不进Git。
 输入包、模型资产和匹配消息定义另行恢复，见[资源清单](../../../manifests/resources.yaml)
 及[拷贝清单](../../../tutorials/machine_transfer_checklist.md)。缓存不是训练数据集。

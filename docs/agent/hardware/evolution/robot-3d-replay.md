@@ -1,5 +1,11 @@
 # 机器人3D录包回放
 
+2026-10-09 存储更新：三份代表 bag 本体仍在本机；`local/bags` 及 `recorded_review`、
+`wrist_recorded_review`、`grid_recorded_review`、`tactile/replay_cache` 已迁入
+`omi_proj_data/local/`，原目录软链接兼容。现有录包回放入口需要挂载移动盘；
+现场实时看板不使用这些录包缓存。SDK/基准/本机模型资产保留。
+范围和最终状态见[存储契约](../../interfaces/local-storage.md)。
+
 ## 当前代表录包与操作入口（2026-10-07）
 
 历代录包回放现统一从[三包 RViz 操作页](../../../../tutorials/rviz_representative_bags.md)选择完整命令：旧 record010 使用 `/home/zhoutong/omi_folder/representative_rosbag/october/record010/bag_001/`，原生触觉、腕部与 Stand/Hybrid 对照使用同目录 `native_wrist_bag_004.zip`，24×16 grid 回放使用 `grid24x16_bag_001.zip`。本机旧 Downloads 路径仅为兼容链接；新文档和人工启动应使用上述真实路径。Stand/Hybrid 另需 `/home/zhoutong/Downloads/oct2/Marvin_Stand_2026.2.2.rar`，旧重建看板另需零载荷基准和 Daimon SDK。

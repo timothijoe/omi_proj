@@ -1,5 +1,11 @@
 # 操作教程
 
+- [local 大数据外置：原路径兼容、挂载检查与旧会话恢复](local_data_storage.md)
+
+- [真机 RL 回合逐帧可视化：两路相机、10 帧历史、触觉与训练片段状态](rl_episode_visual_review.md)
+
+- [真机常用启动指令汇总：机器人、三路传感器、看板、手柄、示范、BC 与 RL](common_live_commands.md)
+
 - [BC模型与成功label回放测试：295/3295/11795模型切换、按键及记录边界](bc_replay_testing.md)
 
 - [异步真机RL：Actor/Learner并行，每10个完整回合刷新策略](async_rl.md)

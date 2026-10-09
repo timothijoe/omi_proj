@@ -1,5 +1,9 @@
 # 双指六维力/力矩：实时查看与完整历史记录
 
+2026-10-09 存储更新：`local/wrench_live` 父目录保留本机，已有历史会话迁到
+`omi_proj_data/local/wrench_live/` 并保留软链接；新会话仍写本机。查看旧会话须挂载移动盘，
+见[存储教程](local_data_storage.md)。
+
 从项目根目录运行：
 
 ```bash

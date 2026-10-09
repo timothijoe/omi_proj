@@ -86,7 +86,9 @@ SDK原生看板：`bash scripts/view_sdk_observation.sh [--fake | --bag BAG] [--
 显示 topic 为 `/omi/observation/dashboard`；纯触觉入口继续保留。
 
 触觉回放新入口：`bash scripts/view_tactile_bag.sh BAG [RATE] [--no-rviz]`。
-它调用 `python -m omi_hil_rl.real.tactile_replay_cache BAG CACHE_ROOT` 创建本地 raw 缓存，
+它调用 `python -m omi_hil_rl.real.tactile_replay_cache BAG CACHE_ROOT` 创建独立 raw 缓存，
+默认工作路径 `local/tactile/replay_cache` 自 2026-10-09 起经软链接读取外盘，须挂载移动盘；
+位置与恢复边界见[存储契约](local-storage.md)。
 并启动 `python -m omi_hil_rl.real.tactile_live fields --baseline-dir DIR --sdk-root DIR`
 和独立的 `...tactile_live dashboard`。两进程支持 `--rate`；仅发布触觉数值/显示消息，
 不发布控制命令。[数据契约及限制](../hardware/evolution/tactile-live.md)。

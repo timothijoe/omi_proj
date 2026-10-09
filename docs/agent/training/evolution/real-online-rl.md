@@ -1,5 +1,9 @@
 # 真机在线 RL：BC 热启动、手柄接管与异步训练
 
+2026-10-09 存储说明：本文当前 `rl_live_01`、对应 BC/seed/索引及原始新示范保留本机。
+旧 probe 和旧 RL 会话已外置归档，原工作路径用软链接兼容；
+外置旧会话续训前须恢复到 SSD，见[目录映射](../../interfaces/local-storage.md)。
+
 本文维护当前真机 RL 的功能与数据语义。2026-10-08 首批现场数据和逐条时间戳分析
 见[编年记录](../chronicles/2026-10-08-first-online-rl-run.md)；仿真训练属于另一入口，
 见[仿真 HIL 训练](hil-training.md)。
@@ -105,3 +109,13 @@ Learner/Actor 检查点已达到版本 6502，Actor 参数已发生更新。
   推断模型可靠。
 
 具体命令与按键见[异步 RL 教程](../../../../tutorials/async_rl.md)。
+
+## 原始回合的逐帧人工复查
+
+`scripts/view_rl_episodes.sh --run RUN_DIRECTORY` 在本机启动只读网页，按需打开
+`periodic_episodes/<id>/<tick>.npz`。可逐回合、逐周期、逐历史槽位查看两路相机、
+触觉场、掩码及记录动作；`audit.json`、`pairing.json`、`ready.json` 和 `imported.json`
+用于说明该周期为何可用或被排除、是否已导入 Learner。未完成的 `staging.json`
+目录也单独列出，不算完整回合。工具不连接 ROS、不发布命令、不修改数据。
+人工视觉检查用于发现画面异常和动作来源疑点；时间因果与入池结论仍以原始审计为准，
+任务成败仍需现场证据。运行方法见[逐帧查看教程](../../../../tutorials/rl_episode_visual_review.md)。

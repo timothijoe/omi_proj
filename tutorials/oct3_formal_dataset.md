@@ -1,5 +1,9 @@
 # oct3正式录包：检查、转换与训练
 
+2026-10-09 存储更新：已导出的 `local/datasets` 已迁到 `omi_proj_data/local/datasets`，
+原路径保留软链接；读取数据须挂载移动盘。`local/eef_history` 的模型与报告保留本机，
+见[存储教程](local_data_storage.md)。
+
 **当前划分更新**：按用户说明，bag_002包含反复尝试，已移入训练，验证改为bag_004/008。
 新训练1283样本、验证242样本；单帧与历史模型均重训，产物在`local/eef_history/oct03_split2/`。
 新计划为该目录`plan.json`，历史训练命令将下文`--plan`替换为此文件，并选择新的输出目录。

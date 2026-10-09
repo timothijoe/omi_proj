@@ -17,7 +17,7 @@
 
 ## 目的与保留方案
 
-本机只保留三种录包格式的代表样例，供旧触觉/相机、原生触觉/腕部、24×16 grid 及机器人模型对照入口检查。历史录包迁至移动硬盘；四个 2026-10-05 手柄 BC 示范包和 RL 回合数据不属于本次 RViz 精简范围。实时看板直接订阅现场 ROS 话题，不依赖下面三包。
+本机只保留三种录包格式的代表样例，供旧触觉/相机、原生触觉/腕部、24×16 grid 及机器人模型对照入口检查。历史录包迁至移动硬盘；四个 2026-10-05 手柄 BC 示范包和 RL 回合数据不属于 10 月 7 日的 RViz 精简范围，随后已按 10 月 9 日存储清单分别选择迁出或保留。实时看板直接订阅现场 ROS 话题，不依赖下面三包。
 
 | 格式与用途 | 本机实际文件 | 约占空间 |
 | --- | --- | ---: |
@@ -25,7 +25,20 @@
 | 原生场 bag_004：腕部相机、触觉、EEF 与 Stand/Hybrid 对照 | `/home/zhoutong/omi_folder/representative_rosbag/october/native_wrist_bag_004.zip` | 1.2 GiB |
 | grid24x16：腕部 ROI、双指三场、EEF 与修正版机器人 | `/home/zhoutong/omi_folder/representative_rosbag/october/grid24x16_bag_001.zip` | 281 MiB |
 
-旧 Downloads 路径为指向上述本机文件的符号链接。其他历史 RViz 文件归档于 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`；`manifest.json` 记录逐文件 SHA-256、原路径与归档路径。旧 Downloads 中部分未保留的包仍以符号链接指向移动硬盘，拔盘后这些历史链接不可用。本页三包本身位于本机，不依赖移动硬盘挂载。
+旧 Downloads 路径为指向上述本机文件的符号链接。其他历史 RViz 文件归档于 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`；`manifest.json` 记录逐文件 SHA-256、原路径与归档路径。旧 Downloads 中部分未保留的包仍以符号链接指向移动硬盘，拔盘后这些历史链接不可用。
+
+### 原包、显示缓存和训练示范包
+
+按本页命令回放时，输入是 `representative_rosbag` 中指定的原包；脚本从该输入生成或复用显示缓存，再将缓存中的画面和状态发布给 RViz。缓存记录的 `source` 可追溯到原包。脚本使用命令参数选择输入，不会自动改用 `local/bags` 下的训练示范包。
+
+| 内容 | 工作路径 | 2026-10-09 后的实际位置 |
+| --- | --- | --- |
+| 三份代表原包 | `representative_rosbag/october/` | 本机 SSD |
+| 原生场、腕部、grid 显示缓存 | `omi_proj/local/recorded_review`、`wrist_recorded_review`、`grid_recorded_review` | 外盘 `omi_proj_data/local/` 下同名目录；原路径为软链接 |
+| 旧 record010 筛选后的传感器播放缓存 | `omi_proj/local/tactile/replay_cache` | 外盘 `omi_proj_data/local/tactile/replay_cache`；原路径为软链接 |
+| 四份手柄训练示范包 | `omi_proj/local/bags/demo_20261005_*` | 外盘 `omi_proj_data/local/bags/`，与三份 RViz 代表原包用途不同 |
+
+因此，三份原包虽留本机，**现有录包回放入口仍需挂载移动盘**。现场实时 RViz 不读取上述录包或显示缓存。以前 `local/bags/oct03` 中的历史重复原包已在 10 月 7 日整理时清出。挂载与恢复见[存储教程](local_data_storage.md)。
 
 ## 历代录包 RViz：完整命令
 

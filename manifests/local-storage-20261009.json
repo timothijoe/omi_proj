@@ -1,0 +1,555 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "date": "2026-10-09",
+  "source_root": "/home/zhoutong/omi_folder/omi_proj/local",
+  "external_root": "/media/zhoutong/zt-think-d1/omi_proj_data/local",
+  "external_filesystem": "exfat",
+  "started_at": "2026-10-09T20:24:56.498841+08:00",
+  "finished_at": "2026-10-09T20:36:11.770514+08:00",
+  "directory_count": 57,
+  "file_count": 12326,
+  "copied_bytes": 108860450265,
+  "source_allocated_bytes": 79700910080,
+  "external_allocated_bytes": 109921435648,
+  "before_local_bytes": 119058595840,
+  "after_local_bytes": 39359455232,
+  "freed_local_bytes": 79699140608,
+  "before_root_free_bytes": 25991397376,
+  "after_root_free_bytes": 105685831680,
+  "evidence": "local/storage_migrations/20261009_202357",
+  "external_evidence": "/media/zhoutong/zt-think-d1/omi_proj_data/migrations/20261009_202357",
+  "file_hash_manifest_sha256": "7d29d8142c128e321cac145a5cd545a0315b54b2afbdbbdec2139d686feb8457",
+  "verification": {
+    "status": "passed",
+    "verified_directory_links": 57,
+    "files_covered_by_copy_sha256": 12326,
+    "apparent_bytes": 108860450265,
+    "cold_replay_manifests": 14,
+    "read_only_npy_arrays": 264,
+    "readable_checkpoint_archives": 16,
+    "complete_demo_bags": 4,
+    "retained_local_directories_checked": 15,
+    "current_live_catalog": {
+      "directories": 11,
+      "audited": 10,
+      "transitions": 1059
+    },
+    "note": "All file SHA256 comparisons were performed during copy before removing originals; this pass checks links, sizes, schemas and read-only access. No training or ROS output."
+  },
+  "entries": [
+    {
+      "relative": "bags",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/bags",
+      "files": 20,
+      "allocated_bytes_before": 2358558720,
+      "apparent_bytes": 2358522435,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "bc_episodes/all8_coarse_fine_eval_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/bc_episodes/all8_coarse_fine_eval_01",
+      "files": 580,
+      "allocated_bytes_before": 489140224,
+      "apparent_bytes": 487920505,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "bc_episodes/bc_ready_20261007_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/bc_episodes/bc_ready_20261007_01",
+      "files": 298,
+      "allocated_bytes_before": 421298176,
+      "apparent_bytes": 420687274,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "bc_episodes/overfit_71960_eval_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/bc_episodes/overfit_71960_eval_01",
+      "files": 474,
+      "allocated_bytes_before": 374988800,
+      "apparent_bytes": 373950557,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "datasets",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/datasets",
+      "files": 174,
+      "allocated_bytes_before": 1937489920,
+      "apparent_bytes": 1937099656,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "eef_bc",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/eef_bc",
+      "files": 86,
+      "allocated_bytes_before": 6345953280,
+      "apparent_bytes": 6345745933,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "four-demo-audit-20261005",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/four-demo-audit-20261005",
+      "files": 361,
+      "allocated_bytes_before": 579661824,
+      "apparent_bytes": 578895954,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "grid_recorded_review",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/grid_recorded_review",
+      "files": 309,
+      "allocated_bytes_before": 88322048,
+      "apparent_bytes": 87672657,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "passive_bc_20261005_wrench",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/passive_bc_20261005_wrench",
+      "files": 1012,
+      "allocated_bytes_before": 869298176,
+      "apparent_bytes": 867513540,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "policy_gamepad",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/policy_gamepad",
+      "files": 1112,
+      "allocated_bytes_before": 869838848,
+      "apparent_bytes": 867524270,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "recorded_review",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/recorded_review",
+      "files": 446,
+      "allocated_bytes_before": 258379776,
+      "apparent_bytes": 257386307,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/collect_20261006_001257",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/collect_20261006_001257",
+      "files": 287,
+      "allocated_bytes_before": 481128448,
+      "apparent_bytes": 480525756,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/collect_20261006_001839",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/collect_20261006_001839",
+      "files": 303,
+      "allocated_bytes_before": 499494912,
+      "apparent_bytes": 498800312,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/collect_20261006_001958",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/collect_20261006_001958",
+      "files": 1174,
+      "allocated_bytes_before": 1976016896,
+      "apparent_bytes": 1973549478,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_203244",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_203244",
+      "files": 3,
+      "allocated_bytes_before": 8192,
+      "apparent_bytes": 2119,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_203257",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_203257",
+      "files": 93,
+      "allocated_bytes_before": 147902464,
+      "apparent_bytes": 147692987,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_203646",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_203646",
+      "files": 126,
+      "allocated_bytes_before": 207220736,
+      "apparent_bytes": 206945977,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_203822",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_203822",
+      "files": 136,
+      "allocated_bytes_before": 226721792,
+      "apparent_bytes": 226432288,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_204058",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_204058",
+      "files": 5,
+      "allocated_bytes_before": 16384,
+      "apparent_bytes": 7427,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_204551",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_204551",
+      "files": 17,
+      "allocated_bytes_before": 21102592,
+      "apparent_bytes": 21056160,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_204802",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_204802",
+      "files": 3,
+      "allocated_bytes_before": 8192,
+      "apparent_bytes": 2230,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_205011",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_205011",
+      "files": 3,
+      "allocated_bytes_before": 8192,
+      "apparent_bytes": 5990,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_210017",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_210017",
+      "files": 359,
+      "allocated_bytes_before": 611844096,
+      "apparent_bytes": 611066352,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_210643",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_210643",
+      "files": 40,
+      "allocated_bytes_before": 59658240,
+      "apparent_bytes": 59557194,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_211345",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_211345",
+      "files": 204,
+      "allocated_bytes_before": 160571392,
+      "apparent_bytes": 160141842,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_212259",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_212259",
+      "files": 309,
+      "allocated_bytes_before": 380448768,
+      "apparent_bytes": 379931173,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_212838",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_212838",
+      "files": 213,
+      "allocated_bytes_before": 261017600,
+      "apparent_bytes": 260594753,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/demo_new_20261007_213123",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/demo_new_20261007_213123",
+      "files": 559,
+      "allocated_bytes_before": 628035584,
+      "apparent_bytes": 626910886,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/test_20261007_155533",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/test_20261007_155533",
+      "files": 3,
+      "allocated_bytes_before": 8192,
+      "apparent_bytes": 2119,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/test_20261007_155622",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/test_20261007_155622",
+      "files": 117,
+      "allocated_bytes_before": 194052096,
+      "apparent_bytes": 193808025,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/test_20261007_161444",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/test_20261007_161444",
+      "files": 3,
+      "allocated_bytes_before": 8192,
+      "apparent_bytes": 2119,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/test_20261007_161750",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/test_20261007_161750",
+      "files": 1532,
+      "allocated_bytes_before": 2621272064,
+      "apparent_bytes": 2618159219,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_episodes/test_20261007_165317",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_episodes/test_20261007_165317",
+      "files": 3,
+      "allocated_bytes_before": 8192,
+      "apparent_bytes": 2119,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/alternating_20261007_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/alternating_20261007_01",
+      "files": 35,
+      "allocated_bytes_before": 2185678848,
+      "apparent_bytes": 4621569568,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/async_20261007_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/async_20261007_01",
+      "files": 37,
+      "allocated_bytes_before": 4621672448,
+      "apparent_bytes": 4621571298,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/async_20261007_20s_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/async_20261007_20s_01",
+      "files": 309,
+      "allocated_bytes_before": 9616932864,
+      "apparent_bytes": 9616233082,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/bc_demo_new_20261007_213643_rl_probe_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/bc_demo_new_20261007_213643_rl_probe_01",
+      "files": 89,
+      "allocated_bytes_before": 16893657088,
+      "apparent_bytes": 16893404886,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/bc_protected_20261007_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/bc_protected_20261007_01",
+      "files": 38,
+      "allocated_bytes_before": 3038666752,
+      "apparent_bytes": 9188730452,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/bc_protected_dual_20261007_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/bc_protected_dual_20261007_01",
+      "files": 91,
+      "allocated_bytes_before": 3038269440,
+      "apparent_bytes": 16686388584,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/offline_20261006_v1",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/offline_20261006_v1",
+      "files": 36,
+      "allocated_bytes_before": 2206371840,
+      "apparent_bytes": 2206264501,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "rl_training/seed_20261007_20s_01",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/rl_training/seed_20261007_20s_01",
+      "files": 36,
+      "allocated_bytes_before": 2220580864,
+      "apparent_bytes": 9171138754,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "sdk-dashboard-check-7qw9k4n0",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/sdk-dashboard-check-7qw9k4n0",
+      "files": 12,
+      "allocated_bytes_before": 152743936,
+      "apparent_bytes": 152713602,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "sdk-dashboard-check-h3v975l5",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/sdk-dashboard-check-h3v975l5",
+      "files": 12,
+      "allocated_bytes_before": 152612864,
+      "apparent_bytes": 152582728,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "sdk-dashboard-check-l1ml01pt",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/sdk-dashboard-check-l1ml01pt",
+      "files": 12,
+      "allocated_bytes_before": 151224320,
+      "apparent_bytes": 151194137,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "sensor-decoupling-20261005",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/sensor-decoupling-20261005",
+      "files": 517,
+      "allocated_bytes_before": 998461440,
+      "apparent_bytes": 997506658,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "sensors-smoke-39zu5339",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/sensors-smoke-39zu5339",
+      "files": 5,
+      "allocated_bytes_before": 183812096,
+      "apparent_bytes": 183802190,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "sensors-smoke-6hjrkgq4",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/sensors-smoke-6hjrkgq4",
+      "files": 6,
+      "allocated_bytes_before": 183824384,
+      "apparent_bytes": 183811134,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "tactile/replay_cache",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/tactile/replay_cache",
+      "files": 6,
+      "allocated_bytes_before": 5465169920,
+      "apparent_bytes": 5465145539,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/gui_acceptance_20261005",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/gui_acceptance_20261005",
+      "files": 7,
+      "allocated_bytes_before": 1765376,
+      "apparent_bytes": 1743192,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/live_acceptance_20261005",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/live_acceptance_20261005",
+      "files": 8,
+      "allocated_bytes_before": 1404928,
+      "apparent_bytes": 1384567,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/min_scale_acceptance_20261005",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/min_scale_acceptance_20261005",
+      "files": 7,
+      "allocated_bytes_before": 704512,
+      "apparent_bytes": 683939,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/session-faks0ef4",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/session-faks0ef4",
+      "files": 7,
+      "allocated_bytes_before": 2181472256,
+      "apparent_bytes": 2181446952,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/session-gnjcmtnc",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/session-gnjcmtnc",
+      "files": 7,
+      "allocated_bytes_before": 1540096,
+      "apparent_bytes": 1522092,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/session-q_67n65t",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/session-q_67n65t",
+      "files": 7,
+      "allocated_bytes_before": 401141760,
+      "apparent_bytes": 401117243,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrench_live/session-xx4gukye",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrench_live/session-xx4gukye",
+      "files": 7,
+      "allocated_bytes_before": 1439674368,
+      "apparent_bytes": 1439652802,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "wrist_recorded_review",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/wrist_recorded_review",
+      "files": 514,
+      "allocated_bytes_before": 349552640,
+      "apparent_bytes": 348498370,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    },
+    {
+      "relative": "zero-action-live-20261005",
+      "external_path": "/media/zhoutong/zt-think-d1/omi_proj_data/local/zero-action-live-20261005",
+      "files": 157,
+      "allocated_bytes_before": 1144492032,
+      "apparent_bytes": 1144228382,
+      "working_path_is_symlink": true,
+      "status": "complete"
+    }
+  ]
+}

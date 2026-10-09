@@ -1,5 +1,8 @@
 # 当前帧独立＋过去9帧通道拼接
 
+2026-10-09：`local/datasets` 外置后通过原路径软链接读取，重训须挂载移动盘；
+本页 `local/eef_history` 权重、计划和输出仍保留本机。见[存储教程](local_data_storage.md)。
+
 这是独立离线模型：当前帧为RGB3，过去9帧按从旧到新的顺序拼成RGB27，去掉GRU。
 完整配置和结果见[实验说明](../docs/agent/training/evolution/current-stack-history.md)。
 

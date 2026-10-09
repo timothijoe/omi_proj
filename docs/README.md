@@ -1,9 +1,14 @@
 # OMI 文档总目录
 
+2026-10-09 local 冷数据外置：[目录映射与本机保留范围](agent/interfaces/local-storage.md)
+→ [挂载、使用与恢复教程](../tutorials/local_data_storage.md)。当前 RL live、对应 BC/seed 与新示范留本机。
+
 当前人工真机 RL 采集：[周期模式功能与现场进展](agent/training/chronicles/2026-10-07-human-periodic-collection.md)
 → [操作教程](../tutorials/rl_episode_collection.md)。
 
 历代 RViz 回放的本机代表数据与完整命令见[三包操作页](../tutorials/rviz_representative_bags.md)；历史 bag 已外置，迁移记录见[2026-10-07 编年](agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。
+
+2026-10-09 更新：三份代表原包仍留本机，现有录包回放入口的显示缓存已外置，运行仍需挂载移动盘；现场实时看板不使用这些录包缓存。同日音频定制内核备份与空间清理见[主机清理记录](agent/interfaces/local-storage.md#同日主机空间清理与内核备份)。
 
 最新真机RL采集阶段：[实现与首批数据检查](agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)
 → [采集操作教程](../tutorials/rl_episode_collection.md)。旧批次已采16段1723条并通过结构校验，

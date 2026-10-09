@@ -1,6 +1,8 @@
 # bag_004：末端动作空间、BC与影子推理
 
-`local/eef_bc/` 按用户要求继续保留本地使用；移动盘只有首批副本，不是完整最新备份。
+2026-10-09 当前完整 `local/eef_bc/` 已迁入 `/media/zhoutong/zt-think-d1/omi_proj_data/local/eef_bc/`，
+原路径保留软链接。以下命令仍可使用，但须挂载移动盘；新实验需要本机性能时另选本机输出目录。
+10 月 3 日的 oct_02 外盘副本仍不完整，不应与本次目录混用。见[存储与恢复](local_data_storage.md)。
 位置与后续路径使用方式见[迁移清单](machine_transfer_checklist.md#历史实验数据的归档位置)。
 本教程的本地末端实验路径不受此次迁移影响；本次仅移除了已校验归档的 `local/tactile/` 和 `local/bc/`。
 

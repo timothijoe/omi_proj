@@ -1,5 +1,9 @@
 # 换机器：额外拷贝与重新安装清单
 
+2026-10-09 本机冷数据已外置到 `omi_proj_data/local/`，项目中选定目录用软链接兼容；
+当前 live/BC/seed/新示范与运行环境留本机。换机器时应按[完整目录映射](../docs/agent/interfaces/local-storage.md)
+复制实际数据，不能只拷贝指向旧用户名/挂载点的软链接；使用和恢复见[存储教程](local_data_storage.md)。
+
 **Git只带代码、配置模板、文档和校验清单，不带厂商SDK、bag、基准、模型和虚拟环境。**
 先选择要运行的功能，再准备对应资源；不要把全部参考工程或旧机器的venv/install一起搬过去。
 
@@ -16,13 +20,14 @@
 └── eef_bc/
 ```
 
-**旧 `local/tactile/` 实验产物和 `local/bc/` 已校验并完成迁移，没有指向该旧实验归档的软链接。**2026-10-07 为旧 RViz 回放重新生成了本地 `local/tactile/record010_zero_load_25_26_confirmed_v2/` 与 `local/tactile/replay_cache/`；它们不代表旧实验产物已全部恢复。
-**`local/eef_bc/` 按用户要求继续保留**，移动盘 `eef_bc/` 只是较早副本，不能当作完整最新备份。
-读取旧触觉/BC实验需改用归档路径或按需恢复；末端实验仍使用本地 `local/eef_bc/`。
+**旧 `local/tactile/` 实验产物和 `local/bc/` 已校验并完成迁移，没有指向该 oct_02 归档的软链接。**2026-10-07 重建了 record010 基准和 replay_cache；本次基准保留本机，较大的 replay_cache 则迁到新的 `omi_proj_data/local/tactile/replay_cache/` 并保留工作路径链接。
+**当前完整 `local/eef_bc/` 已迁往新的 `omi_proj_data/local/eef_bc/`，原路径保留软链接。**
+上面 oct_02 内的 `eef_bc/` 仍是较早副本，不能当作完整最新备份。
+读取旧触觉/BC实验需使用对应归档路径；现有末端实验命令仍可使用 `local/eef_bc/`，但需要挂载移动盘。
 当前最新原生字段bag流程
 不需要这些旧基准或旧policy；程序、SDK和运行必需模型仍留在项目中。
 
-历代 RViz 的三份本机代表录包集中在 `/home/zhoutong/omi_folder/representative_rosbag/october/`；历史录包归档在 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，见[一行式回放命令](rviz_representative_bags.md)及归档 `manifest.json`。旧 Downloads 历史路径是到移动盘的符号链接，盘未挂载时不能使用；三份代表录包不依赖该盘。
+历代 RViz 的三份本机代表录包集中在 `/home/zhoutong/omi_folder/representative_rosbag/october/`；历史录包归档在 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`，见[一行式回放命令](rviz_representative_bags.md)及归档 `manifest.json`。旧 Downloads 历史路径是到移动盘的符号链接，盘未挂载时不能使用。三份代表录包的原包本体留在本机；但现有回放脚本使用的 `local/recorded_review`、`local/wrist_recorded_review`、`local/grid_recorded_review` 和 `local/tactile/replay_cache` 已外置，运行这些录包回放入口仍需挂载移动盘。现场实时 RViz 直接订阅话题，不使用这些代表包和显示缓存。
 
 读取已迁移历史实验时挂载移动硬盘，将命令中 `local/bc/` 或 `local/tactile/` 前缀换成对应归档
 绝对路径；若报告/配置内还引用旧路径，逐项修正运行参数，或复制所需实验回原位置。
