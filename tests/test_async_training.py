@@ -90,13 +90,15 @@ def test_interpreter_keeps_virtual_environment_symlink(tmp_path):
 
 
 @pytest.mark.parametrize('fault_first', [False, True])
-def test_supervisor_ctrl_c_closes_all_owned_components(tmp_path, monkeypatch, fault_first):
+@pytest.mark.parametrize('arbitration_mode', [None, 'immediate'])
+def test_supervisor_ctrl_c_closes_all_owned_components(tmp_path, monkeypatch, fault_first, arbitration_mode):
     import signal
     import omi_hil_rl.hil.async_training as module
     from omi_hil_rl.hil.networks import VERSION
     config = HILConfig(transport='ros', review='auto', wrist_camera='required')
     atomic_json(tmp_path/'config.json', asdict(config))
-    atomic_json(tmp_path/'async_session.json', dict(mode='async_hil_v1', contract=config.replay_contract()))
+    atomic_json(tmp_path/'async_session.json', dict(mode='async_hil_v1', contract=config.replay_contract(),
+                                                  control_mode='periodic_training_v1'))
     torch.save(dict(version=VERSION, contract=config.replay_contract(), recipe={}), tmp_path/'actor.pt')
     events = []
     class Transport:
@@ -110,8 +112,10 @@ def test_supervisor_ctrl_c_closes_all_owned_components(tmp_path, monkeypatch, fa
         def close(self, *args):
             events.append('learner_reaped')
             return True  # Forced shutdown still MUST exit, never re-enter PAUSED.
+    modes = []
     class Actor:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            modes.append(args[2].arbitration_mode)
         def run_episodes(self, *args):
             if fault_first:
                 raise RuntimeError('training fault')
@@ -126,12 +130,14 @@ def test_supervisor_ctrl_c_closes_all_owned_components(tmp_path, monkeypatch, fa
     monkeypatch.setattr(module, 'LearnerProcess', Worker)
     monkeypatch.setattr(module, 'AsyncActor', Actor)
     monkeypatch.setattr(sys, 'argv', ['async_training', '--run', str(tmp_path), '--execute',
-                                    '--learner-python', sys.executable])
+                                    '--enable-policy', '--learner-python', sys.executable] +
+                        (['--arbitration-mode', arbitration_mode] if arbitration_mode else []))
     module.main()
     assert 'learner_started' in events
     assert 'learner_reaped' in events and 'transport_closed' in events
     assert events[-1] == 'CLOSED'
     assert ('PAUSED' in events) == fault_first
+    assert modes == [arbitration_mode or 'after-inference']
     assert controls == [(314, '192.168.14.11:55551',
                          Path(__file__).resolve().parents[1]/'tutorials/gripper_limits.json', True)]
 
@@ -159,6 +165,18 @@ def seed_run(tmp_path):
         replay.append(record, origin='online')
     replay.close()
     return config, seed, agent
+
+
+def test_after_inference_rejects_legacy_receipt_session_before_connecting(tmp_path, monkeypatch, capsys):
+    import omi_hil_rl.hil.async_training as module
+    config = HILConfig(transport='ros', review='auto')
+    atomic_json(tmp_path/'config.json', asdict(config))
+    atomic_json(tmp_path/'async_session.json', dict(mode='async_hil_v1', contract=config.replay_contract()))
+    monkeypatch.setattr(module, 'make_transport', lambda *a: pytest.fail('must not connect'))
+    monkeypatch.setattr(sys, 'argv', ['async_training', '--run', str(tmp_path), '--execute', '--enable-policy'])
+    with pytest.raises(SystemExit):
+        module.main()
+    assert '--arbitration-mode immediate' in capsys.readouterr().err
 
 
 def test_reload_every_ten_complete_episodes_not_steps(tmp_path):

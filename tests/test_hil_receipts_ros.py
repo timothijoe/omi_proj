@@ -110,3 +110,65 @@ def test_tagged_manual_receipts_keep_human_route(receiver):
     node.manual_delta_callback(Float64MultiArray(data=[0.] * 6))
     assert receipts[-1]['accepted'] and receipts[-1]['status'] == 'queue_cancelled'
     assert not node.have_goal
+
+
+@pytest.mark.parametrize('manual', [False, True])
+def test_late_other_channel_zero_cannot_cancel_selected_command(receiver, manual):
+    node, receipts = receiver
+    node.robot = node.kine = object()
+    node.cur_joints = [0.] * 7
+    active = tagged()
+    node.hil_delta_callback(active, manual=manual)
+    pending = node.hil_pending.copy()
+    before = len(receipts)
+    stop = Float64MultiArray(data=[0.] * 6)
+    # Model the legal cross-topic delivery order: selected command first,
+    # zero stop for the OLD channel later. Per-topic QoS does not order these.
+    if manual:
+        node.hil_delta_callback(stop)
+    else:
+        node.manual_delta_callback(stop)
+    assert node.have_goal
+    assert node.queue_source == ('manual' if manual else 'policy')
+    assert node.hil_pending == pending
+    assert not any(r['command_id'] == pending['command_id'] for r in receipts[before:])
+
+
+@pytest.mark.parametrize('manual', [False, True])
+def test_tagged_zero_is_selected_action_and_can_take_over_other_channel(receiver, manual):
+    node, receipts = receiver
+    node.robot = node.kine = object()
+    node.cur_joints = [0.] * 7
+    node.hil_delta_callback(tagged(), manual=not manual)
+    zero = tagged()
+    zero.data = [0.] * 6
+    zero.layout.dim[0].label = 'hil:selected-zero'
+    node.hil_delta_callback(zero, manual=manual)
+    assert not node.have_goal
+    assert node.queue_source == ('manual' if manual else 'policy')
+    assert receipts[-1]['command_id'] == 'hil:selected-zero'
+    assert receipts[-1]['accepted'] and receipts[-1]['status'] == 'velocity_zero_stopped'
+
+
+def test_sdk_rejection_receipt_preserves_target_feedback_and_native_result(receiver):
+    node, receipts = receiver
+    feedback = [1.] * 7
+    node.robot = SimpleNamespace(clear_set=lambda: True, set_joint_cmd_pose=lambda **kw: False,
+        send_cmd=lambda: pytest.fail('must not send a rejected target'),
+        subscribe=lambda _: dict(states=[dict(cur_state=3, cmd_state=3, err_code=17)],
+            outputs=[dict(fb_joint_pos=feedback, frame_serial=123, fb_joint_cmd=[2.]*7)]))
+    node.dcss = object()
+    node.kine = object()
+    node.cur_joints = [2.] * 7
+    node.tk = SimpleNamespace(solve_tcp_delta_ik=lambda q, *a: (True, [x+.001 for x in q], None))
+    node.hil_delta_callback(tagged(), manual=True)
+    node.ctrl_loop()
+    assert not node.have_goal and receipts[-1]['status'] == 'sdk_rejected'
+    details = receipts[-1]['diagnostics']
+    assert details['sdk_call'] == 'set_joint_cmd_pose' and details['sdk_return'] is False
+    assert details['controller_state']['err_code'] == 17
+    assert details['feedback_frame_serial'] == 123
+    assert details['feedback_joint_deg'] == feedback
+    assert details['target_joint_deg'] == pytest.approx([2.001]*7)
+    assert details['max_target_feedback_error_deg'] == pytest.approx(1.001)
+    assert details['queue_source'] == 'manual'

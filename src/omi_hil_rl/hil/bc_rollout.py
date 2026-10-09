@@ -144,6 +144,8 @@ class FixedBCActor(AsyncActor):
             _banner(message, color)
             _banner(f"评估审计已保存：周期指令 {audit['ticks']} 次，"
                     f"符合配对条件 {audit['matched_pairs']} 次，其他 {audit['invalid_pairs']} 次；非训练数据", '36')
+            if audit.get('pairing_is_diagnostic'):
+                _banner('配对结果仅用于时序诊断，不判定策略输出正确与否，也不拦截推理', '36')
         elif phase == 'PAUSED':
             _banner(f"固定 BC 评估已暂停：{details['reason']}", '31')
 

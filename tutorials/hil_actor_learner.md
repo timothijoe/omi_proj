@@ -1,5 +1,11 @@
 # 六维真机 HIL 环境、SAC 与 Actor/Learner
 
+2026-10-09 更新：ROS 回合开始保留 Start 前持续积累的最近十帧，仅使旧策略候选失效。
+输入完整且新鲜时不再重新预热约1秒；首次不足十帧、缺流或过期时仍等待有效输入。
+需正常退出并重启 Actor 后生效，模型无需重训；
+[操作与检查](async_rl.md#2026-10-09start-保留十帧输入)
+· [实现与测试记录](../docs/agent/training/chronicles/2026-10-09-start-history-retention.md)。
+
 ## 2026-10-07：共享编码器与 HIL-SERL 参数对齐
 
 开发归档与交接见[2026-10-07阶段记录](../docs/agent/training/chronicles/2026-10-07-shared-serl-resume.md)。

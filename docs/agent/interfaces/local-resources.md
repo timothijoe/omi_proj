@@ -1,5 +1,15 @@
 # 本地资源定位
 
+2026-10-09 新准备的 BC12045 异步 RL 试跑目录：
+`local/rl_training/bc12045_obs_after_inference_20261009_01/`，本机 SSD，Git 忽略。
+由原始 BC12045 和同版 11 段/1387 条示范初始化，准备时 RL version 0、online=0；
+与已有训练到6502的 `rl_live_01` 分开。初始化证据在 `bc_initialization.json`，
+离线模型检查在 `offline_validation.json`，可复制启动命令见[本次操作页](../../../tutorials/bc12045_async_rl_trial.md)。
+
+训练监控状态位于各会话 `local/rl_training/<run>/monitor/`，包含 Actor/Learner
+快照及独立事件日志，由新版训练进程按需生成；不作为 replay/checkpoint 恢复来源。
+只读查看见[统一监控教程](../../../tutorials/training_monitor.md)。
+
 2026-10-09 新存储层：选定冷数据已迁入 `/media/zhoutong/zt-think-d1/omi_proj_data/local/`，
 项目原目录通过软链接兼容。目录映射、当前本机保留资源与最终状态见[存储契约](local-storage.md)
 及[操作教程](../../../tutorials/local_data_storage.md)。下文 `local/...` 是逻辑工作路径，不能仅凭名称判断物理位置。

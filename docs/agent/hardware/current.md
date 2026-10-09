@@ -1,5 +1,9 @@
 # Hardware 当前摘要
 
+2026-10-09：接收端修复跨topic迟到的无ID零停止覆盖另一通道动作/回执；带ID零动作仍可正式接管。
+SDK拒绝时新增返回值、目标/反馈关节角和控制器状态诊断。源码及安装副本已构建核对，未重启现场进程。
+本次SDK失败根因尚未确定，详见[真实试跑审计](../training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md)。
+
 2026-10-09 存储更新：历史力记录、传感器测试、离线数据和大显示缓存已迁往
 `/media/zhoutong/zt-think-d1/omi_proj_data/local/`，原目录保留软链接；
 SDK、Python/ROS 环境、模型资产和 record010 零载荷基准保留本机。

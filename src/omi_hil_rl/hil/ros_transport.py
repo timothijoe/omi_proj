@@ -49,6 +49,7 @@ class RosTransport:
             self.node.create_subscription(PoseStamped if key == "eef" else Image, topic_name,
                 lambda msg, k=key: self.runtime.ingest(k, msg, self.node.get_clock().now().nanoseconds), qos_profile_sensor_data)
         self.node.create_subscription(String, "/omi/action/receipt", self._receipt, 10)
+        self.node.create_subscription(String, '/omi/safety/tactile_guard', self._guard_status, 1)
         self.next_reference = None
         self.latest = None
         self.events = set()
@@ -56,6 +57,15 @@ class RosTransport:
         self.connected = False
         self.last_owner = None
         self.human_only = False
+
+    def _guard_status(self, message):
+        """Observe protection status only; never enable, reset or capture a baseline."""
+        try:
+            data = json.loads(message.data)
+            if isinstance(data, dict):
+                self.guard_status = dict(data, observed_ns=time.time_ns())
+        except (ValueError, TypeError):
+            pass
 
     def _receipt(self, message):
         try:
@@ -104,25 +114,55 @@ class RosTransport:
             window, status = self.runtime.window(reference)
             self.latest_status = status  # Keep failed-window reasons for startup diagnostics too.
             self.latest = None  # A failed window must not leave an old observation selectable.
-            if window is not None and window[1].all():
+            if window is not None and (getattr(self, 'observation_driven', False) or window[1].all()):
                 data, mask = window
                 self.latest = (dict(data, history_mask=mask.astype(np.uint8)), reference)
                 self.latest_eef_time = status["source_receive_ns"]["eef"]
                 self.latest_status = status
+            if getattr(self, 'observation_driven', False):
+                hook = getattr(self, 'observation_hook', None)
+                if hook is not None:
+                    hook(reference, self.latest, status)
+                warnings = status.get('timing_warnings', [])
+                if self.latest is None:
+                    warnings = warnings + [status.get('reason', 'missing_current')]
+                if warnings and time.monotonic() >= getattr(self, '_next_timing_log', 0.):
+                    print('OBSERVATION_TIMING: '+json.dumps(dict(reference_ns=reference,
+                        warnings=warnings, source_receive_age_ms=status.get('source_receive_age_ms'),
+                        diagnostic_only=True)), flush=True)
+                    self._next_timing_log = time.monotonic()+1.
         elif now < self.next_reference - 100_000_000:
             raise InteractionUnavailable("ROS clock moved backwards")
         pipeline = getattr(self, 'policy_pipeline', None)
         if pipeline is not None:
             rb = bool(self.pad.buttons.get(BTN_TR, False))
+            after_inference = (getattr(self, 'observation_driven', False) and
+                               getattr(self, 'arbitration_mode', 'immediate') == 'after-inference')
             self._pipeline_released = bool(getattr(self, '_pipeline_rb', False) and not rb)
-            interrupted = (not self.connected or rb or bool(
+            if self._pipeline_released and getattr(self, 'observation_driven', False) and not after_inference:
+                # A release selects the next observation, not a second action
+                # for the same snapshot that just drove a human command.
+                self._policy_resume_after = self.latest[1] if self.latest is not None else -1
+            interrupted = (not self.connected or (rb and not after_inference) or bool(
                 self.events & {'success', 'manual_stop', 'disconnect', 'discard'}))
-            if interrupted or rb != getattr(self, '_pipeline_rb', rb) or self.latest is None:
+            if interrupted or (not after_inference and rb != getattr(self, '_pipeline_rb', rb)) or (
+                    self.latest is None and not getattr(self, 'observation_driven', False)):
                 pipeline.invalidate()
             self._pipeline_rb = rb
             pipeline.check()
-            if not interrupted and self.latest is not None:
+            if (not interrupted and self.latest is not None and
+                    (after_inference or not getattr(self, 'observation_driven', False) or
+                     self.latest[1] > getattr(self, '_policy_resume_after', -1))):
                 pipeline.offer(*self.latest)
+        monitor = getattr(self, 'telemetry', None)
+        if monitor is not None and time.monotonic() >= getattr(self, '_next_monitor', 0.):
+            from .telemetry import transport_snapshot
+            try:
+                monitor.update(**transport_snapshot(self))
+                monitor.preview(*(self.latest if self.latest is not None else (None, None)))
+            except Exception as exc:
+                monitor.update(sensor_monitor_error=repr(exc))
+            self._next_monitor = time.monotonic() + .2
 
     def _handoff_ready(self):
         """Keep the exact next_obs, but wait for a newer window if receipt aged it.
@@ -230,12 +270,23 @@ class RosTransport:
             self.events.clear()
             self.event_times.clear()
 
-    def reset_history(self):
+    def start_episode(self):
+        """Invalidate prior actions while retaining the live rolling history.
+
+        WAIT_START already pumps observations on the 100ms lattice. Keeping that
+        lattice and its sensor buffers avoids another ten-frame warmup at Start.
+        The next pump still checks completeness/freshness and offers a new action.
+        """
         if getattr(self, 'policy_pipeline', None) is not None:
             self.policy_pipeline.invalidate()
+
+    def reset_history(self):
+        """Explicitly discard sensor history, e.g. for a fresh preview."""
+        self.start_episode()
         self.runtime.reset()
         self.next_reference = None
         self.latest = None
+        self._policy_resume_after = -1
 
     def observe(self, deadline):
         print('WARMUP: 开始键已收到；正在准备完整观测。RB需先松开再按才能人工调整；观测完整后进入ACTIVE。', flush=True)
@@ -426,8 +477,8 @@ class RosTransport:
                        latest_observation_reference_ns=self.latest[1] if self.latest is not None else None,
                        latest_eef_receive_ns=getattr(self, 'latest_eef_time', None),
                        latest_observation_status=getattr(self, 'latest_status', None),
-                       received_total=dict(getattr(self.runtime, 'counts', {})),
-                       rejected_total=dict(getattr(self.runtime, 'rejected', {})))
+                       received_total=dict(getattr(getattr(self, 'runtime', None), 'counts', {})),
+                       rejected_total=dict(getattr(getattr(self, 'runtime', None), 'rejected', {})))
         self.last_pairing_failure = pairing
         print('COMMAND_PAIRING_FAILURE: ' + json.dumps(pairing, allow_nan=False), flush=True)
         report_path = getattr(self, 'pairing_report_path', None)

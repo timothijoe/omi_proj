@@ -92,19 +92,28 @@ def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, int
             self.connected = True
             self.pad = SimpleNamespace(buttons={}, axes={})
             self.events, self.event_times = set(), {}
-            self.policy_pipeline = SimpleNamespace(get=lambda stamp: (np.ones(6)*.1, 5.))
+            self.consumed = None
+            self.policy_pipeline = SimpleNamespace(take=self.take)
             self.node = SimpleNamespace(get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=int(now[0]*1e9))))
             self.latest = None
         def wait_start(self): return now[0]
-        def reset_history(self): pass
+        def start_episode(self): pass
         def stop(self): pass
         def idle_tick(self): pass
+        def take(self):
+            if self.latest[1] == self.consumed:
+                return None
+            self.consumed = self.latest[1]
+            return (*self.latest, np.ones(6)*.1, 5.)
         def _pump(self):
             now[0] += .01
             if interrupt and not interrupted[0] and len(sent) >= 6:
                 interrupted[0] = True
                 raise KeyboardInterrupt
-            self.latest = ({'test': np.zeros(1)}, int(now[0]*1e9))
+            stamp = int(now[0]*10)*100_000_000
+            if self.latest is None or self.latest[1] != stamp:
+                self.latest = ({'test': np.zeros(1)}, stamp)
+                self.observation_hook(stamp, self.latest, {})
             for deadline, receipt in list(pending):
                 if now[0] >= deadline:
                     pending.remove((deadline, receipt))
@@ -171,7 +180,7 @@ def test_human_periodic_exports_valid_accepted_command_segments(tmp_path, monkey
             self.latest_eef_time = 0
 
         def wait_start(self): return now[0]
-        def reset_history(self): self.latest = None
+        def start_episode(self): pass
         def stop(self): pass
         def idle_tick(self): pass
 
@@ -213,4 +222,4 @@ def test_human_periodic_exports_valid_accepted_command_segments(tmp_path, monkey
             ticks.append(json.loads(str(data['metadata'])))
     ages_ms = [(tick['command_send_ns'] - tick['observation_reference_ns']) / 1e6
                for tick in ticks if tick['observation_present']]
-    assert ages_ms and all(20 <= age < 50 for age in ages_ms)
+    assert ages_ms and all(0 <= age < 20 for age in ages_ms)

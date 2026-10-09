@@ -1,5 +1,74 @@
 # 异步真机 RL：每 10 个完整回合检查新策略
 
+本次从原始 BC12045 开始的独立会话及可复制命令，见[首次试跑操作页](bc12045_async_rl_trial.md)。
+旧 `rl_live_01` 已有 RL 更新；继续旧目录会加载其最新权重，不能视为重新从 BC 初始化。
+
+## 2026-10-10：回合观测按单帧存储
+
+正常退出并等待保存完成，再按原命令重启 async RL（Actor 和 Learner）即可，新格式默认启用。
+新回合首个窗口保存十帧，以后连续观测每次只新增当前帧；模型仍接收同样的十帧输入。
+人工 periodic 采集和 periodic BC 评估共用此格式。旧回合仍可读取，没有自动转换或删除。
+
+回合中的 `frames/` 存放单帧数据；观测/动作 NPZ 和导出的训练片段保存窗口引用。
+逐帧查看器和训练入口自动重建。自写脚本读取原始动作窗口可使用：
+
+```python
+from omi_hil_rl.hil.observation_storage import ObservationReader
+
+reader = ObservationReader()
+metadata, observation = reader.read("RUN/periodic_episodes/EPISODE/000000.npz")
+print(observation["rgb"].shape)  # (10, 3, 128, 128)
+```
+
+迁移运行目录时一起复制 `episodes/` 和 `periodic_episodes/`，保持两者相对位置。
+训练片段依赖对应回合的 `frames/`，不要仅拷贝片段或单个NPZ文件。
+本次缩小回合记录和训练交接文件，固定容量 `replay/` 的磁盘数组仍保持原布局。
+真实182窗口存储约缩小9.17倍，完整证据见[验证记录](../docs/agent/training/chronicles/2026-10-10-observation-frame-storage.md)。
+
+## 2026-10-09：默认推理完成后仲裁
+
+当前 periodic RL 在启用 `--enable-policy` 时默认使用 `--arbitration-mode after-inference`：
+每次观测触发 policy 推理，完成后读取主循环最新手柄状态；RB 按住则用当时的摇杆动作替代，
+RB 松开则用 policy 结果。按住 RB 时推理仍继续，人工动作也在推理完成点发送。
+因此 RB 按下/松开本身不会立即停止或替换上一条命令，切换发生在下一次推理完成后的仲裁点。
+停止键、成功结束、回合超时、断连和接收端故障仍由主循环处理，不等待推理完成。
+
+原启动命令省略此参数即为新默认；显式写法是在原命令末尾加：
+
+```bash
+--arbitration-mode after-inference
+```
+
+原来的立即接管机制保留，选择它时在原命令末尾加：
+
+```bash
+--arbitration-mode immediate
+```
+
+`immediate` 在读到 RB 变化时立即停止旧输出；按住 RB 时暂停提交新推理，释放后从下一观测恢复策略。
+启动日志 `ARBITRATION_MODE`、监控页面、`async_state.json` 和每回合审计记录实际模式。
+这两种模式只影响启用 policy 的周期 RL；未启用 policy 和人工采集继续直接读取手柄。
+旧 receipt RL 会话若启用 policy，需显式选择 `immediate`，不静默套用新默认。
+新设置在正常退出、保存完成并重启后生效；[实现与验证记录](../docs/agent/training/chronicles/2026-10-09-arbitration-modes.md)。
+
+## 2026-10-09：观测驱动控制，时序仅诊断
+
+当前 BC 热启动的 periodic RL 会话继续使用下面的原命令，正常退出并重启程序即可加载新代码。
+10 Hz 观测到点取各路 latest，不等待同帧、新帧或十帧历史齐全；已有真实历史保留，缺少历史用 mask 表达。
+动作不再有独立的 100 ms 发送定时器：新观测触发后台推理，结果完成后发送。
+慢推理不中断回合、不因超时改零，期间待推理输入只保留最新，实际推理输入与动作 ID 明确关联。
+
+- `OBSERVATION_TIMING`：源时间、接收帧龄或历史不足等诊断。
+- `ACTION_TIMING`：推理或观测到发送超过 100 ms；仅告警，不丢结果。
+- `TRANSITION_TIMING` / `timing_diagnostics.json`：EEF 因果、间隔与回执延迟等诊断，不作入池排除条件。
+- `observations/<reference_ns>.npz`：独立保留实际观测节拍；回合根目录数字文件仍为已发送动作及其输入快照。
+
+RB、停止键、断连、数据格式/数值错误、接收端拒绝与真正缺失回执的处理仍在。
+接收端 0.25 秒断流停止未修改，因此“推理仅告警”不代表硬件无限保持上一条速度。
+下面旧阶段的“候选过期改零”“时序不合格排除”“历史不足必须等待”不适用于新周期流程；
+旧 receipt 入口维持原行为。新记录的 `timing_policy` 为 `diagnostic_only_v1`，不回写历史数据。
+见[当前设计及验证](../docs/agent/training/chronicles/2026-10-09-observation-driven-control.md)。
+
 2026-10-09 存储更新：下方新 BC12045 的 `rl_live_01`、对应 seed/BC/索引与新示范保留本机；
 旧 probe 和旧 RL 运行目录已外置归档，原路径以软链接兼容。本文旧会话命令是历史参考，
 对迁出的会话恢复训练前须先校验并复制回本机 SSD，见[存储教程](local_data_storage.md)。
@@ -29,12 +98,16 @@ bash scripts/run_async_rl.sh \
 ```
 
 Start(315) 开始每个回合；未按 RB 时用当前固定版本的 BC/RL 策略，按住 RB(311)
-立即切到摇杆人工控制，松开后恢复策略。308 标记成功，307 提前结束，Back(314)
+在默认模式的推理完成点切到摇杆人工控制，松开后在后续推理完成点恢复策略。308 标记成功，307 提前结束，Back(314)
 仅在回合外回 home，Ctrl+C 退出 Actor 和 Learner。Learner 从启动即并行运行：
 前 1000 次 Critic 预热可只用固定示范；其后须有至少 100 条有效在线 transition
 才更新 Actor。完整且有效的源回合累计 10 个后，Actor 才检查并加载最新已发布权重；
 这期间仍运行初始策略。Learner 状态见运行目录 `status.json` 和 `learner.log`，
 回合状态见 `async_state.json`、`PERIODIC_SAVED` 和 `periodic_episodes/`。
+
+Start 现会保留最近 10 帧输入，完整有效时无需重新等待约 1 秒；
+生效方式及检查见[Start 历史保留说明](#2026-10-09start-保留十帧输入)。
+
 RL 现在会在等待 Start、进入回合、收到成功/结束标记、写盘中和本地保存完成时，
 追加彩色中文提示；原有英文及 JSON 状态行保留。结束后控制线程先停止动作，
 再等待本地审计和训练片段写完，才允许进入下一回合。保存完成提示里的
@@ -44,7 +117,7 @@ RL 现在会在等待 Start、进入回合、收到成功/结束标记、写盘�
 
 这批 BC 的 12 个既有真机评估审计没有成功标记，离线拟合误差不能证明真机效果。
 第一次运行应短时、有人随时握住 RB，并用 `PERIODIC` 行确认 `source`、`gate`、
-`nonzero_action`、`receiver_verified`；若效果或回执异常，立即按 RB 接管或 Ctrl+C 停止。
+`nonzero_action`、`receiver_verified`；默认模式 RB 接管需等待推理完成，307 或 Ctrl+C 可结束/停止。
 触觉预警与触觉拦截仍保持关闭，不参与 BC/RL 动作决策。
 
 以下章节保留早先 BC11795、1296 条示范的运行记录和机制说明；不要把旧目录
@@ -59,6 +132,27 @@ BC参考约束与编码器/示范池机制，不表示触觉保护已经打开�
 
 只想切换BC模型或播放成功label，请先看[现场测试速查](bc_replay_testing.md)。
 本次BC/replay/训练实现的完整交接记录见[开发记录](../docs/agent/training/chronicles/2026-10-07-periodic-replay-bc-fitting.md)。
+
+## 2026-10-09：Start 保留十帧输入
+
+等待 Start 时持续更新最近 10 帧观测；按下或持续按住 Start 不再清空历史，
+而是继续滚动更新。新回合只使旧策略动作候选失效，并用保留的有效观测重新推理。
+双相机、触觉、EEF 及掩码仍按原输入契约检查；不会复制同一帧填满十个槽位。
+回合外观测仅作为历史上下文，人工复位动作不作为训练 transition。
+
+生效和确认步骤：
+
+1. 正常结束当前程序，等待回合保存和退出完成，再按本页原命令重启 Actor／手柄控制程序。
+   已运行进程不会自动加载修改；模型不需要重新训练。
+2. 等待传感器输入积累完整且新鲜的十帧后按 Start。此时不会再清空缓存并强制预热约 1 秒，
+   长按 Start 也不会重复开始回合。
+3. 首次启动帧数不足、缺流或过期时仍等待有效输入。同步模式可看 `WARMUP_STATUS`
+   中的 `history_frames`、`full_history`、`window_reason` 与 `policy_candidate_ready`；
+   周期模式可看 `PERIODIC` 的 `gate` 或[训练监控页](training_monitor.md)的输入完整度。
+
+回合仍从 Start 开始计时。接收端握手、重新推理或缺少新鲜候选时可能先发送零动作，
+本次修复不保证 Start 后立即出现非零动作。累计107项软件回归通过、3项跳过，
+尚未实机验收；[完整修改记录](../docs/agent/training/chronicles/2026-10-09-start-history-retention.md)。
 
 ## BC保护式RL热启动（最新）
 

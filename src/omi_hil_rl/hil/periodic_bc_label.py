@@ -18,6 +18,7 @@ def validate_bc_label(contract, action, metadata):
         command_id = audit['command_id']
         start, end = metadata['observation_time_ns'], metadata['next_observation_time_ns']
         send = trace['command_send_ns']
+        diagnostic = audit.get('timing_policy') == 'diagnostic_only_v1'
         if (audit['semantics'] != 'accepted_command_not_measured_displacement' or
                 not metadata['episode'].startswith(audit['source_episode']+'-segment-') or
                 not isinstance(audit['periodic_tick'], int) or audit['periodic_tick'] < 0 or
@@ -25,8 +26,8 @@ def validate_bc_label(contract, action, metadata):
                 metadata['action_source'] != 'human' or trace['action_source'] != 'human' or
                 not trace['label_candidate'] or trace['execution_confirmed'] is not False):
             raise ValueError('periodic human command identity/semantics mismatch')
-        if (not 80_000_000 <= end-start <= 150_000_000 or
-                not start <= send < end or send-start > 100_000_000 or
+        if ((not diagnostic and (not 80_000_000 <= end-start <= 150_000_000 or
+                not start <= send < end or send-start > 100_000_000)) or
                 trace['observation_reference_ns'] != start or
                 trace['action_contract'] != contract['action_contract'] or
                 trace['output_convention'] != contract['config']['sdk_convention']):
@@ -44,7 +45,7 @@ def validate_bc_label(contract, action, metadata):
             raise ValueError('periodic command has no acceptance receipt')
         receipt = accepted[0]
         stamp = receipt['timestamp_ns']
-        if (not send <= stamp < end or stamp-send > 50_000_000 or
+        if not diagnostic and (not send <= stamp < end or stamp-send > 50_000_000 or
                 not stamp < audit['next_eef_receive_ns'] <= end):
             raise ValueError('periodic receipt/EEF is not causal')
         for item in receipts:
@@ -54,6 +55,8 @@ def validate_bc_label(contract, action, metadata):
                     abs(float(item['nominal_duration_s'])-.1) > .001 or
                     not np.allclose(item['wire_action'], trace['wire_action'], atol=1e-9, rtol=1e-9)):
                 raise ValueError('periodic receipt contract mismatch')
+            if diagnostic and item['status'] in ('queue_replaced', 'queue_cancelled'):
+                continue
             if (item['timestamp_ns'] < end and
                     (not item['accepted'] or item['status'] not in
                      ('queue_accepted', 'velocity_zero_stopped', 'velocity_window_sent'))):

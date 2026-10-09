@@ -48,13 +48,14 @@ def test_latest_input_replaces_pending_and_owns_snapshot():
     assert not worker.thread.is_alive()
 
 
-def test_rb_or_reset_invalidates_inflight_result():
+@pytest.mark.parametrize('consume_results', [False, True])
+def test_rb_or_reset_invalidates_inflight_result(consume_results):
     entered, release = threading.Event(), threading.Event()
     def infer(obs):
         entered.set()
         assert release.wait(3)
         return np.zeros(6)
-    worker = LatestPolicy(infer)
+    worker = LatestPolicy(infer, consume_results=consume_results)
     try:
         worker.offer({'x': np.zeros(1)}, 1)
         assert entered.wait(3)

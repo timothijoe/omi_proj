@@ -1,8 +1,8 @@
-"""Best-effort 10Hz velocity publisher with independent asynchronous audit.
+"""10Hz latest observations drive human commands and asynchronous inference.
 
 No blocking command receipt/next-observation join in the publishing loop.
 Raw periodic audit is not itself a training episode. Protected RL sessions opt
-into background validation and export of contiguous accepted-command segments.
+into background export of accepted-command segments; timing is diagnostic only.
 """
 import json
 import os
@@ -66,6 +66,58 @@ def choose_action(transport, used_stamp, verified):
     return np.zeros(6, np.float32), source, 'no_fresh_unused_candidate', latest, used_stamp
 
 
+def observation_action(transport, used_stamp, verified, *, policy=True):
+    """Observation-triggered human commands and completion-triggered policy commands.
+
+    None means no new command: it never means replace a slow inference with zero.
+    """
+    latest = transport.latest
+    if latest is None:
+        return None
+    if policy and not getattr(transport, 'collect_human', False) and getattr(
+            transport, 'arbitration_mode', 'immediate') == 'after-inference':
+        pipeline = getattr(transport, 'policy_pipeline', None)
+        result = pipeline.take() if pipeline is not None else None
+        if result is None:
+            return None
+        observation, stamp, candidate, elapsed = result
+        # Read human input when consuming the result, never latch it at inference start.
+        rb = bool(transport.pad.buttons.get(311, False))
+        source = 'human' if rb else 'policy'
+        transport.last_arbitration = dict(mode='after-inference', rb=rb,
+            observation_reference_ns=stamp, policy_candidate_normalized=candidate.tolist())
+        if not verified[source]:
+            action, gate = np.zeros(6, np.float32), 'receiver_handshake'
+        elif rb:
+            action, gate = transport.mapping.action(transport.pad.axes).astype(np.float32), 'human'
+        else:
+            action, gate = transport.config.physical_action(candidate), 'policy'
+        return action, source, gate, (observation, stamp), stamp, elapsed
+    stamp = latest[1]
+    human = getattr(transport, 'collect_human', False) or bool(transport.pad.buttons.get(311, False))
+    source = 'human' if human else 'policy'
+    if not verified[source]:
+        if stamp == used_stamp:
+            return None
+        return np.zeros(6, np.float32), source, 'receiver_handshake', latest, stamp, None
+    if human:
+        if stamp == used_stamp:
+            return None
+        action = (transport.mapping.action(transport.pad.axes).astype(np.float32)
+                  if transport.pad.buttons.get(311, False) else np.zeros(6, np.float32))
+        return action, 'human', 'human', latest, stamp, None
+    if not policy:
+        if stamp == used_stamp:
+            return None
+        return np.zeros(6, np.float32), source, 'policy_disabled', latest, stamp, None
+    pipeline = getattr(transport, 'policy_pipeline', None)
+    result = pipeline.take() if pipeline is not None else None
+    if result is None:
+        return None
+    observation, stamp, action, elapsed = result
+    return transport.config.physical_action(action), source, 'policy', (observation, stamp), stamp, elapsed
+
+
 def pair_status(tick, following, receipts):
     """Conservative audit eligibility; never turn acceptance into completion."""
     if not tick['observation_present'] or following is None or not following['observation_present']:
@@ -99,16 +151,20 @@ def pair_status(tick, following, receipts):
 
 
 class PeriodicAudit:
-    def __init__(self, run, episode, contract, version, *, training=False):
+    def __init__(self, run, episode, contract, version, *, training=False, timing_policy='strict'):
         self.run, self.contract, self.version, self.training = run, contract, version, training
         self.directory = Path(run)/'periodic_episodes'/episode
         self.directory.mkdir(parents=True, exist_ok=False)
+        from .observation_storage import FrameWriter, VERSION
+        self.frame_writer = FrameWriter(self.directory/'frames')
         self.tasks = queue.Queue(maxsize=256)
         self.error = None
         self.result = None
         self.closed = False
+        self.timing_policy = timing_policy
         atomic_json(self.directory/'staging.json', dict(schema='omi-periodic-audit-v1',
-                    episode=episode, contract=contract, policy_version=version, training_ready=False))
+                    episode=episode, contract=contract, policy_version=version, training_ready=False,
+                    timing_policy=timing_policy, observation_storage_version=VERSION))
         self.thread = threading.Thread(target=self._work, name='periodic-audit-writer', daemon=True)
         self.thread.start()
 
@@ -124,6 +180,7 @@ class PeriodicAudit:
 
     def _work(self):
         ticks, receipts, interruptions = [], [], []
+        observations = {}
         try:
             with (self.directory/'receipts.jsonl').open('w') as log:
                 while True:
@@ -134,17 +191,22 @@ class PeriodicAudit:
                         log.flush()
                     elif kind == 'interrupt':
                         interruptions.append(payload)
+                    elif kind == 'observation':
+                        stamp, observation, status = payload
+                        folder = self.directory/'observations'
+                        folder.mkdir(exist_ok=True)
+                        metadata = dict(status, observation_reference_ns=stamp,
+                                        observation_present=observation is not None)
+                        observations[stamp] = metadata
+                        self.frame_writer.write(folder/f'{stamp}.npz', metadata, observation)
                     elif kind == 'tick':
                         metadata, observation = payload
-                        arrays = {} if observation is None else {'observation__'+k: v for k, v in observation.items()}
-                        arrays['metadata'] = np.asarray(json.dumps(metadata))
+                        status = observations.get(metadata['observation_reference_ns'], {})
+                        if status:
+                            metadata = dict(metadata, observation_status=status,
+                                eef_receive_ns=status.get('source_receive_ns', {}).get('eef'))
                         path = self.directory/f"{len(ticks):06d}.npz"
-                        temporary = path.with_suffix('.tmp')
-                        with temporary.open('wb') as stream:
-                            np.savez_compressed(stream, **arrays)
-                            stream.flush()
-                            os.fsync(stream.fileno())
-                        temporary.replace(path)
+                        self.frame_writer.write(path, metadata, observation)
                         ticks.append(metadata)
                     elif kind == 'finish':
                         boundary, outcome = payload
@@ -155,6 +217,8 @@ class PeriodicAudit:
                         os.fsync(log.fileno())
                         atomic_json(self.directory/'pairing.json', statuses)
                         self.result = dict(outcome, ticks=len(ticks),
+                            observation_ticks=len(observations), timing_policy=self.timing_policy,
+                            pairing_is_diagnostic=self.timing_policy == 'diagnostic_only_v1',
                             matched_pairs=statuses.count('matched_not_execution_confirmed'),
                             invalid_pairs=len(ticks)-statuses.count('matched_not_execution_confirmed'),
                             nonzero_action_ticks=sum(any(abs(value) > 1e-7 for value in tick['normalized_action'])
@@ -163,15 +227,26 @@ class PeriodicAudit:
                             reason_for_separate_format='periodic velocity replacement; no legacy transition fabrication')
                         atomic_json(self.directory/'interruptions.json', interruptions)
                         if boundary is not None:
-                            with (self.directory/'boundary.npz').open('wb') as stream:
-                                np.savez_compressed(stream, metadata=np.asarray(json.dumps(boundary[0])),
-                                                    **{'observation__'+k: v for k, v in boundary[1].items()})
-                                stream.flush()
-                                os.fsync(stream.fileno())
+                            self.frame_writer.write(self.directory/'boundary.npz', boundary[0], boundary[1])
                         if self.training:
                             from .periodic_replay import convert
                             self.result.update(convert(self.directory, self.run, self.contract, self.version,
-                                                       ticks, receipts, interruptions, boundary, outcome))
+                                                       ticks, receipts, interruptions, boundary, outcome,
+                                                       timing_policy=self.timing_policy, frame_writer=self.frame_writer))
+                        elif self.timing_policy == 'diagnostic_only_v1':
+                            from collections import Counter
+                            from .periodic_replay import timing_diagnostics
+                            diagnostics = [timing_diagnostics(t, ticks[i+1] if i+1 < len(ticks) else boundary_meta,
+                                                              receipts, interruptions) for i, t in enumerate(ticks)]
+                            atomic_json(self.directory/'timing_diagnostics.json', diagnostics)
+                            self.result['timing_diagnostics'] = dict(Counter(reason for row in diagnostics for reason in row))
+                        if self.result.get('timing_diagnostics'):
+                            print('TRANSITION_TIMING: '+json.dumps(dict(
+                                episode=outcome['episode'], diagnostic_only=True,
+                                counts=self.result['timing_diagnostics'])), flush=True)
+                        from .observation_storage import VERSION
+                        self.result.update(observation_storage_version=VERSION,
+                                           stored_observation_frames=len(self.frame_writer.written))
                         atomic_json(self.directory/'audit.json', self.result)
                         return
         except Exception as exc:
@@ -199,11 +274,19 @@ def run_periodic(actor, episodes, *, training=False):
     if abs(config.hz-10.) > 1e-6:
         raise ValueError('periodic entry currently requires 10Hz contract')
     transport.allow_manual_reset = True
+    transport.observation_driven = True
+    if hasattr(transport, 'runtime'):
+        transport.runtime.latest_mode = True
+    arbitration_mode = (getattr(transport, 'arbitration_mode', 'immediate')
+                        if getattr(actor, 'policy', False) and not getattr(transport, 'collect_human', False)
+                        else 'immediate')
+    transport.arbitration_mode = arbitration_mode
     actor.load()
-    source_hint = ('human-only RB/zero actions' if getattr(transport, 'collect_human', False)
-                   else 'missing candidate=ZERO')
-    print('PERIODIC_CONTROL: 100ms target; no receipt wait; '+source_hint+'; '+
-          ('background replay validation' if training else 'audit-only recording'), flush=True)
+    print(f'ARBITRATION_MODE: {arbitration_mode}; '+
+          ('RB/joystick selected after each inference, including while RB is held' if arbitration_mode == 'after-inference'
+           else 'RB takeover does not wait for inference'), flush=True)
+    print('OBSERVATION_CONTROL: 100ms latest observation; infer then send; timing diagnostic only; '+
+          ('background replay export' if training else 'audit-only recording'), flush=True)
     if getattr(transport, 'collect_human', False):
         print('PERIODIC_CONTROL: Start(315)进入回合；移动机械臂需持续按住RB(311)并推动摇杆。', flush=True)
     completed_episodes = 0
@@ -211,30 +294,41 @@ def run_periodic(actor, episodes, *, training=False):
     total_nonzero_ticks = 0
     try:
         for episode_number in range(1, episodes + 1):
-            actor.state('WAIT_START', control_mode='periodic_100ms', training_ready=False)
+            actor.state('WAIT_START', control_mode='observation_driven_10hz',
+                        timing_policy='diagnostic_only_v1', arbitration_mode=arbitration_mode, training_ready=False)
             if getattr(transport, 'collect_human', False):
                 print(f'采集进度：等待第 {episode_number}/{episodes} 回合 Start；'
                       f'本次运行已完成 {completed_episodes} 回合，累计有效动作 {total_transitions} 条。', flush=True)
             elif training:
                 _banner(f'等待第 {episode_number}/{episodes} 个 RL 回合：按 Start 开始；RB 可随时接管', '36')
             started = transport.wait_start()
-            transport.reset_history()
+            transport.start_episode()
             episode = uuid.uuid4().hex
-            audit = PeriodicAudit(actor.run, episode, config.replay_contract(), actor.version, training=training)
+            audit = PeriodicAudit(actor.run, episode, config.replay_contract(), actor.version, training=training,
+                                  timing_policy='diagnostic_only_v1')
+            def record_observation(stamp, latest, status):
+                audit.submit('observation', (stamp, None if latest is None else latest[0], dict(status)))
+            transport.observation_hook = record_observation
+            if transport.latest is not None:
+                record_observation(transport.latest[1], transport.latest, getattr(transport, 'latest_status', {}))
             monitor_start = getattr(actor, 'periodic_monitor_start', None)
             if monitor_start is not None:
                 monitor_start(episode, started)
             known = {}
+            unacknowledged = {}
             verified = {'human': False, 'policy': False}
             fault = None
-            last_receipt_time = time.monotonic()
+            fault_receipt = None
             def receipt_hook(receipt):
-                nonlocal fault, last_receipt_time
+                nonlocal fault, fault_receipt
                 if receipt.get('command_id') not in known:
                     return
                 audit.submit('receipt', dict(receipt))
                 expected_source, expected_wire = known[receipt['command_id']]
-                last_receipt_time = time.monotonic()
+                unacknowledged.pop(receipt['command_id'], None)
+                monitor = getattr(actor, 'telemetry', None)
+                if monitor is not None:
+                    monitor.update(receiver=dict(receipt, observed_ns=time.time_ns()))
                 try:
                     duration = float(receipt.get('nominal_duration_s', 0))
                 except (TypeError, ValueError):
@@ -249,20 +343,21 @@ def run_periodic(actor, episodes, *, training=False):
                     verified[expected_source] = True
                 elif receipt.get('status') != 'queue_replaced':
                     fault = 'receiver fault: '+str(receipt.get('status'))
+                if fault and fault_receipt is None:
+                    fault_receipt = dict(receipt)
+                    print('RECEIVER_FAULT: '+json.dumps(fault_receipt, ensure_ascii=False), flush=True)
             transport.receipt_hook = receipt_hook
             deadline = started+config.episode_seconds
-            # StackObservations starts its 100ms reference lattice on the first
-            # pump after reset. Sending on that same boundary can read the old
-            # window when the pump runs a fraction of a millisecond early.
-            # Leave time for the new window to be assembled before each send.
-            phase_delay = .03 if getattr(transport, 'collect_human', False) else 0.
-            schedule = PeriodicClock(time.monotonic() + phase_delay)
             used_stamp = None
             count = 0
-            outcome = dict(episode=episode, policy_version=actor.version, success=False, reason='interrupted')
+            outcome = dict(episode=episode, policy_version=actor.version, arbitration_mode=arbitration_mode,
+                           success=False, reason='interrupted')
+            telemetry = getattr(actor, 'telemetry', None)
             last_owner = None
+            last_rb = bool(transport.pad.buttons.get(311, False))
             try:
-                actor.state('ACTIVE', control_mode='periodic_100ms', training_ready=False)
+                actor.state('ACTIVE', control_mode='observation_driven_10hz',
+                            timing_policy='diagnostic_only_v1', arbitration_mode=arbitration_mode, training_ready=False)
                 if getattr(transport, 'collect_human', False):
                     print('ACTIVE: RB+摇杆控制；松开RB为零动作；308成功、307提前结束，否则到时停止。',
                           flush=True)
@@ -280,7 +375,7 @@ def run_periodic(actor, episodes, *, training=False):
                         raise RuntimeError('gamepad disconnected')
                     if fault:
                         raise RuntimeError(fault)
-                    if now-last_receipt_time > 1.:
+                    if unacknowledged and now-min(unacknowledged.values()) > 1.:
                         raise RuntimeError('receiver receipt link silent for 1s; stopped (not a per-command wait)')
                     if audit.error:
                         raise RuntimeError('periodic writer failed: '+audit.error)
@@ -293,30 +388,55 @@ def run_periodic(actor, episodes, *, training=False):
                     if now >= deadline:
                         outcome['reason'] = 'timeout'
                         break
-                    # Immediate stop on takeover; joystick command follows at the next tick.
-                    if transport.pad.buttons.get(311, False) and last_owner == 'policy':
+                    # Immediate mode handles RB edges here; deferred mode switches only after inference.
+                    rb = bool(transport.pad.buttons.get(311, False))
+                    if arbitration_mode == 'immediate' and rb != last_rb and last_owner is not None:
                         audit.submit('interrupt', transport.node.get_clock().now().nanoseconds)
                         transport.stop()
                         last_owner = None
-                    timing = schedule.due(now)
-                    if timing is None:
+                    last_rb = rb
+                    selected = observation_action(transport, used_stamp, verified,
+                                                  policy=getattr(actor, 'policy', True))
+                    if selected is None:
                         continue
-                    selected_source = ('human' if getattr(transport, 'collect_human', False) or
-                                       transport.pad.buttons.get(311, False) else 'policy')
-                    action, source, gate, latest, used_stamp = choose_action(transport, used_stamp, verified[selected_source])
+                    action, source, gate, latest, used_stamp, inference_ms = selected
+                    if arbitration_mode == 'after-inference' and last_owner is not None and source != last_owner:
+                        audit.submit('interrupt', transport.node.get_clock().now().nanoseconds)
+                        transport.stop()
                     command_id = 'hil:'+uuid.uuid4().hex
                     transport.last_owner = source
                     transport.command_anchor_ns = latest[1] if latest is not None else None
                     wire = transport._publish(action, command_id)
                     known[command_id] = (source, wire)
+                    unacknowledged[command_id] = now
                     last_owner = source
+                    sent_ns = transport.last_command_trace.get('command_send_ns', transport.node.get_clock().now().nanoseconds)
+                    delay_ms = (sent_ns-latest[1])/1e6
+                    timing = dict(lateness_ms=delay_ms, skipped_ticks=0)
+                    if delay_ms > 100 or (inference_ms is not None and inference_ms > 100):
+                        print('ACTION_TIMING: '+json.dumps(dict(command_id=command_id,
+                            observation_reference_ns=latest[1], observation_to_send_ms=delay_ms,
+                            inference_ms=inference_ms, diagnostic_only=True)), flush=True)
                     metadata = dict(command_id=command_id, action_source=source, gate=gate,
+                        arbitration_mode=arbitration_mode,
+                        arbitration=getattr(transport, 'last_arbitration', None),
+                        timing_policy='diagnostic_only_v1', inference_ms=inference_ms,
                         policy_version=actor.version, observation_present=latest is not None,
                         observation_reference_ns=transport.command_anchor_ns,
                         eef_receive_ns=getattr(transport, 'latest_eef_time', None),
-                        command_send_ns=transport.node.get_clock().now().nanoseconds,
+                        command_send_ns=sent_ns,
                         normalized_action=config.normalized_action(action).tolist(), wire_action=wire,
                         command_trace=dict(transport.last_command_trace), **timing)
+                    if telemetry is not None:
+                        telemetry.update(episode=episode, tick=count, remaining_s=max(0., deadline-now),
+                            arbitration=dict(source=source, gate=gate, command_id=command_id,
+                                mode=arbitration_mode, rb=rb,
+                                normalized_action=metadata['normalized_action'], wire_action=wire,
+                                inference_ms=inference_ms, observation_reference_ns=latest[1],
+                                observation_to_send_ms=delay_ms,
+                                trace=metadata['command_trace'], receiver_verified=dict(verified),
+                                lateness_ms=timing['lateness_ms'], skipped_ticks=timing['skipped_ticks']),
+                            audit_queue=audit.tasks.qsize())
                     audit.submit('tick', (metadata, latest[0] if latest is not None else None))
                     count += 1
                     if count % 10 == 0:
@@ -329,6 +449,8 @@ def run_periodic(actor, episodes, *, training=False):
                 print('PERIODIC_STOP: '+str(exc), flush=True)
             finally:
                 boundary = None
+                if fault_receipt is not None:
+                    outcome['receiver_fault'] = fault_receipt
                 stop_ns = transport.node.get_clock().now().nanoseconds
                 if training and transport.latest is not None:
                     boundary = (dict(observation_present=True, observation_reference_ns=transport.latest[1],
@@ -375,27 +497,27 @@ def run_periodic(actor, episodes, *, training=False):
                     drain_until = time.monotonic()+.3
                     while time.monotonic() < drain_until:
                         transport._pump()
-                        # Success is terminal (no Q bootstrap). Capture its first
-                        # real post-stop state before permitting ANY manual reset.
-                        # The last command may be shortened by the explicit stop;
-                        # this is recorded, never described as a full displacement.
-                        if (training and outcome['success'] and transport.latest is not None and
-                                getattr(transport, 'latest_eef_time', 0) > stop_ns and
-                                (boundary is None or 'terminal_success_stop_ns' not in boundary[0])):
+                        # Capture a following observation tick, without waiting for
+                        # EEF freshness/causality, before permitting manual reset.
+                        if (transport.latest is not None and
+                                (used_stamp is None or transport.latest[1] > used_stamp) and
+                                (boundary is None or boundary[0]['observation_reference_ns'] <= (used_stamp or 0))):
                             boundary = (dict(observation_present=True,
                                 observation_reference_ns=transport.latest[1],
-                                eef_receive_ns=transport.latest_eef_time,
-                                terminal_success_stop_ns=stop_ns,
+                                eef_receive_ns=getattr(transport, 'latest_eef_time', None),
+                                **({'terminal_success_stop_ns': stop_ns} if outcome['success'] else {}),
                                 command_send_ns=transport.node.get_clock().now().nanoseconds), transport.latest[0])
                 finally:
                     transport.receipt_hook = None
+                    transport.observation_hook = None
                     # No reset is permitted until the boundary is captured.
                     if training and not getattr(transport, 'collect_human', False):
                         _banner('正在保存 RL 回合：等待本地写盘与有效片段校验完成', '33')
                     save_started = time.monotonic()
+                    actor.state('SAVING', episode=episode)
                     result = audit.finish(boundary, outcome, tick=transport.idle_tick)
                     save_seconds = time.monotonic() - save_started
-                    actor.state('EPISODE_RECORDED', audit=result)
+                    actor.state('EPISODE_RECORDED', audit=result, save_seconds=save_seconds)
                     print('PERIODIC_SAVED: '+json.dumps(result), flush=True)
                     if training and not getattr(transport, 'collect_human', False):
                         transitions = result.get('transitions', 0)
@@ -423,4 +545,5 @@ def run_periodic(actor, episodes, *, training=False):
     finally:
         transport.stop()
         transport.receipt_hook = None
+        transport.observation_hook = None
         actor.close_pipeline()

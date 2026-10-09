@@ -23,6 +23,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "omi_hil_rl.sim" = ["assets/*.xml"]
 "omi_hil_rl.keypoints" = ["static/*.html", "static/*.js", "static/*.css"]
+"omi_hil_rl.hil" = ["static/*.html", "static/*.js", "static/*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

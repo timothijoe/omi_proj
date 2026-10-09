@@ -12,6 +12,7 @@ from .config import HILConfig, load_config
 from .exchange import atomic_json, import_ready, owner_lock, publish
 from .networks import SAC
 from .shutdown import graceful_stop
+from .telemetry import TelemetryWriter
 
 
 def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
@@ -32,7 +33,9 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
                 (state.get('task') or {}).get('episode') != alternating_episode):
             raise ValueError('alternating run: learner may only run the current scheduler task')
     contract = config.replay_contract()
-    with owner_lock(run, "learner"):
+    with owner_lock(run, "learner"), TelemetryWriter(run, 'learner') as telemetry:
+        telemetry.update(batch_size=batch_size, min_online=min_online, min_demo=min_demo,
+                         publish_every=publish_every, device=device)
         if (run / "learner.pt").exists():
             agent = SAC.restore(torch.load(run / "learner.pt", map_location=device, weights_only=True),
                                 device=device, expected_contract=contract)
@@ -52,10 +55,18 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
         replay = (open_replay(replay_dir, expected_contract=contract, prefetch=False)
                   if replay_dir.exists() else TransitionReplay(replay_dir, contract, capacity, prefetch=False))
         update_in_progress = False
+        imported_total, actor_updates, rl_updates = 0, 0, 0
+        last_update_completed = None
+        def publish_monitored():
+            before = time.monotonic()
+            publish(run, agent)
+            telemetry.update(published_version=agent.updates, published_ns=time.time_ns(),
+                             publish_ms=(time.monotonic()-before)*1000)
+            telemetry.event('weights_published', version=agent.updates)
         try:
             if getattr(replay, 'is_dual', False) and (batch_size < 2 or batch_size % 2):
                 raise ValueError('dual replay requires an even batch size >= 2')
-            publish(run, agent)
+            publish_monitored()
             started = time.monotonic()
             target_updates = None if updates is None else agent.updates + updates
             print("learner 已发布初始策略；等待保留回合和训练数据。", flush=True)
@@ -64,7 +75,13 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
                     break
                 if wait_seconds is not None and time.monotonic() - started >= wait_seconds:
                     raise TimeoutError("learner run deadline reached before requested updates")
+                telemetry.update(phase='IMPORTING')
+                import_started = time.monotonic()
                 imported = import_ready(run, replay)
+                import_ms = (time.monotonic()-import_started)*1000
+                imported_total += imported
+                if imported:
+                    telemetry.event('replay_imported', count=imported)
                 counts = replay.buffer.stream_counts()
                 ready = counts["online"] >= min_online and counts["demonstration"] >= min_demo
                 if getattr(replay, 'is_dual', False):
@@ -74,6 +91,8 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
                                counts['demonstration'] >= max(1, min_demo))
                 ready = ready or demo_warmup
                 if ready and replay.buffer.size():
+                    telemetry.update(phase='TRAINING', streams=counts, waiting_reason=None)
+                    update_started = time.monotonic()
                     update_in_progress = True
                     batch = (replay.buffer.sample_human(batch_size) if demo_warmup
                              else replay.buffer.sample(batch_size))
@@ -81,29 +100,43 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
                                if agent.bc_weight else agent.update(batch))
                     update_in_progress = False
                     metrics['demo_only_warmup'] = demo_warmup
+                    actor_updates += int('actor_loss' in metrics)
+                    rl_updates += int(not demo_warmup)
+                    telemetry.update(metrics=dict(metrics), update=agent.updates,
+                        actor_updates_this_process=actor_updates, imported_this_process=imported_total,
+                        rl_updates_this_process=rl_updates,
+                        import_ms=import_ms, update_ms=(time.monotonic()-update_started)*1000,
+                        warmup_remaining=max(0, agent.critic_warmup_updates-agent.updates))
                     if agent.updates % publish_every == 0:
-                        publish(run, agent)
+                        publish_monitored()
                     if agent.updates == 1 or agent.updates % 10 == 0:
                         print(json.dumps(dict(metrics, streams=counts)), flush=True)
                     atomic_json(run / "status.json", dict(metrics, streams=counts, imported=imported))
+                    completed_at = time.monotonic()
+                    telemetry.update(update_hz=1/(completed_at-last_update_completed) if last_update_completed else None)
+                    last_update_completed = completed_at
                     if update_delay:
                         # Optional resource pacing, not a data/update-ratio budget.
                         end_delay = time.monotonic() + update_delay
                         while time.monotonic() < end_delay and not should_stop():
                             time.sleep(min(.05, max(0., end_delay - time.monotonic())))
                 else:
+                    telemetry.update(phase='WAITING', update=agent.updates, streams=counts,
+                        imported_this_process=imported_total, import_ms=import_ms,
+                        waiting_reason='waiting_for_online' if counts['online'] < min_online else 'waiting_for_demo',
+                        warmup_remaining=max(0, agent.critic_warmup_updates-agent.updates))
                     atomic_json(run / "status.json", dict(update=agent.updates, streams=counts, waiting=True, imported=imported,
                         waiting_for_online=counts['online'] < min_online,
                         critic_warmup_remaining=max(0, agent.critic_warmup_updates-agent.updates)))
                     time.sleep(.05)
-            publish(run, agent)
+            publish_monitored()
             return dict(updates=agent.updates, streams=replay.buffer.stream_counts())
         finally:
             replay.close()
             # OOM or another exception may have interrupted one of several
             # optimizer steps. Keep the last good checkpoint in that case.
             if not update_in_progress:
-                publish(run, agent)
+                publish_monitored()
 
 
 def main():

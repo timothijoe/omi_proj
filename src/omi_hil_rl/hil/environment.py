@@ -93,7 +93,7 @@ class RealHILEnv(gym.Env):
         start_time = self.transport.wait_start()
         self.started = self.clock() if start_time is None else start_time
         self.deadline = self.started + self.config.episode_seconds
-        self.transport.reset_history()
+        self.transport.start_episode()
         self.episode = uuid.uuid4().hex
         self.step_number = 0
         try:
@@ -193,6 +193,10 @@ class FakeTransport:
     def reset_history(self):
         self.steps = 0
         self.state[:] = 0
+
+    def start_episode(self):
+        # Synthetic transports reset their fixture state rather than sensor data.
+        self.reset_history()
 
     def _observation(self):
         return dict(rgb=np.zeros((10, 3, 128, 128), np.uint8),

@@ -1,5 +1,14 @@
 # CLI 入口
 
+异步 periodic RL 仲裁：`run_async_rl.sh --run SESSION --execute --enable-policy
+--arbitration-mode after-inference`，省略仲裁参数即为此默认。
+原立即人工接管用 `--arbitration-mode immediate`；旧 receipt RL 启用 policy 时必须显式选此旧模式。
+人工采集及未启用 policy 的运行不等待推理，见[操作说明](../../../tutorials/async_rl.md)。
+
+统一训练监控：`bash scripts/view_training_monitor.sh --run RUN [--port 8768] [--sensor-status GRID_VIEWER_OUTPUT]`。
+只监听本机，读取既有会话；不启动 ROS、训练或机器人服务。
+新版异步训练自动写出心跳；旧会话显示历史快照。见[启动与状态解释](../../../tutorials/training_monitor.md)。
+
 固定BC评估：`bash scripts/run_bc_episodes.sh --output SESSION --resume --control-mode periodic --episodes 1 --execute`。
 最新已准备SESSION为`local/bc_episodes/all8_coarse_fine_eval_01`（11795）；无Learner。
 默认periodic是100ms目标发布+独立审计，不逐条等待回执；审计不自动入训练池，receipt模式才用旧同步配对。

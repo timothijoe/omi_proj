@@ -174,10 +174,15 @@ def test_periodic_success_stops_then_records_terminal_state_before_reset(tmp_pat
         latest_eef_time = 0
         last_command_trace = {}
         pad = SimpleNamespace(buttons={}, axes={})
-        policy_pipeline = SimpleNamespace(get=lambda stamp: (np.ones(6)*.1, 0.))
+        consumed = None
+        def take(self):
+            if self.latest[1] == self.consumed:
+                return None
+            self.consumed = self.latest[1]
+            return (*self.latest, np.ones(6)*.1, 0.)
         node = SimpleNamespace(get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=int(now[0]*1e9))))
         def wait_start(self): return now[0]
-        def reset_history(self): pass
+        def start_episode(self): pass
         def idle_tick(self): pass
         def _pump(self):
             now[0] += .01
@@ -202,6 +207,7 @@ def test_periodic_success_stops_then_records_terminal_state_before_reset(tmp_pat
                 self.receipt_hook(dict(self.last_receipt, status='queue_cancelled', finished=True,
                                        timestamp_ns=int(now[0]*1e9)+1))
     tr = Transport()
+    tr.policy_pipeline = SimpleNamespace(take=tr.take)
     tr.config = config
     actor = SimpleNamespace(transport=tr, config=config, run=tmp_path, version=0, load=lambda: None,
                             close_pipeline=lambda: None, state=lambda *a, **kw: None, finished=finished.append)

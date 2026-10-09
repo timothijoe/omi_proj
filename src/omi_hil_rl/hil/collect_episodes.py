@@ -46,7 +46,7 @@ def collect(run, config, transport, *, episodes=100000, resume=False):
 
 
 def collect_periodic(run, config, transport, *, episodes=100000, resume=False):
-    """Human-only 10Hz control with post-episode receipt/observation validation."""
+    """Human commands follow 10Hz latest observations; timing is diagnostic only."""
     from .periodic_control import run_periodic
     run = Path(run)
     if episodes < 1:
@@ -63,7 +63,7 @@ def collect_periodic(run, config, transport, *, episodes=100000, resume=False):
             atomic_json(run / 'session.json', dict(mode='human_rl_periodic_v1',
                 config=asdict(config), contract=config.replay_contract(), policy='none',
                 reset_actions_in_replay=False, action_semantics='accepted_command',
-                control_mode='periodic_100ms_posthoc_validation',
+                control_mode='observation_driven_10hz', timing_policy='diagnostic_only_v1',
                 receiver=getattr(transport, 'receiver_info', None)))
         transport.collect_human = True
 
@@ -205,10 +205,14 @@ def main():
     parser.add_argument('--no-gripper', action='store_true', help='Disable A/B gripper control')
     parser.add_argument('--rgb-max-age-ms', type=float, default=500.)
     parser.add_argument('--execute', action='store_true')
-    parser.add_argument('--control-mode', choices=('receipt', 'periodic'), default='receipt',
-                        help='periodic sends every 100ms and validates receipts/observations after each episode')
+    parser.add_argument('--control-mode', choices=('receipt', 'periodic'), default=None,
+                        help='default: periodic latest-observation control, timing diagnostics only; resume preserves the session mode')
     parser.add_argument('--resume', action='store_true', help='append new episodes to an existing matching session')
     args = parser.parse_args()
+    if args.control_mode is None:
+        session_path = args.output/'session.json'
+        previous_mode = json.loads(session_path.read_text()).get('mode') if args.resume and session_path.exists() else None
+        args.control_mode = 'receipt' if previous_mode == 'human_rl_episodes' else 'periodic'
     if args.no_gripper:
         args.gripper_server = None
     calibration = calibration_from_args(args, parser)
@@ -257,6 +261,9 @@ def main():
     transport.competing_topics = ['/omi/action/decision', '/omi/action/manual_decision']
     transport.receiver_info = receiver
     transport.log_buttons = args.execute
+    if args.control_mode == 'periodic':
+        transport.observation_driven = True
+        transport.runtime.latest_mode = True
     if not args.execute:
         try:
             transport.reset_history()

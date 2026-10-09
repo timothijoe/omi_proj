@@ -69,15 +69,15 @@ class GridBuffer:
         if items and items[-1][0] == timestamp: items.pop()
         items.append((timestamp, value))
 
-    def at(self, reference, expected=None):
+    def at(self, reference, expected=None, *, latest=False):
         values, stamps = {}, {}
         for key, items in self.data.items():
             wanted = None if expected is None else expected[key]
-            item = next((x for x in reversed(items) if x[0] <= reference and (wanted is None or x[0] == wanted)), None)
+            item = next((x for x in reversed(items) if (latest or x[0] <= reference) and (wanted is None or x[0] == wanted)), None)
             age = self.profile.CONTRACT['eef_max_age_ns'] if key == 'eef' else self.profile.CONTRACT['max_age_ns']
             age = self.max_age_overrides.get(key, age)
             if key == 'wrist_rgb' and (self.profile.mode == 'off' or wanted == 0): item = None
-            if item is not None and reference-item[0] > age: item = None
+            if not latest and item is not None and reference-item[0] > age: item = None
             if item is None:
                 if key == 'wrist_rgb' and self.profile.mode != 'required' and not wanted:
                     values[key] = np.zeros((3,128,128), np.uint8); stamps[key] = 0

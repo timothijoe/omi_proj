@@ -1,5 +1,22 @@
 # OMI 文档总目录
 
+2026-10-10现场进展：[固定BC12045、数据统计与EEF现象](agent/training/chronicles/2026-10-10-fixed-bc-storage-live-review.md)。
+本轮固定BC评估已关闭，新采19回合3617条动作；无Learner、未入RL池，单帧存储已现场核查。
+
+2026-10-10 async RL 新回合采用[单帧共享存储](agent/training/evolution/real-online-rl.md#回合观测的单帧存储2026-10-10)：
+首窗十帧、后续新增当前帧，训练/查看自动重建；[重启与读取方法](../tutorials/async_rl.md#2026-10-10回合观测按单帧存储)。
+
+此前异步RL试跑：[BC12045 预加载与异步 RL 的可复制启动命令](../tutorials/bc12045_async_rl_trial.md)。
+
+当前主维护入口为人工采集 `collect_rl_episodes.sh` 与真机训练 `run_async_rl.sh`。
+2026-10-09 周期流程已改为[10 Hz latest 观测驱动动作，时序仅诊断](agent/training/chronicles/2026-10-09-observation-driven-control.md)；其他入口保留、按需维护。
+
+2026-10-09 Start 保留 SAC 十帧输入：[修改与验证记录](agent/training/chronicles/2026-10-09-start-history-retention.md)
+→ [生效与操作说明](../tutorials/async_rl.md#2026-10-09start-保留十帧输入)。完整有效历史不再重新预热，需重启 Actor。
+
+统一查看训练过程：[Actor/Learner 监控、数据链与验证边界](agent/training/evolution/training-monitor.md)
+→ [启动教程](../tutorials/training_monitor.md)。只读本机网页，新版训练进程自动报告心跳与仲裁。
+
 2026-10-09 local 冷数据外置：[目录映射与本机保留范围](agent/interfaces/local-storage.md)
 → [挂载、使用与恢复教程](../tutorials/local_data_storage.md)。当前 RL live、对应 BC/seed 与新示范留本机。
 

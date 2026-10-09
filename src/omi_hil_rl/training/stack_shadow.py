@@ -30,6 +30,7 @@ class StackObservations:
         if header_mode not in ('strict','receive-only-diagnostic'):
             raise ValueError('Unknown header mode')
         self.header_mode=header_mode
+        self.latest_mode = False  # Enabled by the observation-driven HIL runner only.
         reference_offset(eef_reference)
         self.eef_reference=eef_reference
         self.profile = GridProfile(contract['wrist_camera'])
@@ -72,9 +73,11 @@ class StackObservations:
             metadata.update(header_ns=stamp,header_age_ms=age/1e6)
             limit = self.contract['eef_max_age_ns'] if key=='eef' else self.contract['max_age_ns']
             if key == 'rgb':limit = self.rgb_max_age_ns
-            if self.header_mode=='strict' and age < -self.contract['ingress_max_header_ahead_ns']:
+            metadata['timing_warnings'] = (["header_ahead"] if age < -self.contract['ingress_max_header_ahead_ns']
+                                           else ["old_header"] if age > limit else [])
+            if not self.latest_mode and self.header_mode=='strict' and age < -self.contract['ingress_max_header_ahead_ns']:
                 raise ValueError('header_ahead')
-            if self.header_mode=='strict' and age > limit:
+            if not self.latest_mode and self.header_mode=='strict' and age > limit:
                 raise ValueError('old_header')
             self.buffer.add(key,receive_ns,value)
         except (ValueError,AttributeError,TypeError,KeyError) as exc:
@@ -101,10 +104,11 @@ class StackObservations:
         status=dict(reference_ns=reference_ns,expires_ns=reference_ns+PERIOD_NS,
                     epoch=self.epoch,inferred=False,reason='missing_current',action=None,
                     joint_enabled=0,execution_allowed=False,header_mode=self.header_mode,
-                    training_header_guards_enforced=self.header_mode=='strict')
+                    training_header_guards_enforced=self.header_mode=='strict' and not self.latest_mode,
+                    sampling='latest' if self.latest_mode else 'causal_fresh')
         status['eef_reference']=self.eef_reference
         try:
-            obs,stamps=self.buffer.at(reference_ns)
+            obs,stamps=self.buffer.at(reference_ns, latest=True) if self.latest_mode else self.buffer.at(reference_ns)
         except NotReady as exc:
             status['reason']=str(exc)
             return None,status
@@ -118,6 +122,27 @@ class StackObservations:
                       source_receive_ns={k:int(v) for k,v in stamps.items() if k!='q'},
                       source_receive_age_ms={k:(reference_ns-v)/1e6 for k,v in stamps.items() if k!='q'},
                       eef_xyz_xyzw=obs['state'][7:].tolist())
+        if self.latest_mode:
+            status['reason'] = 'latest_ready'
+            warnings = []
+            timing_info = []
+            for key, stamp in stamps.items():
+                if key == 'q' or not stamp:
+                    continue
+                limit = (self.contract['eef_max_age_ns'] if key == 'eef' else
+                         self.rgb_max_age_ns if key == 'rgb' else self.contract['max_age_ns'])
+                if reference_ns-stamp > limit:
+                    warnings.append(key+':old_receive')
+                if stamp > reference_ns:
+                    # Latest sampling intentionally includes callbacks between
+                    # the nominal lattice point and actual snapshot assembly.
+                    timing_info.append(key+':received_after_reference')
+                warnings.extend(key+':'+reason for reason in self.latest.get(key, {}).get('timing_warnings', []))
+            if not mask.all():
+                warnings.append('partial_history')
+            status['timing_warnings'] = warnings
+            status['timing_info'] = timing_info
+            status['source_headers'] = {k: self.latest.get(k, {}).get('header_ns') for k in stamps if k != 'q'}
         return (data,mask),status
 
 

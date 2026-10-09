@@ -1,5 +1,11 @@
 # OpticalModule 控制架构与接收端迁移
 
+2026-10-09 接收端修复：无ID零停止仅取消自身通道，避免跨topic迟到停止覆盖已选中的另一通道；
+带HIL命令ID零动作仍表示正式选择，可切换来源并停止运动。SDK拒绝回执增加
+`diagnostics`（返回值、目标/反馈关节角、控制器状态、帧号等），日志前缀 `SDK_REJECTED`。
+实际SDK拒绝仍停机，未更改速度、限位或目标锚点。构建与现场证据见
+[本次排查](../../training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md)。
+
 2026-10-05，从用户提供的 `Downloads/oct04/robot_control/OpticalModule_PU.zip` 迁入。
 原包 SHA256：`f266412ad9f466966c6d75b536ffaa4eebf0b8a97dc4c85c162d275e34872112`。
 原件、提取副本和逐文件清单在 `local/vendor/optical_module_pu/`；

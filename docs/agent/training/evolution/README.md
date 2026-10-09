@@ -1,5 +1,7 @@
 # Training 纪传体
 
+- [Actor/Learner 统一训练监控](training-monitor.md)：后台心跳、仲裁、传感器、数据链、权重版本和只读回合审阅。
+
 - [真机在线 RL：BC 热启动、手柄接管与异步训练](real-online-rl.md)：当前三池、周期回合、Learner/Actor 版本、首批 1059 条真机 transition 与 EEF 因果配对边界。
 
 - [手柄示范录包、动作语义与 BC 数据入口](demo-collection-bc.md)：当前独立gamepad、集成collector和诊断数据的区别；触觉历史、wrench及可视化。

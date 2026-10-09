@@ -6,12 +6,14 @@ import numpy as np
 
 
 class LatestPolicy:
-    def __init__(self, infer):
+    def __init__(self, infer, *, consume_results=False):
         self.infer = infer
         self.cv = threading.Condition()
         self.generation = 0
         self.pending = self.result = self.error = self.last_key = None
         self.closed = False
+        self.consume_results = consume_results
+        self.result_observation = None
         self.thread = threading.Thread(target=self._work, name='rl-policy-inference', daemon=True)
         self.thread.start()
 
@@ -19,6 +21,8 @@ class LatestPolicy:
         with self.cv:
             self.generation += 1
             self.pending = self.result = self.last_key = None
+            self.result_observation = None
+            self.cv.notify_all()
 
     def offer(self, observation, stamp):
         # Windows are immutable after publication by StackObservations. Copying
@@ -43,10 +47,27 @@ class LatestPolicy:
                 return self.result[1].copy(), self.result[2]
             return None
 
+    def take(self):
+        """Deliver every completed result once, including its actual input snapshot.
+
+        A completed result is never replaced by a faster subsequent inference.
+        Pending inputs still collapse to the latest while inference is busy.
+        """
+        with self.cv:
+            self.check()
+            if self.result is None:
+                return None
+            key, action, elapsed = self.result
+            observation = self.result_observation
+            self.result = self.result_observation = None
+            self.cv.notify_all()
+            return observation, key[1], action.copy(), elapsed
+
     def _work(self):
         while True:
             with self.cv:
-                self.cv.wait_for(lambda: self.closed or self.pending is not None)
+                self.cv.wait_for(lambda: self.closed or (self.pending is not None and
+                                 (not self.consume_results or self.result is None)))
                 if self.closed:
                     return
                 key, observation = self.pending
@@ -60,6 +81,7 @@ class LatestPolicy:
                 with self.cv:
                     if not self.closed and key[0] == self.generation:
                         self.result = (key, action.copy(), elapsed)
+                        self.result_observation = observation
             except Exception as exc:
                 with self.cv:
                     self.error = repr(exc)

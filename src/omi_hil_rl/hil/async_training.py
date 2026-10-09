@@ -144,10 +144,16 @@ class AsyncActor(Alternating):
         return candidate[0]
 
     def state(self, phase, **details):
+        details.setdefault('arbitration_mode', getattr(self.transport, 'arbitration_mode', 'immediate'))
         value = dict(phase=phase, policy_version=self.version, complete_episodes=self.completed,
                      last_reload_check=self.last_reload_check, reload_episodes=self.reload_episodes,
                      policy_enabled=self.policy, policy_selection='latest_validated_not_best', **details)
         atomic_json(self.run/'async_state.json', value)
+        monitor = getattr(self, 'telemetry', None)
+        if monitor is not None:
+            monitor.update(**value)
+            monitor.event('actor_phase', phase=phase, policy_version=self.version,
+                          episode=details.get('episode'))
         print(json.dumps(value, ensure_ascii=False), flush=True)
 
     def load(self, expected=None):
@@ -200,9 +206,11 @@ class AsyncActor(Alternating):
                 with torch.inference_mode():
                     return actor.sample({k: torch.as_tensor(v, device=self.device)[None]
                                          for k, v in observation.items()}, True)[0][0].cpu().numpy()
-            self.pipeline = LatestPolicy(infer)
+            self.pipeline = LatestPolicy(infer, consume_results=getattr(self.transport, 'observation_driven', False))
             self.transport.policy_pipeline = self.pipeline
-            print('POLICY_PIPELINE: background inference; exact-observation candidates; 100ms send gate retained', flush=True)
+            print('POLICY_PIPELINE: background inference; exact-observation candidates; '+
+                  ('send on completion; timing diagnostic only' if getattr(self.transport, 'observation_driven', False)
+                   else '100ms send gate retained'), flush=True)
         self.state('WAIT_START', reload_error=self.last_reload_error)
 
     def finished(self, result):
@@ -218,6 +226,8 @@ class AsyncActor(Alternating):
         session_path = self.run/'async_session.json'
         if session_path.exists() and json.loads(session_path.read_text()).get('control_mode') == 'periodic_training_v1':
             from .periodic_control import run_periodic
+            if not hasattr(self.transport, 'arbitration_mode'):
+                self.transport.arbitration_mode = 'after-inference'
             self.completed = sum(bool(json.loads(p.read_text()).get('training_ready'))
                                  for p in self.run.glob('periodic_episodes/*/audit.json'))
             return run_periodic(self, episodes, training=True)
@@ -320,6 +330,8 @@ def main():
     p.add_argument('--rgb-max-age-ms', type=float, default=500.)
     p.add_argument('--execute', action='store_true')
     p.add_argument('--enable-policy', action='store_true')
+    p.add_argument('--arbitration-mode', choices=('after-inference', 'immediate'), default='after-inference',
+                   help='periodic RL: choose latest RB/joystick after inference (default); immediate retains interrupting takeover')
     args = p.parse_args()
     if min(args.reload_every_episodes, args.publish_every, args.min_online, args.min_demo,
            args.batch_size, args.episodes, args.shutdown_timeout, args.probe_updates) <= 0 or args.batch_size < 2:
@@ -342,6 +354,9 @@ def main():
     if (session.get('mode') != 'async_hil_v1' or session['contract'] != config.replay_contract() or
             config.transport != 'ros' or config.review != 'auto'):
         p.error('matching ROS auto-review async session required')
+    if (args.execute and args.enable_policy and args.arbitration_mode == 'after-inference' and
+            session.get('control_mode') != 'periodic_training_v1'):
+        p.error('after-inference requires a periodic_training_v1 session; use --arbitration-mode immediate for legacy receipt sessions')
     if args.execute:
         episode_buttons = (config.start_button, config.success_button, config.stop_button,
                            config.keep_button, config.discard_button, 311)
@@ -384,13 +399,18 @@ def main():
     transport, actor = None, None
     failed, killed = None, False
     try:
-        with owner_lock(args.run, 'actor'):
+        from .telemetry import TelemetryWriter
+        with owner_lock(args.run, 'actor'), TelemetryWriter(args.run, 'actor') as telemetry:
             # Fail before robot publishers if a different learner owns this directory.
             with owner_lock(args.run, 'learner'):
                 pass
             transport = make_transport(config, recipe, args)
+            transport.arbitration_mode = args.arbitration_mode if args.enable_policy else 'immediate'
             actor = AsyncActor(args.run, config, transport, reload_episodes=args.reload_every_episodes,
                                device=args.actor_device, policy=args.enable_policy)
+            actor.telemetry = transport.telemetry = telemetry
+            telemetry.update(policy_enabled=args.enable_policy, execute=bool(args.execute),
+                             arbitration_mode=transport.arbitration_mode)
             try:
                 worker.start()
                 transport.health_check = worker.check

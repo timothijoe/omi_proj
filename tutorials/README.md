@@ -1,5 +1,9 @@
 # 操作教程
 
+- [BC12045 预加载与异步 RL 首次试跑：新会话、3 回合命令、默认仲裁与监控](bc12045_async_rl_trial.md)
+
+- [Actor/Learner 统一训练监控：传感器、仲裁、数据链、权重与逐帧审阅](training_monitor.md)
+
 - [local 大数据外置：原路径兼容、挂载检查与旧会话恢复](local_data_storage.md)
 
 - [真机 RL 回合逐帧可视化：两路相机、10 帧历史、触觉与训练片段状态](rl_episode_visual_review.md)
@@ -8,7 +12,7 @@
 
 - [BC模型与成功label回放测试：295/3295/11795模型切换、按键及记录边界](bc_replay_testing.md)
 
-- [异步真机RL：Actor/Learner并行，每10个完整回合刷新策略](async_rl.md)
+- [异步真机RL：Actor/Learner并行，每10个完整回合刷新策略](async_rl.md)；[Start保留十帧输入与重启生效](async_rl.md#2026-10-09start-保留十帧输入)
 
 - [按回合交替RL：采集后训练、重载策略、RB复位与下一回合](alternating_rl.md)
 

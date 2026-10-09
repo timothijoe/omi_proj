@@ -534,20 +534,30 @@ class DeltaCtrlNode(Node):
         self.get_logger().info(f'已切换到 {self._mode_name(state)} (state={state})')
         return True
 
-    def hil_finish(self, status, *, accepted):
+    def hil_finish(self, status, *, accepted, diagnostics=None):
         """Report terminal command outcome; SDK delivery is not measured completion."""
         pending, self.hil_pending = getattr(self, 'hil_pending', None), None
         if pending:
             self.hil_receipt_pub.publish(String(data=json.dumps(dict(pending, status=status,
                 accepted=accepted, finished=True, velocity_hold_continues=(status == 'velocity_window_sent'),
-                timestamp_ns=self.get_clock().now().nanoseconds))))
+                timestamp_ns=self.get_clock().now().nanoseconds,
+                **({'diagnostics': diagnostics} if diagnostics is not None else {})))))
+
+    def _inactive_channel_zero(self, msg, *, manual):
+        """Untagged stop cancels only its channel; tagged zero is an explicit selected action."""
+        if msg.layout.dim and msg.layout.dim[0].label.startswith('hil:'):
+            return False
+        return (self.robot is not None and self.kine is not None and
+                self.queue_source != ('manual' if manual else 'policy') and
+                msg.data is not None and len(msg.data) == 6 and
+                all(math.isfinite(float(v)) and float(v) == 0.0 for v in msg.data))
 
     def hil_delta_callback(self, msg, *, manual=False):
         """Optional tagged HIL receipt: queue acceptance, not measured execution."""
         dims = msg.layout.dim
         command_id = dims[0].label if dims and dims[0].label.startswith('hil:') else None
         result = None
-        if getattr(self, 'hil_pending', None):
+        if getattr(self, 'hil_pending', None) and not self._inactive_channel_zero(msg, manual=manual):
             self.hil_finish('queue_cancelled' if not command_id and not any(msg.data) else 'queue_replaced',
                             accepted=not command_id and not any(msg.data))
         try:
@@ -578,6 +588,8 @@ class DeltaCtrlNode(Node):
         dims = msg.layout.dim
         if dims and dims[0].label.startswith('hil:'):
             return self.hil_delta_callback(msg, manual=True)
+        if self._inactive_channel_zero(msg, manual=True):
+            return dict(accepted=True, ignored_stop=True)
         if (getattr(self, 'hil_pending', None) and self.hil_pending.get('action_source') == 'human'
                 and len(msg.data) == 6 and not any(msg.data)):
             self.hil_finish('queue_cancelled', accepted=True)
@@ -611,6 +623,8 @@ class DeltaCtrlNode(Node):
             return
 
         with self.lock:
+            if self._inactive_channel_zero(msg, manual=manual):
+                return dict(accepted=True, ignored_stop=True)
             if manual:
                 velocity = [float(v) * self.manual_command_rate for v in msg.data]
                 if not all(math.isfinite(v) for v in velocity):
@@ -773,6 +787,7 @@ class DeltaCtrlNode(Node):
                         return
 
             fb = None
+            sub = None
             if self.dcss is not None:
                 sub = self.robot.subscribe(self.dcss)
                 if sub is not None:
@@ -783,10 +798,23 @@ class DeltaCtrlNode(Node):
         # clear_set → set_joint_cmd_pose (关节跟踪指令) → send_cmd。
         # 缺 clear_set/send_cmd 包裹时指令可能不生效 (2025-03 实测症状:
         # IK 在跑、指令在发, 机械臂不动, 指令-反馈偏差持续增大)
-        self.robot.clear_set()
-        if not self.robot.set_joint_cmd_pose(arm=self.arm, joints=[float(v) for v in cmd]):
-            self.hil_finish('sdk_rejected', accepted=False)
-            self.get_logger().error('set_joint_cmd_pose 失败', throttle_duration_sec=1.0)
+        clear_result = self.robot.clear_set()
+        sdk_result = self.robot.set_joint_cmd_pose(arm=self.arm, joints=[float(v) for v in cmd])
+        if not sdk_result:
+            state = ((sub or {}).get('states') or [])
+            output = ((sub or {}).get('outputs') or [])
+            details = dict(sdk_call='set_joint_cmd_pose', sdk_return=sdk_result,
+                clear_set_return=clear_result, arm=self.arm, queue_source=self.queue_source,
+                target_joint_deg=[float(v) for v in cmd], reference_joint_deg=[float(v) for v in q_ref],
+                feedback_joint_deg=fb,
+                max_target_feedback_error_deg=max(abs(c-f) for c, f in zip(cmd, fb)) if fb is not None and len(fb) == 7 else None,
+                controller_state=state[self.arm_idx] if len(state) > self.arm_idx else None,
+                feedback_frame_serial=output[self.arm_idx].get('frame_serial') if len(output) > self.arm_idx else None,
+                feedback_command_joint_deg=output[self.arm_idx].get('fb_joint_cmd') if len(output) > self.arm_idx else None,
+                ctrl_rate_hz=self.ctrl_rate, sub_translation_mm=list(sub_t), sub_abc_deg=list(sub_r),
+                command_id=(getattr(self, 'hil_pending', None) or {}).get('command_id'))
+            self.hil_finish('sdk_rejected', accepted=False, diagnostics=details)
+            self.get_logger().error('SDK_REJECTED: '+json.dumps(details, default=str))
             with self.lock:
                 self.traj_queue = []
                 self.have_goal = False

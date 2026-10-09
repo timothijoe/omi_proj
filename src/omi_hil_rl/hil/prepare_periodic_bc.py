@@ -51,6 +51,8 @@ def prepare(source, output, *, seed=7):
                 raise ValueError('BC source contains a policy action')
             validate_bc_label(contract, record['executed_action'], record)
             for observation in (record['observation'], record['next_observation']):
+                if record['command_audit'].get('timing_policy') == 'diagnostic_only_v1':
+                    continue  # Fixed-shape masked history was already validated above.
                 if not observation['history_mask'].all() or not np.all(observation['camera_mask']):
                     raise ValueError('BC source has incomplete observation history')
             hashes.append(sha256(directory/f"{record['step']:06d}.npz"))

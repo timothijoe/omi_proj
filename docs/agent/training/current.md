@@ -1,5 +1,56 @@
 # Training 当前摘要
 
+2026-10-10现场交接：用户实际运行固定BC12045（`bc_rollout`），没有Learner，BC快照与来源哈希未变。
+整理时已正常关闭，`CLOSED/error=null`。新格式最终19回合、3617条动作（策略1306、人工2273、握手38），
+3672个观测节拍，8个按键成功、10个超时、1个提前结束；ready/imported均0，未入RL池。
+现场5回合存储检查通过，代表回合观测NPZ缩小约9.20倍。首回合开头9拍因EEF不可用未形成完整观测，
+对应视觉/触觉也未独立保存；之后EEF只读探针50Hz、347条全部有效，最新4回合815观测均有EEF。
+新订阅等待首条消息3.08秒，但不能据此确定旧缺失根因；完整事实、最终统计与后续边界见
+[固定BC现场进展与现象](chronicles/2026-10-10-fixed-bc-storage-live-review.md)。
+
+2026-10-10：periodic async RL 改为回合内单帧共享存储，首个窗口保留十帧，连续后续窗口只新增当前帧。
+观测、动作及 ready 片段共用帧文件，读取时精确重建历史和 mask；旧格式兼容，固定容量 replay 布局不变。
+真实 182 个观测窗口从157.17 MB降至17.15 MB（约9.17倍），含动作副本共361个窗口逐字节重建一致。
+152项回归通过、2项跳过；需正常退出并重启 Actor/Learner 后对新回合生效。
+见[当前存储机制](evolution/real-online-rl.md#回合观测的单帧存储2026-10-10)及[验证记录](chronicles/2026-10-10-observation-frame-storage.md)。
+代码定位、生效步骤与现场待验证项已整理到[本轮交接](chronicles/2026-10-10-observation-frame-storage.md#本轮交接已完成与后续验证)。
+
+2026-10-09 现场试跑排查：新会话两回合178/9条，均因 `sdk_rejected` 异常结束，187条原始记录保留、训练入池0。
+第一回合从37条policy切换为连续141条human，未发现按住RB时Actor又选择policy。
+已修复接收端跨topic迟到零停止覆盖新通道的缺陷，并补充SDK目标/反馈/状态诊断，底层拒绝原因仍待定位。
+117项回归通过、1跳过，接收端已构建；需要现场重启接收端和Actor后生效。
+见[证据与边界](chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md)。
+
+2026-10-09 已独立准备 `local/rl_training/bc12045_obs_after_inference_20261009_01/`：
+BC12045 完整 Actor 预加载、1387 条初始示范、在线池为空；离线 CUDA 输出与 BC 一致。
+首次 3 回合的可复制命令、按键和监控见[本次试跑操作页](../../../tutorials/bc12045_async_rl_trial.md)。
+尚未启动真机；后续续跑此目录会加载其最新 RL 权重。
+
+2026-10-09 仲裁更新：启用 policy 的异步 periodic RL 默认在推理完成后读取 RB/摇杆并仲裁，
+`--arbitration-mode after-inference`；人工控制也等待推理完成。原立即接管机制保留为
+`--arbitration-mode immediate`。人工采集不变，停止/结束/断连仍及时处理。
+模式与模型候选/实际选择动作写入审计，见[仲裁记录](chronicles/2026-10-09-arbitration-modes.md)。
+
+2026-10-09 最新：人工采集与异步 RL 的周期路径改为[观测驱动动作](evolution/real-online-rl.md)。
+10 Hz 到点取各路 latest，历史不足保留 mask；推理完成即发送，慢推理仅日志、待处理输入只留最新。
+EEF 因果、发送相位和回执时序只诊断，不据此阻塞动作或排除训练数据；新数据写入
+`timing_policy=diagnostic_only_v1`，BC 读取同步适配。原始观测节拍与动作分别记录。
+新人工采集默认 periodic，旧 receipt 会话自动按原模式恢复。其他控制入口保留、降低维护优先级。
+本轮为软件验证，未启动真机；[完整记录](chronicles/2026-10-09-observation-driven-control.md)。
+
+2026-10-09 修复 Start 清空 SAC 十帧输入的问题：等待期间持续积累的滚动观测在
+开始回合时保留，仅使上一回合动作候选失效；历史完整且新鲜时无需重新等待约 1 秒。
+首次启动帧数不足、缺流或过期时仍受原门控约束。同步与周期入口均已接入，
+需重启 Actor／手柄控制程序生效；107项软件测试通过、3项跳过，尚未实机验收。
+[实现与证据](chronicles/2026-10-09-start-history-retention.md)
+· [操作说明](../../../tutorials/async_rl.md#2026-10-09start-保留十帧输入)。
+
+2026-10-09 新增[Actor/Learner 统一监控网页](evolution/training-monitor.md)：
+传感器与模型输入、RB 仲裁、回执/保护只读状态、ready/imported 链路、Learner 与权重版本
+同屏查看，并可打开原始回合逐帧审阅。新版异步入口自动写出后台心跳，旧会话明确显示历史快照；
+不改变训练预算、动作、入池或策略刷新设置。已有真实会话统计及软件/HTTP验证通过；
+浏览器视觉与真机并发性能尚未验收。[启动教程](../../../tutorials/training_monitor.md)。
+
 2026-10-09 存储更新：选定旧 RL 会话、旧人工采集、旧 BC 评估和离线数据已迁往
 `/media/zhoutong/zt-think-d1/omi_proj_data/local/`，原路径用软链接兼容。
 当前 `rl_live_01`、BC12045、对应 seed/索引、新示范和最新 BC 评估保留本机；

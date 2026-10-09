@@ -60,7 +60,7 @@ def owner_lock(directory, role):
 
 
 class EpisodeSpool:
-    def __init__(self, run, episode, contract, *, origin="online", policy_version=0):
+    def __init__(self, run, episode, contract, *, origin="online", policy_version=0, frame_writer=None):
         if origin not in ("online", "offline_demo"):
             raise ValueError("unknown origin")
         self.directory = Path(run) / "episodes" / episode
@@ -68,7 +68,11 @@ class EpisodeSpool:
         self.contract, self.episode, self.origin = contract, episode, origin
         self.count = 0
         self.last = None
+        self.frame_writer = frame_writer
         self.metadata = dict(episode=episode, contract=contract, origin=origin, policy_version=policy_version)
+        if frame_writer is not None:
+            from .observation_storage import VERSION
+            self.metadata['observation_storage_version'] = VERSION
         atomic_json(self.directory / "staging.json", self.metadata)
 
     def append(self, observation, next_observation, reward, terminated, truncated, info):
@@ -83,8 +87,13 @@ class EpisodeSpool:
             action_source=info["action_source"], command_status=info["command_status"], episode_success=bool(terminated))
         metadata['command_audit'] = info.get('command_audit', {})
         metadata['policy_version'] = info.get('policy_version', self.metadata['policy_version'])
-        arrays = {"observation__" + k: v for k, v in observation.items()}
-        arrays.update({"next_observation__" + k: v for k, v in next_observation.items()})
+        arrays = {}
+        for name, obs in [('observation', observation), ('next_observation', next_observation)]:
+            reference = self.frame_writer.encode(obs, self.directory) if self.frame_writer is not None else None
+            if reference is None:
+                arrays.update({name + '__' + k: v for k, v in obs.items()})
+            else:
+                metadata.setdefault('observation_storage', {})[name] = reference
         arrays.update(executed_action=info["executed_action"], metadata=np.asarray(json.dumps(metadata)))
         destination = self.directory / f"{self.count:06d}.npz"
         with destination.with_suffix(".tmp").open("wb") as stream:
@@ -136,14 +145,15 @@ class EpisodeSpool:
 
 
 def read_episode(directory, manifest):
+    from .observation_storage import ObservationReader
     directory = Path(directory)
+    reader = ObservationReader()
     previous = None
     for index in range(manifest["count"]):
         with np.load(directory / f"{index:06d}.npz", allow_pickle=False) as arrays:
             record = json.loads(str(arrays["metadata"]))
             for name in ("observation", "next_observation"):
-                prefix = name + "__"
-                record[name] = {k[len(prefix):]: arrays[k].copy() for k in arrays.files if k.startswith(prefix)}
+                record[name] = reader.observation(arrays, record, directory / f"{index:06d}.npz", name)
             record["executed_action"] = arrays["executed_action"].copy()
         if record["step"] != index or record["episode"] != manifest["episode"]:
             raise ValueError("spool episode or step mismatch")

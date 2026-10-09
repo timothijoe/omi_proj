@@ -1,5 +1,52 @@
 # 数据格式与单位
 
+## periodic 回合单帧存储（2026-10-10）
+
+新回合 staging/audit 和 ready 片段 manifest 标记
+`observation_storage_version=omi-observation-frames-v1`；audit 另记 `stored_observation_frames`。
+原观测、动作、边界 NPZ 的 `metadata.observation_storage.observation` 含：
+
+- `version`：`omi-observation-frames-v1`。
+- `directory`：相对此 NPZ 所在目录的帧库路径。
+- `frames`：按从旧到新排列的十个 SHA-256 ID。
+
+ready 片段记录额外包含 `metadata.observation_storage.next_observation`，同样引用原回合帧库。
+帧文件为 `periodic_episodes/<episode>/frames/<id>.npz`，保留单帧各字段的原dtype与shape；
+原十帧数组的首维在存储时去掉，读取时 stack 恢复。`history_mask` 单帧为标量，缺帧占位保持原值。
+SHA-256 按排序后的字段名、dtype.str、shape及C顺序原始字节计算；读取验证内容哈希。
+时间与动作元数据保持原格式；内容相同的两个时刻可共用帧，但不合并观测节拍或动作记录。
+
+无引用的旧 `observation__*`/`next_observation__*` 内嵌数组仍支持读取；同一字段同时内嵌和引用则拒绝。
+空观测保持空观测，不重建为虚构的全零有效窗口。
+共享读取入口：`hil.observation_storage.ObservationReader.read` 和 `hil.exchange.read_episode`。
+训练片段依赖原 `periodic_episodes` 帧目录，归档时与 `episodes` 一起保留；固定容量 replay 未改格式。
+
+## observation 驱动的周期记录（2026-10-09）
+
+仲裁模式另记为 `arbitration_mode=after-inference|immediate`，存在于运行状态、回合摘要、
+每条动作及导出 transition 的 `command_audit`。新默认模式还记录 `arbitration.rb`、
+`arbitration.observation_reference_ns` 与 `arbitration.policy_candidate_normalized`。
+模型候选仅审计；`normalized_action` / `executed_action` 与 `action_source` 记录实际选择并接受的动作。
+
+新周期采集/评估/RL 的 `audit.json` 与动作元数据包含 `timing_policy=diagnostic_only_v1`。
+`ticks` 计数已发送动作，`observation_ticks` 计数独立观测快照，两者在慢推理时可不同。
+`observations/<reference_ns>.npz` 保存观测数组、真实历史 mask、源 header/接收时间及诊断；
+根目录 `<index>.npz` 保存每条命令与其实际输入快照，`inference_ms` 和 `command_send_ns` 记录耗时与真实发送时间。
+`timing_diagnostics.json` 与动作索引对应；摘要 `timing_diagnostics` 计数时序告警，`excluded` 才是实际排除。
+`pairing.json` 保留旧检查的诊断结果，新记录由 `pairing_is_diagnostic=true` 明示不作为时序入池门槛。
+导出的 `command_audit` 同样带时序模式、告警与原始命令/回执，BC 读取据此采用相同规则；
+旧数据没有该标记时维持原严格校验，不自动重导历史数据。
+详情见[当前训练机制](../training/evolution/real-online-rl.md)。
+
+## 训练监控遥测（只读、尽力而为）
+
+`RUN/monitor/{actor,learner}.json` 使用 `schema=omi-monitor-v1`，包含角色、独立 session、PID、
+`emitted_ns`（后台写者心跳）和 `progress_ns`（生产循环进度），均为本机系统时间纳秒。
+Actor 另有仲裁、输入状态和可选预览；预览单独保留 ROS `reference_ns` 和本机 `generated_ns`，
+不能把两种时钟直接相减作为延迟。Learner 记录更新、流计数和最新发布确认。
+`*.events.jsonl` 是独立角色事件日志；监控快照不承担 replay 提交或恢复职责。
+旧状态文件没有心跳时只显示历史状态。[完整语义](../training/evolution/training-monitor.md)。
+
 ## bag-eef-bc-v2（可选腕部）
 
 新增wrist_rgb uint8 `(N,3,128,128)`、camera_mask float32 `(N,2)`，顺序external/wrist。

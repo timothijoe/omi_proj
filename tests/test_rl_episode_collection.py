@@ -76,7 +76,8 @@ def test_human_periodic_session_is_separate_from_receipt_mode(tmp_path, monkeypa
     assert calls == [(True, 2, True, 0)]
     session = json.loads((run / 'session.json').read_text())
     assert session['mode'] == 'human_rl_periodic_v1'
-    assert session['control_mode'] == 'periodic_100ms_posthoc_validation'
+    assert session['control_mode'] == 'observation_driven_10hz'
+    assert session['timing_policy'] == 'diagnostic_only_v1'
     collect_periodic(run, config, transport, episodes=1, resume=True)
     assert calls[-1] == (True, 1, True, 0)
 

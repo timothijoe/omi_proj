@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OMI · 训练观测台</title><link rel="stylesheet" href="/monitor.css"><script src="/monitor.js" defer></script></head>
+<body>
+<header><div class="brand">OMI<span>HIL / TRAINING OBSERVATORY</span></div><div class="header-right"><span id="connection" class="pill unknown">正在连接</span><button id="pause">暂停刷新</button></div></header>
+<main>
+<div class="intro"><div><div class="eyebrow">ACTOR ↔ LEARNER</div><h1>训练观测台</h1><p>从传感器输入到策略更新，查看每一段链路的实际状态。</p></div><div class="run-meta"><span class="readonly">只读监控</span><div id="refresh-time">等待数据</div><div id="run-path" class="path"></div></div></div>
+<div id="notice" role="status" class="notice">正在读取会话…</div>
+<nav><button class="tab selected" data-panel="overview">链路总览</button><button class="tab" data-panel="episodes">回合与数据审阅 <span id="episode-count"></span></button><button class="tab" data-panel="events">事件记录</button></nav>
+<section id="overview" class="panel">
+<div class="pipeline" id="pipeline"></div>
+<div class="columns">
+<article><div class="card-head"><h2>Actor 与控制仲裁</h2><span id="actor-badge" class="pill unknown">未知</span></div><div id="actor-body"></div><div class="action-title">最终命令 <span>mm / SDK ABC °</span></div><div id="action-vector" class="vector"></div><p class="footnote">回执确认的是已接受命令；实际位移需结合机器人反馈判断。</p><div id="receiver-body"></div></article>
+<article><div class="card-head"><h2>Learner</h2><span id="learner-badge" class="pill unknown">未知</span></div><div id="learner-body"></div><div class="chart-title"><span>Critic loss</span><span id="chart-caption">等待实时采样</span></div><canvas id="loss-chart" width="700" height="140" aria-label="实时 Critic loss 曲线"></canvas><div id="loss-values" class="metrics"></div></article>
+</div>
+<div class="columns">
+<article><div class="card-head"><h2>权重同步</h2><span class="tag">回合边界加载</span></div><div id="weights" class="versions"></div><div id="weight-details"></div></article>
+<article><div class="card-head"><h2>Replay 与数据质量</h2><span id="replay-backend" class="tag"></span></div><div id="replay"></div><div id="excluded"></div></article>
+</div>
+<article><div class="card-head"><h2>传感器与 Actor 实际输入</h2><span id="sensor-badge" class="pill unknown">未知</span></div><div id="observation-state"></div><div class="table-wrap"><table><thead><tr><th>输入</th><th>状态</th><th>到达频率</th><th>接收年龄</th><th>Header 年龄</th><th>接收 / 通过</th><th>原因</th></tr></thead><tbody id="sensors"></tbody></table></div><p class="footnote">频率为近期回调计数估计；接收年龄与 Header 年龄分开显示，均不等同曝光到执行的延迟。</p><div id="previews" class="previews"></div><p id="preview-note" class="footnote"></p><details id="sensor-bridge" hidden><summary>独立实时传感器看板</summary><p id="bridge-note"></p><img id="bridge-image" alt="独立传感器看板"></details></article>
+</section>
+<section id="episodes" class="panel" hidden><article><div class="card-head"><h2>原始回合与训练片段</h2><label>筛选 <select id="episode-filter"><option value="all">全部回合</option><option value="valid">有有效数据</option><option value="excluded">包含排除数据</option><option value="success">人工标记成功</option><option value="unfinished">中断 / 暂存</option></select></label></div><p class="footnote">保留原始周期和排除原因。打开回合可查看相机、触觉、命令 ID、配对及导入标记。</p><div class="table-wrap"><table><thead><tr><th>回合</th><th>状态 / 结束原因</th><th>周期</th><th>有效 transition</th><th>成功奖励</th><th>策略版本</th><th></th></tr></thead><tbody id="episode-table"></tbody></table></div></article></section>
+<section id="events" class="panel" hidden><article><div class="card-head"><h2>状态变化与交接事件</h2><span class="tag">最近 40 条</span></div><div id="event-list"></div></article></section>
+<details class="diagnostics"><summary>会话契约与读取诊断</summary><pre id="diagnostics"></pre></details>
+<footer>OMI · 本机观测服务 <span>页面刷新、图像渲染和审阅在监控进程中进行。训练配置保持原值。</span></footer>
+</main>
+<dialog id="review"><div class="review-header"><div><strong id="review-title">回合审阅</strong><span id="review-state"></span></div><button id="close-review" aria-label="关闭审阅">关闭 ×</button></div><div class="review-controls"><button id="tick-prev">← 上一周期</button><input id="tick-seek" type="range" min="0" value="0" aria-label="周期"><span id="tick-position"></span><button id="tick-next">下一周期 →</button><label>历史槽 <select id="history-slot"></select></label></div><pre id="tick-details"></pre><img id="tick-image" alt="记录的两路相机、触觉及十帧历史"><p id="tick-empty"></p></dialog>
+</body></html>

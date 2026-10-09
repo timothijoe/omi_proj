@@ -131,6 +131,8 @@ class PeriodicReview:
             training_ready=item['audit'].get('training_ready', False) if item['audit'] else False,
             reason=item['audit'].get('reason', 'unfinished') if item['audit'] else 'unfinished',
             excluded=item['audit'].get('excluded', {}) if item['audit'] else {},
+            timing_diagnostics=item['audit'].get('timing_diagnostics', {}) if item['audit'] else {},
+            observation_ticks=item['audit'].get('observation_ticks') if item['audit'] else None,
         ) for item in self.episodes])
 
     def tick(self, episode, index, slot):
@@ -140,10 +142,8 @@ class PeriodicReview:
         if not 0 <= index < item['ticks'] or not 0 <= slot < 10:
             raise ValueError('tick or history slot out of range')
         path = item['directory'] / f'{index:06d}.npz'
-        with np.load(path, allow_pickle=False) as archive:
-            metadata = json.loads(str(archive['metadata']))
-            obs = {key.removeprefix('observation__'): archive[key].copy()
-                   for key in archive.files if key.startswith('observation__')}
+        from .observation_storage import ObservationReader
+        metadata, obs = ObservationReader().read(path)
         present = set(obs) == {'rgb', 'wrist_rgb', 'camera_mask', 'tactile', 'state', 'history_mask'}
         if not present and obs:
             raise ValueError('incomplete stored observation')
@@ -159,6 +159,7 @@ class PeriodicReview:
                     camera_valid=np.sum(obs['camera_mask'], axis=0).astype(int).tolist() if present else [0, 0],
                     eef_xyz=obs['state'][slot, 7:10].astype(float).tolist() if present else None,
                     pairing=item['pairing'][index] if index < len(item['pairing']) else 'unavailable',
+                    pairing_is_diagnostic=metadata.get('timing_policy') == 'diagnostic_only_v1',
                     in_training=index in item['training'],
                     imported=item['training'].get(index),
                     action_source=metadata.get('action_source'), gate=metadata.get('gate'),
@@ -180,11 +181,11 @@ PAGE = r'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>RL 回
 const $=id=>document.getElementById(id);let catalog, busy=false, pending=false, playing=false, timer;
 for(let i=0;i<10;i++)$('slot').add(new Option(`${i} (${(i-9)*100} ms)`,i));$('slot').value=9;
 function stop(){playing=false;clearTimeout(timer);$('play').textContent='播放'}
-function summary(){const e=catalog.episodes[+$('episode').value];$('summary').textContent=`${catalog.run}\n回合 ${e.id} | ${e.ticks} 周期 | ${e.audited?'完整审计':'仅暂存'} | ${e.transitions} 条入池候选 | ${e.reason} | success=${e.success} | 成功奖励=${e.success_label_recorded}\n排除原因: ${JSON.stringify(e.excluded)}`}
+function summary(){const e=catalog.episodes[+$('episode').value];$('summary').textContent=`${catalog.run}\n回合 ${e.id} | ${e.ticks} 动作记录 | 观测节拍 ${e.observation_ticks??'未单独记录'} | ${e.audited?'完整审计':'仅暂存'} | ${e.transitions} 条入池候选 | ${e.reason} | success=${e.success} | 成功奖励=${e.success_label_recorded}\n排除原因: ${JSON.stringify(e.excluded)}\n时序诊断（不等于排除）: ${JSON.stringify(e.timing_diagnostics)}`}
 async function show(){if(!catalog)return;if(busy){pending=true;return}busy=true;const ep=+$('episode').value,tick=+$('seek').value,slot=+$('slot').value;
  $('position').textContent=`${tick+1}/${catalog.episodes[ep].ticks}`;summary();
  try{const r=await fetch(`/tick?episode=${ep}&index=${tick}&slot=${slot}`);if(!r.ok)throw Error(await r.text());const d=await r.json();
- $('detail').textContent=`周期 ${d.tick} | ${d.observation_present?'有观测':'无观测'} | 历史 ${d.history_valid}/10 | 相机有效 外部/腕部 ${d.camera_valid.join('/')}/10 | 配对 ${d.pairing} | 训练片段 ${d.in_training?'是':'否'} | Learner导入 ${d.imported===null?'不适用':d.imported?'是':'否'}\n来源 ${d.action_source} | gate ${d.gate} | policy v${d.policy_version} | 命令相位 ${d.command_phase_ms===null?'--':d.command_phase_ms.toFixed(2)+' ms'} | EEF xyz ${JSON.stringify(d.eef_xyz)}\n归一化动作 ${JSON.stringify(d.normalized_action)}\n发送指令 ${JSON.stringify(d.wire_action)} | ID ${d.command_id}`;
+ $('detail').textContent=`周期 ${d.tick} | ${d.observation_present?'有观测':'无观测'} | 历史 ${d.history_valid}/10 | 相机有效 外部/腕部 ${d.camera_valid.join('/')}/10 | 配对${d.pairing_is_diagnostic?'（仅诊断）':''} ${d.pairing} | 训练片段 ${d.in_training?'是':'否'} | Learner导入 ${d.imported===null?'不适用':d.imported?'是':'否'}\n来源 ${d.action_source} | gate ${d.gate} | policy v${d.policy_version} | 命令相位 ${d.command_phase_ms===null?'--':d.command_phase_ms.toFixed(2)+' ms'} | EEF xyz ${JSON.stringify(d.eef_xyz)}\n归一化动作 ${JSON.stringify(d.normalized_action)}\n发送指令 ${JSON.stringify(d.wire_action)} | ID ${d.command_id}`;
  $('detail').className=d.in_training?'good':'bad';$('image').hidden=!d.image;$('empty').textContent=d.image?'':'此周期没有完整观测图像；仍保留命令和审计元数据。';if(d.image)$('image').src=d.image;
  }catch(e){stop();$('detail').textContent=String(e);$('detail').className='bad'}finally{busy=false;if(pending){pending=false;show()}else if(playing)timer=setTimeout(advance,350)}}
 function advance(){if(+$('seek').value>=+$('seek').max){stop();return}$('seek').value=+$('seek').value+1;show()}
