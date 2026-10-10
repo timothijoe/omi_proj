@@ -1,5 +1,10 @@
 # 真机在线 RL：BC 热启动、手柄接管与异步训练
 
+2026-10-10新增可选[共享内存缓存双池](cached-replay.md)：`prepare_bc_rl.sh --replay-backend cached`，
+磁盘只登记索引并保留原始数据，后台加载完整transition，Demo/RL共享内存条目，默认16/20 GiB预算。
+自动读取完整periodic回合，可选累计更新额度；[启动教程](../../../../tutorials/cached_replay.md)。
+下文三物理区memmap描述仍适用于原disk后端，不自动改写已有会话。
+
 2026-10-09 仲裁更新：`run_async_rl.sh --enable-policy` 的 periodic 路径默认
 `--arbitration-mode after-inference`。推理期间继续读取手柄，但 RB 变化不取消推理或提前切换；
 完成后按最新 RB/摇杆选择 human 或 policy，人工替代的动作与本次推理实际输入关联。
@@ -111,6 +116,10 @@ replay/demo/interventions/  在线人工来源动作，供示范流独立采样
 `audit.json` 分别用于确认 Actor 版本、训练进度和数据质量。
 
 ## 回合观测的单帧存储（2026-10-10）
+
+本批真实BC录制已完成[离线Learner验证](../chronicles/2026-10-10-recorded-bc-learner-validation.md)：
+19回合导出3579条transition，7308个窗口内容核对通过；独立小容量replay全量导入后，真实CUDA模型
+完成8次Critic、3次Actor更新和恢复。该验证不自动启用固定BC入口的训练，也未覆盖原始权重。
 
 新 periodic 回合使用 `omi-observation-frames-v1`。第一份输入保留实际十帧，正常连续采样的
 每个后续窗口只增加当前帧；N 个连续窗口通常保存 N+9 帧。模型输入仍是原来的十帧数组。

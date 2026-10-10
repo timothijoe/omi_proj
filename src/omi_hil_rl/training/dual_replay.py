@@ -239,7 +239,11 @@ class DualTransitionReplay:
         return imported
 
 
-def open_replay(directory, *, expected_contract=None, prefetch=False):
+def open_replay(directory, *, expected_contract=None, prefetch=None):
     manifest = json.loads((Path(directory)/'manifest.json').read_text())
+    from .cached_replay import CachedDualReplay, VERSION as CACHED_VERSION
+    if manifest.get('backend') == CACHED_VERSION:
+        return CachedDualReplay.reopen(directory, expected_contract=expected_contract,
+                                       prefetch=True if prefetch is None else prefetch)
     cls = DualTransitionReplay if manifest.get('backend') == VERSION else TransitionReplay
-    return cls.reopen(directory, expected_contract=expected_contract, prefetch=prefetch)
+    return cls.reopen(directory, expected_contract=expected_contract, prefetch=False if prefetch is None else prefetch)

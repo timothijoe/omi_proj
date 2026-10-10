@@ -1,5 +1,11 @@
 # Training 编年索引
 
+- [2026-10-10：共享缓存双池实现与真实验证](2026-10-10-cached-dual-replay.md)：全量磁盘索引、16/20 GiB数据预算、后台加载、双池共享；4/6 GiB实测、采样耗时、CUDA更新和恢复。
+
+- [2026-10-10：单帧BC数据到Learner的离线验证](2026-10-10-recorded-bc-learner-validation.md)：19回合3579条transition、7308窗口重建，CUDA实际更新及恢复；独立副本、原BC未改变。
+
+- [2026-10-10：旧格式与SDK错误回合迁移](2026-10-10-old-and-sdk-episode-archive.md)：当前BC旧格式12回合、此前RL的SDK拒绝4回合迁往Downloads；2909文件哈希一致，当前BC保留19回合3617条动作。
+
 - [2026-10-10：固定BC12045现场运行、存储与EEF检查](2026-10-10-fixed-bc-storage-live-review.md)：最终19回合3617条动作、无Learner、未入池；现场空间对照、首窗历史缺失与只读EEF探针。
 
 - [2026-10-10：回合观测按单帧存储](2026-10-10-observation-frame-storage.md)：首窗十帧、后续新增帧，动作/训练片段共享引用；361个真实窗口无损重建和空间验证。

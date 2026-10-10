@@ -29,12 +29,36 @@ local_data_storage:
   retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
   restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: cached-replay-retirement-real-validation-20261010
+    path: local/diagnostics/cached_replay_retirement_validation_20261010_01
+    tracked: false
+    source: A consistent copy of the previously validated catalog, referencing the original BC12045 demonstrations and 19 recorded BC episodes
+    purpose: Validate independent Demo/RL retirement on actual human data, eviction and exact reload, 996 concurrent sample pairs, bounded cache usage and CUDA learner resume after the membership fix
+    restore: report.json, validation.log and validate.py record the test. Original source files and prior catalog remain unchanged. Re-run only in a fresh diagnostic directory with all source dependencies available; test warmup is 2 updates and test models are not production weights.
+  - id: cached-dual-replay-validation-20261010
+    path: local/diagnostics/cached_replay_validation_20261010_01
+    tracked: false
+    source: Unchanged BC12045 seed with 1387 demonstrations and the 19 compact BC evaluation episodes
+    purpose: Real cached-backend validation with 4 GiB residency and 6 GiB managed limit; catalog 3579 online transitions, shared memberships, historical reload, sample timings and CUDA learner resume
+    restore: report.json, cache_report.json, validation.log and validate.py preserve the procedure. Re-run only in a fresh diagnostic directory. This run uses 2 warmup updates for testing; original BC and production datasets were not modified. Catalog references require the original data directories.
+  - id: compact-bc-learner-validation-20261010
+    path: local/diagnostics/bc12045_learner_validation_20261010_02
+    tracked: false
+    source: 19 compact fixed-BC12045 evaluation episodes and the unchanged original BC actor
+    purpose: Independent offline reconstruction and conversion of 3579 transitions; bounded replay import and real CUDA SAC/BC updates with checkpoint resume, not a deployment or policy-quality evaluation
+    restore: report.json and validate.py record evidence and procedure. Re-run the script only from a NEW diagnostic directory with the original source available. Replay capacities are 256 per online/intervention stream and critic warmup is shortened to 2 solely for validation. Original BC data and weights were not modified.
+  - id: old-and-sdk-episode-archive-20261010
+    path: /home/zhoutong/Downloads/oct10/old_version_data
+    tracked: false
+    source: 12 legacy periodic episodes from the current BC12045 evaluation and 4 SDK-rejected episodes from the BC12045 after-inference async RL trial
+    purpose: Separate selected old and faulty recordings from active data; 16 complete episode directories, 2909 files verified by SHA256
+    restore: Read manifest.json for original and archive paths and all hashes. Restore whole episode directories only into absent source paths after stopping the session. No source symlinks remain. Current BC retains 19 compact episodes; models, training segments and replay were not moved.
   - id: async-sdk-rejection-audit-20261009
     path: local/diagnostics/20261009_async_sdk_reject/audit.json
     tracked: false
     source: Read-only metadata and receipts of two episodes in bc12045_obs_after_inference_20261009_01
     purpose: Record source/RB consistency, SDK rejection receipts and immutable audit hashes; not a replay import or model update
-    restore: Recompute from preserved periodic_episodes data; see docs/agent/training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md.
+    restore: Source SDK-rejected episodes were archived under /home/zhoutong/Downloads/oct10/old_version_data/rl_training/bc12045_obs_after_inference_20261009_01/periodic_episodes. Use the archive manifest for original-path mapping; see docs/agent/training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md.
   - id: bc12045-observation-after-inference-trial
     path: local/rl_training/bc12045_obs_after_inference_20261009_01
     tracked: false

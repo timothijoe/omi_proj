@@ -52,6 +52,18 @@ def test_historical_state_never_claims_running_or_weight_publication(tmp_path):
     assert before == {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
 
 
+def test_cached_catalog_and_resident_counts_are_distinct(tmp_path):
+    cache = dict(catalog_seed=1387, catalog_online=3579, resident_unique=1884,
+                 managed_bytes=4303359696, peak_managed_bytes=4451209264, memory_limit_bytes=6*2**30)
+    role(tmp_path, name='learner', phase='TRAINING', replay=cache,
+         streams=dict(online=497, demonstration=1774))
+    write(tmp_path/'replay/manifest.json', dict(backend='omi-cached-dual-replay-v1', clean=True))
+    result = TrainingMonitor(tmp_path)._snapshot(100.)
+    assert result['replay']['cache']==cache
+    assert result['replay']['streams']['online']==497
+    assert result['replay']['cache']['catalog_online']==3579
+
+
 def test_ready_imported_and_ring_occupancy_are_not_conflated(tmp_path):
     for name, count, imported in [('one', 8, True), ('two', 4, False)]:
         write(tmp_path/'episodes'/name/'ready.json', dict(count=count))

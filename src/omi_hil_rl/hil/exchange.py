@@ -144,10 +144,10 @@ class EpisodeSpool:
         return metadata
 
 
-def read_episode(directory, manifest):
+def read_episode(directory, manifest, *, reader=None):
     from .observation_storage import ObservationReader
     directory = Path(directory)
-    reader = ObservationReader()
+    reader = reader if reader is not None else ObservationReader()
     previous = None
     for index in range(manifest["count"]):
         with np.load(directory / f"{index:06d}.npz", allow_pickle=False) as arrays:

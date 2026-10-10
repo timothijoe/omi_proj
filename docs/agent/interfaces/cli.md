@@ -1,5 +1,11 @@
 # CLI 入口
 
+共享缓存双池：`prepare_bc_rl.sh --bc-run BC --run NEW --replay-backend cached
+--cache-target-gib 16 --cache-limit-gib 20 [--recorded-source RECORDED_RUN]`。
+新后端显式选择，旧会话不自动迁移；预算为两池合计的受管数据内存，不是进程RSS。
+Learner可选 `--max-updates-per-transition 1`，async入口同名参数转发给Learner。
+完整命令与只读录制来源说明见[缓存教程](../../../tutorials/cached_replay.md)。
+
 异步 periodic RL 仲裁：`run_async_rl.sh --run SESSION --execute --enable-policy
 --arbitration-mode after-inference`，省略仲裁参数即为此默认。
 原立即人工接管用 `--arbitration-mode immediate`；旧 receipt RL 启用 policy 时必须显式选此旧模式。
@@ -10,7 +16,8 @@
 新版异步训练自动写出心跳；旧会话显示历史快照。见[启动与状态解释](../../../tutorials/training_monitor.md)。
 
 固定BC评估：`bash scripts/run_bc_episodes.sh --output SESSION --resume --control-mode periodic --episodes 1 --execute`。
-最新已准备SESSION为`local/bc_episodes/all8_coarse_fine_eval_01`（11795）；无Learner。
+当前BC12045会话为`local/bc_episodes/demo_new_20261007_213643_eval_01`；此入口无Learner。
+cached Learner可通过显式 `--recorded-source`自动读取其中完整回合，原BC文件仍保持只读。
 默认periodic是100ms目标发布+独立审计，不逐条等待回执；审计不自动入训练池，receipt模式才用旧同步配对。
 成功动作label回放：`bash scripts/replay_success_episode.sh --episode EPISODE`默认只读；
 `--output NEW_DIR --execute`才启用真机，315开始、RB取消回放并接管，不加载神经网络。

@@ -1,5 +1,14 @@
 # OMI 文档总目录
 
+2026-10-10新增[共享内存Demo/RL双池](agent/training/evolution/cached-replay.md)：全量数据留盘、后台加载、
+默认16/20 GiB数据预算；真实数据验证已完成。[准备与启动命令](../tutorials/cached_replay.md)。
+
+2026-10-10验证：[单帧BC数据可重建历史并用于Learner训练](agent/training/chronicles/2026-10-10-recorded-bc-learner-validation.md)，
+3579条transition完成离线转换/导入，独立副本CUDA更新和续训通过；原BC与录制数据保持不变。
+
+2026-10-10数据整理：[旧格式与SDK错误回合已归档](agent/training/chronicles/2026-10-10-old-and-sdk-episode-archive.md)
+至 `Downloads/oct10/old_version_data/`；当前BC目录保留19个单帧格式回合。
+
 2026-10-10现场进展：[固定BC12045、数据统计与EEF现象](agent/training/chronicles/2026-10-10-fixed-bc-storage-live-review.md)。
 本轮固定BC评估已关闭，新采19回合3617条动作；无Learner、未入RL池，单帧存储已现场核查。
 

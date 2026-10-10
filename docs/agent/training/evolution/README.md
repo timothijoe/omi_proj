@@ -1,5 +1,7 @@
 # Training 纪传体
 
+- [共享内存缓存双池](cached-replay.md)：Demo/RL独立抽样、共享物理数据、全量磁盘索引、受管字节预算、后台加载与预取。
+
 - [Actor/Learner 统一训练监控](training-monitor.md)：后台心跳、仲裁、传感器、数据链、权重版本和只读回合审阅。
 
 - [真机在线 RL：BC 热启动、手柄接管与异步训练](real-online-rl.md)：当前三池、周期回合、Learner/Actor 版本、首批 1059 条真机 transition 与 EEF 因果配对边界。

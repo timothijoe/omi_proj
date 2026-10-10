@@ -1,5 +1,19 @@
 # 数据格式与单位
 
+## cached 双池目录（2026-10-10）
+
+`replay/manifest.json.backend=omi-cached-dual-replay-v1`，记录完整contract、cache/limit字节预算、
+刷新参数和外部录制来源。`catalog.sqlite3`的sources保存完整来源指纹与登记结果，records保存
+源NPZ/后继NPZ定位、SHA-256、时间、动作/奖励/结束等metadata和seed/human归属。
+只有校验完成的整个来源才以一个SQLite事务提交，不持久化内存中的展开数组。
+
+内存两组索引共享一份完整transition；seed只属Demo，online human同时属于Demo/RL，policy只属RL。
+`stream_counts`是驻留可采样数量，`storage_stats.catalog_*`是已登记的全量数量。
+本会话的imported兼容标记含 `catalog_registered=true,resident_not_guaranteed=true`；外部来源不写标记。
+周期audit与其ready片段只登记一次，未完成的周期staging不提前导入。
+来源文件和帧依赖需要一直保留；搬迁外部源不是仅修改原始文件名就能完成的索引迁移。
+具体恢复和预算边界见[机制说明](../training/evolution/cached-replay.md)。
+
 ## periodic 回合单帧存储（2026-10-10）
 
 新回合 staging/audit 和 ready 片段 manifest 标记

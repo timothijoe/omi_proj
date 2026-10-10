@@ -315,6 +315,8 @@ def main():
     p.add_argument('--learner-device', choices=['cpu', 'cuda'], default='cuda')
     p.add_argument('--learner-python', type=Path, default=Path('local/cuda-env/bin/python'))
     p.add_argument('--learner-update-delay', type=float, default=0.)
+    p.add_argument('--max-updates-per-transition', type=float,
+                   help='optional cached-replay learner update budget; does not delay actor')
     p.add_argument('--shutdown-timeout', type=float, default=30.)
     p.add_argument('--episodes', type=int, default=100000)
     p.add_argument('--gamepad', default='/dev/input/js0')
@@ -338,6 +340,8 @@ def main():
         p.error('positive counts required; batch-size >= 2')
     if not 0 <= args.learner_update_delay < float('inf') or not args.shutdown_timeout < float('inf'):
         p.error('delays must be finite and nonnegative')
+    if args.max_updates_per_transition is not None and not 0 < args.max_updates_per_transition < float('inf'):
+        p.error('--max-updates-per-transition must be finite and positive')
     args.run = args.run.resolve()
     torch.set_num_threads(2)
     if args.initialize_from:
@@ -350,6 +354,8 @@ def main():
     if not args.execute and not args.probe_only:
         p.error('use --execute for live collection; --initialize-from only prepares disk data')
     session = json.loads((args.run/'async_session.json').read_text())
+    if args.max_updates_per_transition is not None and session.get('replay_backend') != 'omi-cached-dual-replay-v1':
+        p.error('--max-updates-per-transition requires a cached replay session')
     config = HILConfig(**json.loads((args.run/'config.json').read_text()))
     if (session.get('mode') != 'async_hil_v1' or session['contract'] != config.replay_contract() or
             config.transport != 'ros' or config.review != 'auto'):
@@ -384,6 +390,8 @@ def main():
         '--device', args.learner_device, '--batch-size', str(args.batch_size),
         '--min-online', str(args.min_online), '--min-demo', str(args.min_demo),
         '--publish-every', str(args.publish_every), '--update-delay', str(args.learner_update_delay)]
+    if args.max_updates_per_transition is not None:
+        command += ['--max-updates-per-transition', str(args.max_updates_per_transition)]
     if args.probe_only:
         with owner_lock(args.run, 'actor'):
             concurrency_probe(args.run, config, command + ['--updates', str(args.probe_updates)], args.actor_device)

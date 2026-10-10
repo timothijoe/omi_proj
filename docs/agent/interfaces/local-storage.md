@@ -1,5 +1,17 @@
 # local 大数据存储与外接盘路径
 
+## 2026-10-10：选定旧格式与SDK错误回合归档
+
+当前BC评估目录的12个旧格式回合，以及此前BC12045异步RL试跑目录的4个SDK拒绝回合，
+已迁到 `/home/zhoutong/Downloads/oct10/old_version_data/`，按相对 `local/` 路径保留层级。
+此批原位置不留软链接；历史回合路径需按归档 `manifest.json` 映射，恢复说明见归档 `README.md`。
+共16回合、2909文件、2,290,450,334字节，全部文件SHA-256核对一致。
+当前BC工作目录仅保留19个单帧格式回合、3617条动作；模型、训练片段与replay不变。
+该Downloads归档在本机同一文件系统，不是下面的外接盘冷数据迁移，也不释放整盘空间。
+详细筛选与保留项见[迁移编年](../training/chronicles/2026-10-10-old-and-sdk-episode-archive.md)。
+
+## 2026-10-09：外接盘迁移
+
 更新：2026-10-09。本次迁移已完成，逐目录状态与空间数字见
 `local/storage_migrations/20261009_202357/manifest.json`。
 完整迁移清单见 `manifests/local-storage-20261009.json`。
