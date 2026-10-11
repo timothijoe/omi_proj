@@ -79,7 +79,8 @@ def test_nominal_boundary_replacement_is_accepted_command_not_early_failure():
 
 
 @pytest.mark.parametrize('interrupt', [False, True])
-def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, interrupt):
+@pytest.mark.parametrize('explore', [False, True])
+def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, interrupt, explore):
     import omi_hil_rl.hil.periodic_control as module
     now = [100.]
     monkeypatch.setattr(module, 'time', SimpleNamespace(monotonic=lambda: now[0]))
@@ -129,6 +130,9 @@ def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, int
             pending.append((now[0]+.45, dict(receipt, finished=True, status='velocity_window_sent')))
             return action.tolist()
     tr = Transport()
+    if explore:
+        from omi_hil_rl.hil.exploration import GaussianExploration
+        tr.policy_exploration = GaussianExploration(.05, .15, seed=7)
     actor = SimpleNamespace(transport=tr, config=config, run=tmp_path, version=295,
                             load=lambda: None, close_pipeline=lambda: None,
                             state=lambda phase, **details: states.append(phase),
@@ -152,6 +156,16 @@ def test_delayed_receipts_do_not_block_periodic_sends(tmp_path, monkeypatch, int
     assert 'EPISODE_RECORDED' in states
     assert monitor_events[0][0] == 'start' and monitor_events[0][2] == 100.
     assert monitor_events[-1] == ('end', monitor_events[0][1])
+    for path in next(tmp_path.glob('periodic_episodes/*')).glob('[0-9]*.npz'):
+        with np.load(path, allow_pickle=False) as z:
+            tick = json.loads(str(z['metadata']))
+        noise = tick.get('exploration')
+        if explore and tick['gate'] == 'policy':
+            assert noise['std'] == .05
+            np.testing.assert_allclose(np.array(noise['mean_action'])+noise['applied_delta'],
+                                       tick['normalized_action'], atol=1e-7)
+        else:
+            assert noise is None
 
 
 def test_human_periodic_exports_valid_accepted_command_segments(tmp_path, monkeypatch):

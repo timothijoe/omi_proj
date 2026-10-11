@@ -406,3 +406,40 @@ def test_loading_rl_only_human_preserves_last_demo_until_replacement(tmp_path,mo
         assert r.demo=={new_demo} and r.online=={new_rl,p2}
     finally:
         r.close()
+
+
+def test_impossible_online_threshold_rejected_without_publishing_weights(tmp_path):
+    from omi_hil_rl.hil.learner import run_learner
+    config=HILConfig();c=config.replay_contract()
+    seed,_=episode(tmp_path/'data','seed',c,sources=('human','human'))
+    source,_=episode(tmp_path/'data','online',c,sources=('policy',)*8)
+    r=buffer(tmp_path/'run/replay',c,slots=4)
+    register(r,seed,True);register(r,source);r.close()
+    with pytest.raises(ValueError,match='protected_seed=2.*min_online=3'):
+        run_learner(tmp_path/'run',config,batch_size=2,min_online=3,updates=1,wait_seconds=5.)
+    assert not (tmp_path/'run/actor.pt').exists()
+    assert not (tmp_path/'run/learner.pt').exists()
+    r=CachedDualReplay.reopen(tmp_path/'run/replay',prefetch=False)
+    try:
+        assert r.storage_stats()['catalog_online']==8
+    finally:
+        r.close()
+
+
+def test_feasible_thresholds_reserve_online_room_without_relying_on_overlap(tmp_path):
+    c=contract()
+    seed,_=episode(tmp_path/'data','seed',c)
+    source,_=episode(tmp_path/'data','online',c,sources=('human',)*5+('policy',)*10)
+    r=buffer(tmp_path/'r',c,slots=6)
+    try:
+        register(r,seed,True);register(r,source)
+        r.configure_training_thresholds(min_online=4,min_demo=1)
+        for _ in range(5):
+            r.refresh();r.wait_idle()
+            assert r.stream_counts()['online']>=4
+            assert r.stream_counts()['demonstration']>=1
+            assert r.seeds<=r.cache.keys()
+        with pytest.raises(ValueError,match='independent training thresholds'):
+            r.configure_training_thresholds(min_online=4,min_demo=3)
+    finally:
+        r.close()

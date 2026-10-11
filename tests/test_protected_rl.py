@@ -22,6 +22,39 @@ def batch():
                            rewards=torch.ones(1, 1), dones=torch.zeros(1, 1))
 
 
+def test_critic_diagnostics_measure_actual_batch_and_terminal_backup():
+    agent = SAC({'encoder': 'synthetic-test'}, HILConfig().replay_contract(), gamma=.98)
+    # Analytic fixture: independent twin Qs and a different target network.
+    with torch.no_grad():
+        for model, values in ((agent.critic, (-2., -4.)), (agent.target, (-3., -5.))):
+            for head, value in zip(model.heads, values):
+                for parameter in head.parameters():
+                    parameter.zero_()
+                head[-1].bias.fill_(value)
+    b = batch()
+    b.observations = {k: v.repeat(2, *([1]*(v.ndim-1))) for k, v in b.observations.items()}
+    b.next_observations = b.observations
+    b.actions = b.actions.repeat(2, 1)
+    b.rewards = torch.tensor([[1.], [0.]])
+    b.dones = torch.tensor([[1.], [0.]])  # success vs continuing/truncated
+    metrics = agent.update(b)
+    assert metrics['batch_samples'] == 2
+    assert metrics['positive_reward_count'] == metrics['terminal_count'] == 1
+    assert metrics['positive_terminal_count'] == 1
+    assert metrics['terminal_target_mean'] == 1.  # no negative bootstrap on success
+    assert metrics['target_q_min'] == pytest.approx(-4.9)
+    assert metrics['target_q_mean'] == pytest.approx(-1.95)
+    assert metrics['target_q_negative_count'] == 1
+    assert metrics['q_mean'] == metrics['positive_q_mean'] == -3.
+    assert metrics['bootstrap_q_mean'] == -5.
+    assert metrics['td_abs_mean'] == pytest.approx(2.95)
+    assert metrics['critic_loss'] == pytest.approx((9+8.41+25+.81)/4)
+    b.rewards.zero_(); b.dones.zero_()
+    metrics = agent.update(b)
+    assert metrics['positive_reward_count'] == metrics['terminal_count'] == 0
+    assert 'positive_q_mean' not in metrics and 'terminal_target_mean' not in metrics
+
+
 def test_bc_warmup_exact_and_resumable():
     torch.set_num_threads(1)
     contract = HILConfig().replay_contract()

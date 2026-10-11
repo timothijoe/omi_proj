@@ -95,6 +95,7 @@ def periodic_records(directory, contract, validator, summary, *, reader=None):
             policy_version=audit['policy_version'],
             command_audit=dict(source_episode=directory.name, periodic_tick=i,
                 arbitration_mode=tick.get('arbitration_mode', 'immediate'), arbitration=tick.get('arbitration'),
+                exploration=tick.get('exploration'),
                 timing_policy=timing, timing_diagnostics=timing_diagnostics(tick, nxt_meta, receipts, interruptions),
                 next_eef_receive_ns=nxt_meta.get('eef_receive_ns'),
                 terminal_success_stop_ns=nxt_meta.get('terminal_success_stop_ns'),

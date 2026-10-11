@@ -93,6 +93,12 @@ class DeltaCtrlNode(Node):
         # 'measure'=用 tool_xyzabc 参数 (法兰系 [x,y,z,A,B,C], mm/度) 手量标定
         self.declare_parameter('calib_mode', 'identity')
         self.declare_parameter('tool_xyzabc', [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        # 工具动力学参数 (set_tool dynamicParams, 10 个):
+        # [质量M, 质心mx,my,mz (mm), 惯量ixx,ixy,ixz,iyy,iyz,izz]
+        # 连接时与当前 TCP 标定对应的工具运动学一起下发到控制器
+        self.declare_parameter(
+            'tool_dynamic_params',
+            [1.3, 0.0, 0.0, 70.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         # 工作空间包络半径 (mm): TCP 相对启动位置超出该球形范围则拒绝增量, 0=禁用
         self.declare_parameter('envelope_radius_mm', 100.0)
         # 启动模式: 3=关节阻抗 (低刚度, 末端可手推柔顺), 1=位置跟随
@@ -146,6 +152,7 @@ class DeltaCtrlNode(Node):
             raise ValueError('tactile_retreat_speed_mm_s must be finite and positive')
         self.calib_mode = str(self.get_parameter('calib_mode').value).lower()
         self.tool_xyzabc = [float(v) for v in self.get_parameter('tool_xyzabc').value]
+        self.tool_dynamic_params = [float(v) for v in self.get_parameter('tool_dynamic_params').value]
         # 工作空间包络: 相对启动时 TCP 位置的球形限位 (mm), 0=禁用
         self.envelope_radius_mm = float(self.get_parameter('envelope_radius_mm').value)
         self.start_mode = int(self.get_parameter('start_mode').value)
@@ -171,6 +178,9 @@ class DeltaCtrlNode(Node):
             raise ValueError('envelope_radius_mm must be nonnegative and finite')
         if len(self.tool_xyzabc) != 6 or not all(math.isfinite(v) for v in self.tool_xyzabc):
             raise ValueError('tool_xyzabc must have six finite values')
+        if len(self.tool_dynamic_params) != 10 or not all(
+                math.isfinite(v) for v in self.tool_dynamic_params):
+            raise ValueError('tool_dynamic_params must have ten finite values')
         if not all(math.isfinite(v) for v in self.imp_k + self.imp_d):
             raise ValueError('imp_k and imp_d must be finite')
         if self.delta_frame not in ('tcp', 'base'):
@@ -447,6 +457,9 @@ class DeltaCtrlNode(Node):
             f'TCP 标定成功 (mode={self.calib_mode}), F_T_TCP =\n'
             + '\n'.join('  [' + ', '.join(f'{v:9.3f}' for v in row) + ']' for row in tool))
 
+        # 与当前 TCP 标定一致的工具运动学、动力学一起下发到控制器
+        self._set_tool_dynamic(self.tool_dynamic_params)
+
         # 记录启动时 TCP 位置锚点 (工作空间包络基准)
         if self.envelope_radius_mm > 0:
             tcp0 = self.kine.fk(self.cur_joints)
@@ -463,6 +476,18 @@ class DeltaCtrlNode(Node):
             raise RuntimeError(f'进入启动模式 {self.start_mode} 失败')
         self.get_logger().info(
             f'机械臂连接成功, 当前模式: {self._mode_name(self.start_mode)}')
+
+    def _set_tool_dynamic(self, dynamic_params):
+        """启动时设置工具参数，运动学偏移与当前 TCP 标定保持一致。"""
+        kine_params = self.tool_xyzabc if self.calib_mode == 'measure' else [0.0] * 6
+        if not self.robot.clear_set():
+            raise RuntimeError('设置工具参数前 clear_set 失败')
+        if not self.robot.set_tool(
+                arm=self.arm, kineParams=kine_params, dynamicParams=dynamic_params):
+            raise RuntimeError('set_tool 设置工具参数失败')
+        if not self.robot.send_cmd():
+            raise RuntimeError('send_cmd 下发工具参数失败')
+        self.get_logger().info(f'工具动力学参数已设置: {dynamic_params}')
 
     # ---------------- 模式控制 ----------------
     @staticmethod

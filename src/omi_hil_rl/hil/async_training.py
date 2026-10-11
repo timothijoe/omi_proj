@@ -25,6 +25,7 @@ from .networks import VERSION, load_actor
 from .shutdown import interpreter_path
 from .policy_pipeline import LatestPolicy
 from .ros_transport import RosTransport
+from .exploration import GaussianExploration
 
 
 def initialize(source, destination):
@@ -66,7 +67,8 @@ def initialize(source, destination):
         extra = {}
         if (source/'async_session.json').exists():
             old_session = json.loads((source/'async_session.json').read_text())
-            extra = {k: old_session[k] for k in ('control_mode', 'replay_backend', 'intervention_capacity') if k in old_session}
+            extra = {k: old_session[k] for k in ('control_mode', 'replay_backend', 'intervention_capacity',
+                                                'training_data_policy') if k in old_session}
         atomic_json(destination/'async_session.json', dict(mode='async_hil_v1', seed=str(source),
                     contract=config.replay_contract(), reset_actions_in_replay=False,
                     policy_selection='latest_validated_not_best', replay_capacity=manifest['capacity'], **extra))
@@ -111,9 +113,31 @@ class LearnerProcess:
         return killed
 
 
+def checkpoint_probe(run, config, transport):
+    """Weights-only startup needs no old data. Numerical warmup is not replay
+    data or sensor validation; real action admission retains its normal gates.
+    """
+    dataset = json.loads((Path(run)/'dataset.json').read_text())
+    if dataset.get('training_data_policy') == 'new_session_only':
+        latest = getattr(transport, 'latest', None)
+        if latest is not None:
+            return latest[0], 'live_observation'
+        probe = {k: np.zeros(s['shape'], dtype=s['dtype'])
+                 for k,s in config.replay_contract()['observations'].items()}
+        # The stack encoder requires a current slot for numerical warmup.
+        probe['history_mask'][-1] = 1
+        probe['camera_mask'][-1] = 1
+        return probe, 'contract_zero_numerical_only'
+    index = dataset['episodes']
+    if not index:
+        raise ValueError('empty dataset requires explicit new_session_only initialization')
+    return next(read_episode(index[0]['path'], index[0]['manifest']))['observation'], 'recorded_seed'
+
+
 class AsyncActor(Alternating):
     """Reuse action inference, but never wait for a learner training budget."""
-    def __init__(self, run, config, transport, *, reload_episodes=10, device='cuda', policy=False):
+    def __init__(self, run, config, transport, *, reload_episodes=10, device='cuda', policy=False,
+                 exploration_noise_std=0., exploration_noise_clip=.15):
         super().__init__(run, config, transport, device=device, policy=policy)
         if reload_episodes < 1:
             raise ValueError('reload interval must be positive')
@@ -122,7 +146,10 @@ class AsyncActor(Alternating):
         self.last_reload_check = 0
         self.recipe = None
         self.last_reload_error = None
+        self.last_checkpoint_probe_kind = None
         self.pipeline = None
+        self.exploration = GaussianExploration(exploration_noise_std, exploration_noise_clip)
+        self.transport.policy_exploration = self.exploration
 
     def close_pipeline(self):
         self.transport.policy_pipeline = None
@@ -145,6 +172,7 @@ class AsyncActor(Alternating):
 
     def state(self, phase, **details):
         details.setdefault('arbitration_mode', getattr(self.transport, 'arbitration_mode', 'immediate'))
+        details.setdefault('exploration', self.exploration.config())
         value = dict(phase=phase, policy_version=self.version, complete_episodes=self.completed,
                      last_reload_check=self.last_reload_check, reload_episodes=self.reload_episodes,
                      policy_enabled=self.policy, policy_selection='latest_validated_not_best', **details)
@@ -169,14 +197,13 @@ class AsyncActor(Alternating):
                 raise ValueError('policy recipe/normalization changed')
             if self.version is not None and version <= self.version:
                 return None
-            index = json.loads((self.run/'dataset.json').read_text())['episodes']
-            probe = next(read_episode(index[0]['path'], index[0]['manifest']))['observation']
+            probe, probe_kind = checkpoint_probe(self.run, self.config, self.transport)
             with torch.inference_mode():
                 output = actor.sample({k: torch.as_tensor(v, device=self.device)[None]
                                        for k, v in probe.items()}, True)[0]
             if not torch.isfinite(output).all() or (output.abs() > 1).any():
                 raise ValueError('nonfinite/out-of-bounds policy probe')
-            return actor, version, recipe
+            return actor, version, recipe, probe_kind
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(work)
             while not future.done():
@@ -191,8 +218,9 @@ class AsyncActor(Alternating):
                 print(f'RELOAD_REJECTED: keeping version {self.version}: {exc}', flush=True)
                 candidate = None
             if candidate is not None:
-                self.actor, self.version, self.recipe = candidate
+                self.actor, self.version, self.recipe, self.last_checkpoint_probe_kind = candidate
                 print(f'POLICY_LOADED: version={self.version}', flush=True)
+                print(f'POLICY_PROBE: {self.last_checkpoint_probe_kind}', flush=True)
             elif self.last_reload_error is None:
                 print(f'NO_NEW_POLICY: keeping version={self.version}', flush=True)
         self.transport.stop()
@@ -211,7 +239,7 @@ class AsyncActor(Alternating):
             print('POLICY_PIPELINE: background inference; exact-observation candidates; '+
                   ('send on completion; timing diagnostic only' if getattr(self.transport, 'observation_driven', False)
                    else '100ms send gate retained'), flush=True)
-        self.state('WAIT_START', reload_error=self.last_reload_error)
+        self.state('WAIT_START', reload_error=self.last_reload_error, checkpoint_probe=self.last_checkpoint_probe_kind)
 
     def finished(self, result):
         if not result['keep']:
@@ -257,6 +285,8 @@ def concurrency_probe(run, config, command, device):
     """Real observation inference + bounded learner, without importing/initializing ROS."""
     actor, version, _ = load_actor(run/'actor.pt', config.replay_contract(), device)
     index = json.loads((run/'dataset.json').read_text())['episodes']
+    if not index:
+        raise ValueError('recorded-data concurrency probe requires a nonempty seed dataset; weights-only live startup uses a numerical probe')
     probe = next(read_episode(index[0]['path'], index[0]['manifest']))['observation']
     obs = {k: torch.as_tensor(v, device=device)[None] for k, v in probe.items()}
     def infer():
@@ -311,6 +341,10 @@ def main():
     p.add_argument('--min-online', type=int, default=100)
     p.add_argument('--min-demo', type=int, default=1)
     p.add_argument('--batch-size', type=int, default=2)
+    p.add_argument('--exploration-noise-std', type=float, default=0.,
+                   help='policy-only Gaussian noise std in normalized action units; 0 disables')
+    p.add_argument('--exploration-noise-clip', type=float, default=.15,
+                   help='per-axis absolute noise bound before clipping final action to [-1,1]')
     p.add_argument('--actor-device', choices=['cpu', 'cuda'], default='cuda')
     p.add_argument('--learner-device', choices=['cpu', 'cuda'], default='cuda')
     p.add_argument('--learner-python', type=Path, default=Path('local/cuda-env/bin/python'))
@@ -335,6 +369,12 @@ def main():
     p.add_argument('--arbitration-mode', choices=('after-inference', 'immediate'), default='after-inference',
                    help='periodic RL: choose latest RB/joystick after inference (default); immediate retains interrupting takeover')
     args = p.parse_args()
+    try:
+        exploration = GaussianExploration(args.exploration_noise_std, args.exploration_noise_clip)
+    except ValueError as exc:
+        p.error(str(exc))
+    if args.exploration_noise_std and (not args.execute or not args.enable_policy or args.probe_only):
+        p.error('exploration requires live --execute --enable-policy')
     if min(args.reload_every_episodes, args.publish_every, args.min_online, args.min_demo,
            args.batch_size, args.episodes, args.shutdown_timeout, args.probe_updates) <= 0 or args.batch_size < 2:
         p.error('positive counts required; batch-size >= 2')
@@ -354,6 +394,8 @@ def main():
     if not args.execute and not args.probe_only:
         p.error('use --execute for live collection; --initialize-from only prepares disk data')
     session = json.loads((args.run/'async_session.json').read_text())
+    if args.exploration_noise_std and session.get('control_mode') != 'periodic_training_v1':
+        p.error('exploration requires a periodic_training_v1 session')
     if args.max_updates_per_transition is not None and session.get('replay_backend') != 'omi-cached-dual-replay-v1':
         p.error('--max-updates-per-transition requires a cached replay session')
     config = HILConfig(**json.loads((args.run/'config.json').read_text()))
@@ -415,10 +457,13 @@ def main():
             transport = make_transport(config, recipe, args)
             transport.arbitration_mode = args.arbitration_mode if args.enable_policy else 'immediate'
             actor = AsyncActor(args.run, config, transport, reload_episodes=args.reload_every_episodes,
-                               device=args.actor_device, policy=args.enable_policy)
+                               device=args.actor_device, policy=args.enable_policy,
+                               exploration_noise_std=args.exploration_noise_std,
+                               exploration_noise_clip=args.exploration_noise_clip)
+            print('EXPLORATION: '+json.dumps(exploration.config()), flush=True)
             actor.telemetry = transport.telemetry = telemetry
             telemetry.update(policy_enabled=args.enable_policy, execute=bool(args.execute),
-                             arbitration_mode=transport.arbitration_mode)
+                             arbitration_mode=transport.arbitration_mode, exploration=exploration.config())
             try:
                 worker.start()
                 transport.health_check = worker.check

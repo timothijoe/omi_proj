@@ -81,6 +81,7 @@ class CachedDualReplay:
             self.buffer_size = cache_bytes//self.entry_bytes
             self.buffer = self
             self.refresh_every, self.recent_fraction, self.turnover_fraction = refresh_every, recent_fraction, turnover_fraction
+            self.min_online_slots = self.min_demo_slots = 1
             for source in sources:
                 if not Path(source).is_dir():
                     raise FileNotFoundError('recorded source directory missing: '+str(source))
@@ -293,6 +294,29 @@ class CachedDualReplay:
         self.checkpoint()
         self.refresh()
 
+    def configure_training_thresholds(self, min_online, min_demo):
+        """Reserve independently attainable stream floors before training.
+
+        Shared entries save memory but are not relied on to make an otherwise
+        impossible startup configuration work by a lucky random overlap.
+        """
+        with self.cv:
+            self._ensure()
+            if any(type(n) is not int or n < 0 for n in (min_online, min_demo)):
+                raise ValueError('training thresholds must be nonnegative integers')
+            seeds = self.db.execute('SELECT COUNT(*) FROM records WHERE seed=1').fetchone()[0]
+            online = max(1, min_online)
+            demo = max(1, min_demo, seeds)
+            if online+demo > self.buffer_size:
+                raise ValueError(
+                    f'resident cache cannot meet independent training thresholds: '
+                    f'capacity={self.buffer_size}, protected_seed={seeds}, '
+                    f'min_online={min_online}, min_demo={min_demo}; '
+                    f'online slots after reserving Demo={self.buffer_size-demo}. '
+                    'Increase --cache-target-gib or lower the training thresholds.')
+            self.min_online_slots, self.min_demo_slots = online, max(1, min_demo)
+            self.refresh()
+
     def add_sources(self, sources):
         with self.cv:
             for path in sources:
@@ -396,7 +420,8 @@ class CachedDualReplay:
             nseed = self.db.execute('SELECT COUNT(*) FROM records WHERE seed=1').fetchone()[0]
             self.seeds = {r[0] for r in self.db.execute('SELECT id FROM records WHERE seed=1')}
             slots = self.buffer_size
-            demo_quota = min(slots-1, max(nseed+max(1, (slots-nseed)//4), slots//2))
+            demo_quota = min(slots-self.min_online_slots,
+                             max(nseed+max(1, (slots-nseed)//4), slots//2, self.min_demo_slots))
             demo = self.seeds | self._select('seed=0 AND human=1', demo_quota-nseed, self.demo-self.seeds)
             online = self._select('seed=0', slots-len(demo), self.online)
             # Reuse shared interventions to fill otherwise unused capacity.
@@ -519,6 +544,7 @@ class CachedDualReplay:
                 refreshes=self.refreshes, samples=self.samples, sample_seconds=self.sample_seconds,
                 catalog_seed=counts.get((1, 1), 0), catalog_online=counts.get((0, 0), 0)+counts.get((0, 1), 0),
                 catalog_interventions=counts.get((0, 1), 0), pending_episodes=len(self.pending),
+                min_online_slots=self.min_online_slots, min_demo_slots=self.min_demo_slots,
                 loader_busy=self.busy, loader_error=repr(self.error) if self.error else None)
 
     def _batch(self, batch_size, human):

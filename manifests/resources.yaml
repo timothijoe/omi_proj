@@ -29,6 +29,48 @@ local_data_storage:
   retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
   restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: collection-reset-45s-archive-20261011-184301
+    path: local/archives/problematic_data/bc12045_newdata_30s_20261011_01_20261011_184301
+    tracked: false
+    source: Stopped 30-second run after the first reset; 4 episodes, 792 transitions, RL1792
+    purpose: Preserve the prior batch while resetting the same active path to original BC12045, empty pools and a consistent 45-second contract
+    restore: SHA-256 inventory and report in local/diagnostics/data_reset_20261011/20261011_184301. Do not import archived data into the active run. The active folder still has 30s in its name but its actual episode_seconds is now 45. See docs/agent/training/chronicles/2026-10-11-invalid-data-reset.md.
+  - id: invalid-30s-collection-archive-20261011-183427
+    path: local/archives/problematic_data/bc12045_newdata_30s_20261011_01_20261011_183427
+    tracked: false
+    source: Stopped bc12045_newdata_30s_20261011_01 run; user reported collected data invalid
+    purpose: Preserve 3 episodes, 714 catalog transitions and RL1714 weights for investigation while resetting the active path to original BC12045 with empty pools
+    restore: Do not import this archive as training data. SHA-256 inventory and reset report are in local/diagnostics/data_reset_20261011/20261011_183427. See docs/agent/training/chronicles/2026-10-11-invalid-data-reset.md. Original BC checkpoint is unchanged.
+  - id: bc12045-newdata-only-20261011-01
+    path: local/rl_training/bc12045_newdata_only_20261011_01
+    tracked: false
+    source: BC12045 actor/config only from demo_new_20261007_213643_eval_01; no old dataset index, demonstration records or recorded sources imported
+    purpose: New online collection session with empty Demo and RL pools; train exclusively on this session's newly collected human and policy transitions
+    restore: Prepared via prepare_bc_rl.sh --weights-only --replay-backend cached. See docs/agent/training/chronicles/2026-10-11-weights-only-new-data.md. Initialization and weights_only_validation.json verify exact BC actor and zero catalog records/sources. Resume the run, do not reinitialize it; first collect new human data to populate Demo.
+  - id: bc12045-cached-online-20261011-01
+    path: local/rl_training/bc12045_cached_online_20261011_01
+    tracked: false
+    source: Original BC12045 actor and 1387 training demonstrations from demo_new_20261007_213643_eval_01, plus read-only registration of its 19 compact recorded episodes
+    purpose: Live asynchronous collection and learning with shared cached Demo/RL pools, 16/20 GiB managed budgets, 1000 Critic warmup and Actor reload checks every 10 valid episodes
+    restore: See docs/agent/training/chronicles/2026-10-11-cached-online-start.md for exact commands and the dated live snapshot. Resume the existing run with run_async_rl.sh, not prepare_bc_rl.sh. Preserve source data referenced by replay/catalog.sqlite3; restarting loads this run's latest RL checkpoint. Gripper controls disabled by --no-gripper.
+  - id: cached-rl-critic-diagnostics-exp02-20261011
+    path: local/experiments/cached_rl_exp02_q_diagnostics_20261011
+    tracked: false
+    source: Same BC12045, 16 training and 3 held-out episodes as exp01
+    purpose: Measure actual positive-reward exposure and Q targets in 1000 warmup plus 200 mixed updates; initial, warmup and final held-out Q probes
+    restore: report.json, training_progress.jsonl, reward_catalog.json and probe files retain evidence. Use run_cached_offline_experiment.py with --diagnose-q and a new output. Original BC/data and encoder unchanged; no robot execution.
+  - id: cached-rl-warmup4000-exp03-20261011
+    path: local/experiments/cached_rl_exp03_warmup4000_20261011
+    tracked: false
+    source: Same original BC12045, data split, batch and optimization settings as exp02
+    purpose: Single configured change to 4000 Critic warmup steps, followed by the same 200 mixed updates, testing whether longer uniform warmup corrects negative Q
+    restore: report.json, training_progress.jsonl and initial/warmup/final probes retain evidence. Re-run with --updates 4200 --warmup 4000 --diagnose-q into a new output. The 4000 setting is experimental, not a production default.
+  - id: cached-rl-offline-exp01-20261011
+    path: local/experiments/cached_rl_exp01_20261011
+    tracked: false
+    source: Original BC12045 checkpoint and 19 compact BC episodes; 16 used for training and 3 held out by original episode
+    purpose: First bounded offline iteration with corrected resident thresholds, 1000 Critic warmup plus 200 later updates, before/after action diagnostics and real memory measurements
+    restore: report.json, split.json, prediction NPZs and training_progress.jsonl contain evidence. Re-run scripts/run_cached_offline_experiment.py into a NEW output. Source views are symlinks and the catalog references original files. Test weights are separate from BC; autonomous task success was not evaluated.
   - id: cached-replay-retirement-real-validation-20261010
     path: local/diagnostics/cached_replay_retirement_validation_20261010_01
     tracked: false

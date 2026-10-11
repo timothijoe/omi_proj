@@ -55,6 +55,12 @@ flowchart LR
   模式与 K/D 沿用迁移参数；后续已将话题执行算法改为速度保持。
 - 初始化清计算侧 Tool/UserFrame；`identity` 将 TCP 设为法兰，`measure` 使用
   `tool_xyzabc`。不代表现场真实工具完成测量标定。
+- 授权连接启动时，在 TCP 标定后、切换控制模式前调用 `_set_tool_dynamic`，通过
+  `clear_set → set_tool → send_cmd` 将工具参数下发到控制器。
+  `tool_dynamic_params` 默认 `[1.3, 0.0, 0.0, 70.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]`，
+  顺序为质量、质心 xyz（mm）、六个惯量分量；`set_tool` 所需的运动学参数与当前
+  `calib_mode` 一致（`measure` 用 `tool_xyzabc`，`identity` 用零偏移）。
+  清指令、设置或下发失败会中止启动；离线 preview 不调用该方法。
 - 反馈50 Hz，SDK关节度转为弧度发布14维 `positions/velocities/efforts`，另一臂填零。
 - EEF50 Hz，从反馈关节 FK 得到计算侧 TCP，mm转m，再左乘固定安装矩阵，
   发布 `PoseStamped` 的 xyz/xyzw、frame=`base_link`。
@@ -110,6 +116,9 @@ HIL回执的 `velocity_window_sent` 表示一个名义观察周期结束，
 5. B臂仍需单独验收，EEF接口仍为 `/tj/info/eef_left`；TCP、安装方向与UserFrame待现场核对。
 
 ## 验证等级
+
+工具参数改动已通过 Jazzy 两包构建，离线 preview 启动后停止；未连接控制器，
+因此工具参数实际下发仍待实机验证。
 
 速度保持阶段：接收端/触觉保护/HIL回执70项测试通过，HIL运行时16通过、1跳过。
 包含真实ROS定时器配合模拟机械臂的连续发送、超过20步保持、零指令、断流、

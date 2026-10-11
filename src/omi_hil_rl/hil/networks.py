@@ -241,11 +241,34 @@ class SAC:
         rewards, dones = batch.rewards.to(self.device), batch.dones.to(self.device)
         with torch.no_grad():
             next_action, next_log_prob = self.actor.sample(nxt)
-            target = rewards + self.gamma * (1 - dones) * self.target(nxt, next_action).min(0).values
-        critic_loss = (self.critic(obs, action) - target.unsqueeze(0)).square().mean()
+            bootstrap_q = self.target(nxt, next_action).min(0).values
+            target = rewards + self.gamma * (1 - dones) * bootstrap_q
+        predicted_q = self.critic(obs, action)
+        td_error = predicted_q - target.unsqueeze(0)
+        critic_loss = td_error.square().mean()
         self._optimize(self.critic_optimizer, critic_loss, self.critic.parameters())
         self.updates += 1
         metrics = dict(update=self.updates, critic_loss=float(critic_loss.detach()), alpha=float(F.softplus(self.temperature_raw).detach()))
+        # Pre-optimizer values from this actual Critic batch, not extra sampled
+        # probes. Dones already exclude time-limit truncation in replay.
+        with torch.no_grad():
+            positive, terminal = rewards > 0, dones > 0
+            q = predicted_q.detach().mean(0)
+            metrics.update(
+                batch_samples=rewards.numel(),
+                positive_reward_count=int(positive.sum()),
+                terminal_count=int(terminal.sum()),
+                positive_terminal_count=int((positive & terminal).sum()),
+                reward_mean=float(rewards.mean()),
+                q_mean=float(q.mean()), q_min=float(q.min()), q_max=float(q.max()),
+                target_q_mean=float(target.mean()), target_q_min=float(target.min()),
+                target_q_max=float(target.max()), target_q_negative_count=int((target < 0).sum()),
+                bootstrap_q_mean=float(bootstrap_q.mean()),
+                td_abs_mean=float(td_error.detach().abs().mean()))
+            if positive.any():
+                metrics['positive_q_mean'] = float(q[positive].mean())
+            if terminal.any():
+                metrics['terminal_target_mean'] = float(target[terminal].mean())
         metrics['critic_warmup'] = self.updates <= self.critic_warmup_updates
         if actor_update:
             # Freeze critic parameters while retaining dQ/da for the actor.

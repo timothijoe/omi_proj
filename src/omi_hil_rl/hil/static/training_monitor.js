@@ -12,6 +12,7 @@ let current, paused=false, chartPoints=[], lastMetricKey=null, reviewEpisode=nul
 
 function render(d){
   current=d;
+  renderSummary(d);
   $('previews').classList.remove('stale-visual');
   const a=d.actor.data,l=d.learner.data,p=d.pipeline,w=d.weights,arb=a.arbitration??{},r=a.receiver??{},metrics=l.metrics??l;
   const live=d.actor.live||d.learner.live;
@@ -60,6 +61,23 @@ function render(d){
   $('diagnostics').textContent=JSON.stringify({session:d.session,actor_source:d.actor.source,learner_source:d.learner.source,replay_clean:d.replay.clean,capacities:d.replay.capacities,errors:d.errors,actor_error:a.error,learner_error:l.error,sensor_monitor_error:a.sensor_monitor_error,preview_error:a.preview_error,writer_errors:[a.writer_error,l.writer_error]},null,2);
 }
 
+function renderSummary(d){
+  const o=d.outcomes??{},r=d.replay,c=r.cache??{},initial=r.count_source==='initialization';
+  const cards=[['not_success','未成功合计',o.not_success],['completed','已结束',o.completed],['success','成功',o.success],['timeout','Timeout / 超时',o.timeout],['manual_stop','人工提前结束',o.manual_stop],['failed','异常中止',o.failed],['unfinished','进行中 / 暂存',o.unfinished]];
+  $('outcome-cards').innerHTML=cards.map(([key,label,value])=>`<button class="outcome ${key}" data-outcome-filter="${key}"><span>${label}</span><strong>${number(value)}</strong></button>`).join('');
+  $('outcome-rate').textContent='人工标记成功率 '+(o.success_fraction==null?'—':number(o.success_fraction*100,1)+'%');
+  $('outcome-bar').innerHTML=['success','timeout','manual_stop','failed','unknown'].map(key=>o.completed>0&&o[key]>0?`<span class="${key}" style="width:${o[key]/o.completed*100}%" title="${esc(key)}: ${number(o[key])}"></span>`:'').join('');
+  $('outcome-note').textContent=`未成功合计包含超时、人工提前结束、异常中止及未知结束原因；下方分类是其细项，不重复相加。${o.unknown?`其中 ${number(o.unknown)} 个结束原因未知。`:''}回合保存完成后才计入结果；进行中或保存中暂列为暂存。点击数量可筛选回合。`;
+  $('pool-state').textContent=initial?'初始登记 · 等待驻留遥测':d.learner.live?'实时可采样存量':'最近采样池快照';
+  $('pool-cards').innerHTML=[['demo','Demo Buffer','人工示范 / 接管'],['rl','RL Buffer','策略经历 / 人工接管']].map(([key,label,note])=>{
+    const pool=r.pools?.[key]??{};
+    return `<div class="pool ${key}"><h3>${label}</h3><strong>${number(initial?pool.catalog:pool.resident)}</strong><span>${initial?'初始登记':'内存可采样'} transitions</span><p>${note}</p><div>磁盘已登记 <b>${number(pool.catalog)}</b></div></div>`;
+  }).join('');
+  const used=c.managed_bytes,limit=c.memory_limit_bytes,g=v=>number(v/2**30,2)+' GiB';
+  const fraction=Number.isFinite(used)&&limit>0?Math.max(0,Math.min(100,used/limit*100)):null;
+  $('pool-memory').innerHTML=facts([['独立驻留样本',number(c.resident_unique)],['每回合时限',number(d.session.episode_seconds,0)+' s'],['共享管线 / 上限',fraction===null?'等待Learner遥测':g(used)+' / '+g(limit),true]])+(fraction===null?'':`<div class="bar"><div style="width:${fraction}%"></div></div>`);
+}
+
 function renderSensors(d){
   const a=d.actor.data,rows=a.sensors??[],obs=a.observation??{};
   const sensorState=!d.actor.live?d.actor.state:!rows.length?'UNKNOWN':rows.every(s=>s.state==='LIVE')?'LIVE':obs.timing_diagnostic_only&&obs.ready?'TIMING_WARNING':'REJECTED';
@@ -76,7 +94,7 @@ function renderSensors(d){
 function renderEpisodes(){
   if(!current)return;
   const filter=$('episode-filter').value;
-  const rows=current.episodes.filter(e=>filter==='all'||filter==='valid'&&e.transitions>0||filter==='excluded'&&Object.keys(e.excluded).length>0||filter==='success'&&e.success||filter==='unfinished'&&!e.audited);
+  const rows=current.episodes.filter(e=>filter==='all'||filter==='completed'&&e.audited||filter==='not_success'&&e.audited&&e.outcome!=='success'||filter==='valid'&&e.transitions>0||filter==='excluded'&&Object.keys(e.excluded).length>0||e.outcome===filter);
   $('episode-table').innerHTML=rows.length?rows.map(e=>`<tr><td title="${esc(e.id)}">${esc(e.id.slice(0,12))}</td><td>${esc(e.audited?e.reason:'中断 / 暂存')}<small>${esc(Object.entries(e.excluded).map(([k,v])=>`${k}: ${v}`).join(' · '))}</small></td><td>${number(e.ticks)}</td><td>${number(e.transitions)}</td><td>${e.success_label_recorded?'已记录':e.success?'标记成功，未记录奖励':'未标记'}</td><td>${number(e.policy_version)}</td><td><button data-review="${esc(e.id)}" ${e.ticks?'':'disabled'}>逐帧查看 ↗</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">没有匹配的回合。</td></tr>';
 }
 
@@ -105,6 +123,7 @@ async function poll(){
 $('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'继续刷新':'暂停刷新';if(paused){$('connection').textContent='刷新已暂停';$('connection').className='pill warn';$('notice').className='notice warning';$('notice').textContent='页面刷新已暂停，显示冻结快照；Actor 和 Learner 继续按原设置运行。'}else $('previews').classList.remove('stale-visual')};
 document.querySelectorAll('.tab').forEach(button=>button.onclick=()=>{document.querySelectorAll('.panel').forEach(panel=>panel.hidden=panel.id!==button.dataset.panel);document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('selected',tab===button))});
 $('episode-filter').onchange=renderEpisodes;
+$('outcome-cards').onclick=event=>{const button=event.target.closest('[data-outcome-filter]');if(!button)return;$('episode-filter').value=button.dataset.outcomeFilter;document.querySelector('[data-panel="episodes"]').click();renderEpisodes()};
 for(let slot=0;slot<10;slot++)$('history-slot').add(new Option(`${slot} · ${(slot-9)*100} ms`,slot));$('history-slot').value=9;
 $('episode-table').onclick=event=>{const button=event.target.closest('[data-review]');if(!button)return;reviewEpisode=current.episodes.find(e=>e.id===button.dataset.review);reviewIndex=0;$('tick-seek').max=reviewEpisode.ticks-1;$('tick-seek').value=0;$('review-title').textContent='回合 '+reviewEpisode.id;$('review').showModal();showTick()};
 $('close-review').onclick=()=>{tickSequence++;$('review').close()};

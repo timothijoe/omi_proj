@@ -1,5 +1,19 @@
 # OMI 文档总目录
 
+2026-10-11最新：[batch64在线训练与探索噪声现场核验](agent/training/chronicles/2026-10-11-batch64-exploration-live.md)。
+45秒会话正在采集训练，已检查实际策略加噪与人工接管旁路；保存当前命令和运行快照。
+
+2026-10-11在线会话已启动：[新缓存在线采集、训练与网页入口](agent/training/chronicles/2026-10-11-cached-online-start.md)。
+记录原BC初始化、完整启动/续跑指令、首回合数据以及Learner训练与Actor换权重状态。
+
+2026-10-11追加：[Critic负Q诊断与预热对照](agent/training/chronicles/2026-10-11-critic-diagnostics.md)。
+真实抽样证实成功监督稀疏；1000/4000步预热均已完成，延长预热未解决负Q，实验权重未部署。
+
+2026-10-11：[缓存启动门槛修正与首轮离线训练实验](agent/training/chronicles/2026-10-11-cached-offline-exp01.md)。
+已完成1200次Critic、100次Actor更新，留出人工动作误差下降；Q估计偏负仍需继续实验，未上机器人。
+
+RealSense AprilTag marker 位姿：[数据流、坐标与输出约定](marker_detect.md) → [SSH 无窗口记录教程](../tutorials/marker_detect.md)。
+
 2026-10-10新增[共享内存Demo/RL双池](agent/training/evolution/cached-replay.md)：全量数据留盘、后台加载、
 默认16/20 GiB数据预算；真实数据验证已完成。[准备与启动命令](../tutorials/cached_replay.md)。
 

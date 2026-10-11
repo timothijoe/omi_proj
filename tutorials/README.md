@@ -1,5 +1,7 @@
 # 操作教程
 
+- [RealSense AprilTag marker 检测：SSH 无窗口位姿记录与图像窗口操作](marker_detect.md)
+
 - [Demo/RL共享内存缓存：16/20 GiB预算、自动读取录制数据与启动](cached_replay.md)
 
 - [BC12045 预加载与异步 RL 首次试跑：新会话、3 回合命令、默认仲裁与监控](bc12045_async_rl_trial.md)

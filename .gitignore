@@ -6,3 +6,7 @@ data/
 local/
 logs/
 logs_pc_flux/
+handeye_result/
+ros2/arm_delta_cmd/build/
+ros2/arm_delta_cmd/install/
+ros2/arm_delta_cmd/log/

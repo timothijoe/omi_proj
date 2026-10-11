@@ -12,6 +12,18 @@ import time
 from urllib.parse import parse_qs, urlparse
 
 
+def episode_outcome(episode):
+    if not episode['audited']:
+        return 'unfinished'
+    if episode['success'] or episode['reason'] == 'success':
+        return 'success'
+    if episode['reason'] in ('timeout', 'manual_stop'):
+        return episode['reason']
+    if episode['reason'] in (None, '', 'unfinished', 'unknown'):
+        return 'unknown'
+    return 'failed'
+
+
 class TrainingMonitor:
     def __init__(self, run, *, sensor_status=None, stale_seconds=5.):
         self.run = Path(run).resolve()
@@ -111,6 +123,14 @@ class TrainingMonitor:
                 stamp = ready.stat().st_mtime
                 oldest_pending = stamp if oldest_pending is None else min(oldest_pending, stamp)
         complete = [item for item in episodes if item['audited']]
+        outcomes = dict.fromkeys(('success', 'timeout', 'manual_stop', 'failed', 'unknown', 'unfinished'), 0)
+        for item in episodes:
+            item['outcome'] = episode_outcome(item)
+            outcomes[item['outcome']] += 1
+        outcomes.update(completed=len(complete), total=len(episodes),
+                        not_success=len(complete)-outcomes['success'],
+                        success_fraction=outcomes['success']/len(complete) if complete else None,
+                        failure_reasons=dict(Counter(e['reason'] for e in complete if e['outcome']=='failed')))
         ticks = sum(item['ticks'] for item in complete)
         transitions = sum(item['transitions'] for item in complete)
         events = []
@@ -136,6 +156,23 @@ class TrainingMonitor:
         actor_data, learner_data = actor['data'], learner['data']
         session = self._read(self.run/'async_session.json', errors) or {}
         manifest = self._read(self.run/'replay'/'manifest.json', errors) or {}
+        initialization = self._read(self.run/'bc_initialization.json', errors) or {}
+        streams = learner_data.get('streams')
+        count_source = 'learner_snapshot'
+        if streams is None:
+            streams = initialization.get('streams', {})
+            count_source = 'initialization' if streams else 'unknown'
+        cache = learner_data.get('replay') or {}
+        catalog_demo = (cache['catalog_seed']+cache['catalog_interventions']
+                        if 'catalog_seed' in cache and 'catalog_interventions' in cache else None)
+        if count_source == 'initialization':
+            catalog_demo = streams.get('demonstration')
+        pools = dict(demo=dict(resident=streams.get('demonstration'), catalog=catalog_demo),
+                     rl=dict(resident=streams.get('online'), catalog=cache.get('catalog_online',
+                             streams.get('online') if count_source=='initialization' else None)))
+        if count_source == 'initialization':
+            for pool in pools.values():
+                pool['resident'] = None  # registration does not prove RAM residency
         published = learner_data.get('published_version')
         version = actor_data.get('policy_version')
         return dict(schema='omi-training-monitor-v1', now_ns=int(now*1e9), run=str(self.run),
@@ -153,11 +190,14 @@ class TrainingMonitor:
                 ready=ready_count, imported=imported_count, pending=ready_count-imported_count,
                 pending_segments=pending_segments, oldest_pending_s=now-oldest_pending if oldest_pending else None,
                 success_labels=sum(bool(item['success_label_recorded']) for item in complete)),
-            replay=dict(streams=learner_data.get('streams', {}), capacities=manifest.get('capacities'),
+            outcomes=outcomes,
+            replay=dict(streams=streams, capacities=manifest.get('capacities'), pools=pools, count_source=count_source,
                         clean=manifest.get('clean'), backend=manifest.get('backend'),
                         cache=learner_data.get('replay')),
             disk_free_gib=shutil.disk_usage(self.run).free/2**30,
             session=dict(control_mode=session.get('control_mode'), replay_backend=session.get('replay_backend'),
+                         episode_seconds=session.get('contract', {}).get('episode_seconds'),
+                         training_data_policy=session.get('training_data_policy'),
                          action_semantics=session.get('contract', {}).get('action_semantics')),
             episodes=episodes, events=events[:40])
 

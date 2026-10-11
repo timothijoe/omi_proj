@@ -39,8 +39,16 @@ class PeriodicClock:
         return dict(lateness_ms=lag*1000, skipped_ticks=skipped)
 
 
+def _policy_action(transport, candidate):
+    exploration = getattr(transport, 'policy_exploration', None)
+    if exploration is not None:
+        candidate, transport.last_exploration = exploration.apply(candidate)
+    return transport.config.physical_action(candidate)
+
+
 def choose_action(transport, used_stamp, verified):
     """Manual priority; stale/missing/reused policy candidates become zero."""
+    transport.last_exploration = None
     if not transport.connected:
         raise RuntimeError('gamepad disconnected')
     human = bool(transport.pad.buttons.get(311, False))
@@ -62,7 +70,7 @@ def choose_action(transport, used_stamp, verified):
         pipeline = getattr(transport, 'policy_pipeline', None)
         candidate = pipeline.get(stamp) if pipeline is not None else None
         if 0 <= age < 100_000_000 and stamp != used_stamp and candidate is not None:
-            return transport.config.physical_action(candidate[0]), source, 'policy', latest, stamp
+            return _policy_action(transport, candidate[0]), source, 'policy', latest, stamp
     return np.zeros(6, np.float32), source, 'no_fresh_unused_candidate', latest, used_stamp
 
 
@@ -71,6 +79,7 @@ def observation_action(transport, used_stamp, verified, *, policy=True):
 
     None means no new command: it never means replace a slow inference with zero.
     """
+    transport.last_exploration = None
     latest = transport.latest
     if latest is None:
         return None
@@ -91,7 +100,7 @@ def observation_action(transport, used_stamp, verified, *, policy=True):
         elif rb:
             action, gate = transport.mapping.action(transport.pad.axes).astype(np.float32), 'human'
         else:
-            action, gate = transport.config.physical_action(candidate), 'policy'
+            action, gate = _policy_action(transport, candidate), 'policy'
         return action, source, gate, (observation, stamp), stamp, elapsed
     stamp = latest[1]
     human = getattr(transport, 'collect_human', False) or bool(transport.pad.buttons.get(311, False))
@@ -115,7 +124,7 @@ def observation_action(transport, used_stamp, verified, *, policy=True):
     if result is None:
         return None
     observation, stamp, action, elapsed = result
-    return transport.config.physical_action(action), source, 'policy', (observation, stamp), stamp, elapsed
+    return _policy_action(transport, action), source, 'policy', (observation, stamp), stamp, elapsed
 
 
 def pair_status(tick, following, receipts):
@@ -420,6 +429,7 @@ def run_periodic(actor, episodes, *, training=False):
                     metadata = dict(command_id=command_id, action_source=source, gate=gate,
                         arbitration_mode=arbitration_mode,
                         arbitration=getattr(transport, 'last_arbitration', None),
+                        exploration=getattr(transport, 'last_exploration', None),
                         timing_policy='diagnostic_only_v1', inference_ms=inference_ms,
                         policy_version=actor.version, observation_present=latest is not None,
                         observation_reference_ns=transport.command_anchor_ns,
@@ -432,6 +442,7 @@ def run_periodic(actor, episodes, *, training=False):
                             arbitration=dict(source=source, gate=gate, command_id=command_id,
                                 mode=arbitration_mode, rb=rb,
                                 normalized_action=metadata['normalized_action'], wire_action=wire,
+                                exploration=metadata['exploration'],
                                 inference_ms=inference_ms, observation_reference_ns=latest[1],
                                 observation_to_send_ms=delay_ms,
                                 trace=metadata['command_trace'], receiver_verified=dict(verified),

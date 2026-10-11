@@ -8,6 +8,10 @@
 
 ## 1. 从原始 BC12045 准备新的缓存会话
 
+若只要原BC权重，连初始1387条Demo也不保留，使用 `--weights-only` 且不要传 `--recorded-source`。
+此模式Demo/RL都从空开始，必须新采人工接管数据供Demo使用；完整已准备会话与命令见
+[只用本批新数据](../docs/agent/training/chronicles/2026-10-11-weights-only-new-data.md)。下方原示例仍会导入旧Demo。
+
 在项目根目录执行。下面是新的正式会话示例，验证目录中的测试权重不用于这里。
 准备命令不连接机器人、不启动在线训练，初始Actor完整继承BC12045。
 
@@ -31,6 +35,8 @@ bash scripts/prepare_bc_rl.sh \
 20 GiB约束受管数据管线：驻留数据、加载工作空间、单帧小缓存、当前/预取batch及元数据预留。
 **它不是整个进程RSS或整机内存的硬限制**，不包含CUDA、模型、Python/系统分配器额外占用及OS文件缓存。
 GiB按 `1024³` 字节计算。初始示范必须能放入缓存，并给在线数据至少留两个位置，否则准备失败。
+Learner启动时还会结合 `--min-online/--min-demo` 检查两池的最低配额；固定示范占用也计入，
+不足时需增大缓存或调低门槛。共享数据能节省实际内存，但门槛检查不依赖随机重合才能成立。
 
 ## 2. 先只运行 Learner
 
@@ -69,6 +75,9 @@ bash scripts/run_async_rl.sh \
 ```
 
 后端按会话自动识别，新完成回合自动登记并滚动进入缓存。
+需要显式探索时，在在线命令中追加 `--exploration-noise-std 0.05 --exploration-noise-clip 0.15`。
+仅策略动作在仲裁后添加归一化高斯噪声，人工动作不变；默认std=0关闭，每次重启须显式携带参数。
+含当前会话的完整命令、幅度解释与测试见[在线探索记录](../docs/agent/training/chronicles/2026-10-11-online-exploration.md)。
 Actor仍遵循现有回合边界换权重规则；这个命令启动在线RL，不是固定BC评估。
 原 `run_bc_episodes.sh` 仍只做固定BC；本次没有把它改成后台自动训练。
 
@@ -87,3 +96,21 @@ Actor仍遵循现有回合边界换权重规则；这个命令启动在线RL，�
 它表示已登记到磁盘索引，不保证全部数据同时常驻内存。外部来源文件保持只读。
 
 机制与验证见[缓存双池](../docs/agent/training/evolution/cached-replay.md)。
+
+## 有界离线迭代实验
+
+`scripts/run_cached_offline_experiment.py` 从原始BC新建独立运行目录，按完整回合留出2个成功和1个超时回合，
+其余用于训练。默认预热1000步、总更新1200步，输出前后人工动作误差、Q统计、内存与训练日志。
+它不连接机器人；固定BC策略文件不被覆盖。示例与首轮真实结果见
+[2026-10-11实验记录](../docs/agent/training/chronicles/2026-10-11-cached-offline-exp01.md)。
+
+加 `--diagnose-q` 会额外评估训练前和预热结束的Critic，输出 `probe_initial.*` 与
+`probe_warmup.*`；预热步数须为50的倍数，与检查点发布对齐。探针保存/恢复随机数状态，
+不消耗训练用的随机动作或图像增强序列。每次必须使用新的 `--output`。
+
+Learner每步的 `status.json` 和 `monitor/learner.json.metrics` 现在记录实际Critic批次的
+`positive_reward_count`、`terminal_count`、`positive_terminal_count`、`q_mean`、`target_q_mean`、
+`bootstrap_q_mean`、`td_abs_mean` 等；实验脚本将每步追加到 `training_progress.jsonl` 并分阶段汇总。
+Q统计是优化前两头的均值；目标Q采用现有target双头最小值，成功终止不bootstrap，截断沿用现有掩码。
+只有批次确实含正奖励/终止时才出现 `positive_q_mean` / `terminal_target_mean`，缺席不应解释成0。
+命中次数统计抽样次数，可能重复抽到同一条记录；不能解释为新增成功回合数。

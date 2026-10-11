@@ -44,8 +44,17 @@ bash scripts/robot_controller.sh preview
 
 迁移节点直接运行时也默认 `connect_on_start=false`、`motion_authorized=false`。
 未来现场启动必须同时显式启用两项，并设置 `ARM_SDK_DIR` 到上述源目录的 `Arm_control`。
-连接过程会清错误、加载 Tool/UserFrame 并切控制模式，因此不能作为只读连接入口。
+连接过程会清错误、标定计算侧 TCP、下发工具参数并切控制模式，因此不能作为只读连接入口。
 本次不将该控制端自动接到 `run_policy_gamepad.sh`；两者仍是独立进程。
+
+授权连接时，节点在 TCP 标定后、切换控制模式前调用 `_set_tool_dynamic`。
+`tool_dynamic_params` 默认值为
+`[1.3, 0.0, 0.0, 70.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]`，
+依次表示质量（kg）、法兰系质心 xyz（mm）和六个惯量分量。
+SDK 的 `set_tool` 同时需要运动学参数：`calib_mode=measure` 时使用 `tool_xyzabc`，
+`identity` 时使用零偏移。设置或下发失败会中止启动；离线 preview 不连接控制器，
+因此无法验证工具参数已在实机生效。现场启动命令及日志检查见
+[机器人与手柄启动教程](robot_gamepad_startup.md#2-终端-a连接机器人)。
 
 验证命令（新终端）：
 

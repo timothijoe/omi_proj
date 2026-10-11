@@ -64,6 +64,40 @@ def test_cached_catalog_and_resident_counts_are_distinct(tmp_path):
     assert result['replay']['cache']['catalog_online']==3579
 
 
+def test_outcomes_are_per_episode_disjoint_and_unfinished_is_not_failure(tmp_path):
+    for name,reason,success in [('ok','success',True),('timeout','timeout',False),
+                              ('manual','manual_stop',False),('sdk','sdk_rejected',False),
+                              ('interrupt','interrupted',False),('unknown',None,False)]:
+        write(tmp_path/'periodic_episodes'/name/'audit.json',dict(ticks=5,transitions=3,reason=reason,success=success))
+    write(tmp_path/'periodic_episodes'/'active'/'staging.json',dict(policy_version=0))
+    # Ready segments must never multiply the raw episode outcomes.
+    for i in range(3):
+        write(tmp_path/'episodes'/f'ok-segment-{i}'/'ready.json',dict(count=1))
+    result=TrainingMonitor(tmp_path).snapshot()
+    o=result['outcomes']
+    assert o['completed']==6 and o['total']==7
+    assert o['success']==o['timeout']==o['manual_stop']==o['unknown']==o['unfinished']==1
+    assert o['failed']==2 and o['not_success']==5
+    assert o['success_fraction']==pytest.approx(1/6)
+    assert o['failure_reasons']==dict(sdk_rejected=1,interrupted=1)
+    assert next(e for e in result['episodes'] if e['id']=='active')['outcome']=='unfinished'
+
+
+def test_pool_residency_catalog_overlap_and_initialization_are_explicit(tmp_path):
+    write(tmp_path/'bc_initialization.json',dict(streams=dict(demonstration=0,online=0)))
+    write(tmp_path/'async_session.json',dict(contract=dict(episode_seconds=30),training_data_policy='new_session_only'))
+    result=TrainingMonitor(tmp_path).snapshot()
+    assert result['outcomes']['success_fraction'] is None
+    assert result['replay']['count_source']=='initialization'
+    assert result['replay']['pools']==dict(demo=dict(resident=None,catalog=0),rl=dict(resident=None,catalog=0))
+    assert result['session']['episode_seconds']==30
+    role(tmp_path,name='learner',streams=dict(demonstration=30,online=45),
+         replay=dict(catalog_seed=10,catalog_interventions=100,catalog_online=200,resident_unique=60))
+    result=TrainingMonitor(tmp_path).snapshot()
+    assert result['replay']['pools']==dict(demo=dict(resident=30,catalog=110),rl=dict(resident=45,catalog=200))
+    assert result['replay']['cache']['resident_unique']==60  # not 30+45
+
+
 def test_ready_imported_and_ring_occupancy_are_not_conflated(tmp_path):
     for name, count, imported in [('one', 8, True), ('two', 4, False)]:
         write(tmp_path/'episodes'/name/'ready.json', dict(count=count))

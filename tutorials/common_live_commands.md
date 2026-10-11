@@ -43,11 +43,12 @@ ros2 launch arm_delta_cmd delta_ctrl.launch.py \
   motion_authorized:=true \
   manual_delta_topic:=/omi/controller_test/decision \
   delta_frame:=base \
-  ctrl_rate:=500.0 \
-  delta_splits:=50 \
+  ctrl_rate:=200.0 \
+  delta_splits:=20 \
   start_mode:=3 \
   calib_mode:=measure \
   tool_xyzabc:=[5.0,0.0,200.0,-180.0,-90.0,0.0] \
+  tool_dynamic_params:=[1.3,0.0,0.0,70.0,0.0,0.0,0.0,0.0,0.0,0.0] \
   publish_root_tf:=none
 ```
 
@@ -58,7 +59,7 @@ export ROS_LOCALHOST_ONLY=1
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 ```
 
-本机独立手柄的完整流程见[机器人与手柄启动教程](robot_gamepad_startup.md)。`tool_xyzabc` 是当前示例工具参数，需与现场工具核对；`publish_root_tf:=none` 只关闭静态 TF 发布。
+本机独立手柄的完整流程见[机器人与手柄启动教程](robot_gamepad_startup.md)。`tool_xyzabc` 和 `tool_dynamic_params` 是当前示例工具参数，需与现场工具核对；连接时两者会一起下发到控制器。`publish_root_tf:=none` 只关闭静态 TF 发布。
 
 ## 2. 分别启动三路传感器
 

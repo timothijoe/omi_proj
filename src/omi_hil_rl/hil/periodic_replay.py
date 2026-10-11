@@ -157,6 +157,7 @@ def convert(directory, run, contract, version, ticks, receipts, interruptions, b
                  command_audit=dict(source_episode=outcome['episode'], periodic_tick=i,
                     arbitration_mode=tick.get('arbitration_mode', 'immediate'),
                     arbitration=tick.get('arbitration'),
+                    exploration=tick.get('exploration'),
                     timing_policy=timing_policy, timing_diagnostics=diagnostics[i],
                     next_eef_receive_ns=following.get('eef_receive_ns'),
                     terminal_success_stop_ns=following.get('terminal_success_stop_ns'),

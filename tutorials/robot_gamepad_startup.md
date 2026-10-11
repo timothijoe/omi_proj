@@ -60,10 +60,11 @@ ros2 launch arm_delta_cmd delta_ctrl.launch.py \
   start_mode:=3 \
   calib_mode:=measure \
   tool_xyzabc:=[5.0,0.0,200.0,-180.0,-90.0,0.0] \
+  tool_dynamic_params:=[1.3,0.0,0.0,70.0,0.0,0.0,0.0,0.0,0.0,0.0] \
   publish_root_tf:=none
 ```
 
-上述命令使用 `calib_mode:=measure`，根据 `tool_xyzabc` 初始化计算侧工具 TCP；这些参数需与现场工具一致，初始化成功本身不代表已完成实测标定。改成 `calib_mode:=identity` 时 TCP 与法兰重合。`publish_root_tf:=none` 仅关闭静态 TF 发布，EEF 计算仍使用代码中的固定安装矩阵。
+上述命令使用 `calib_mode:=measure`，根据 `tool_xyzabc` 初始化计算侧工具 TCP，并将相同运动学偏移与 `tool_dynamic_params` 一起下发到控制器。动力学参数依次为质量（kg）、质心 xyz（mm）和六个惯量分量；所示数值也是节点默认值。这些参数需与现场工具一致，初始化成功本身不代表已完成实测标定。改成 `calib_mode:=identity` 时 TCP 与法兰重合，下发的工具运动学偏移也为零。`publish_root_tf:=none` 仅关闭静态 TF 发布，EEF 计算仍使用代码中的固定安装矩阵。
 2026-10-07 起，左臂 A 的固定安装平移为 `(0, 0.0260, 1.121) m`，旋转仍为 `Rx(-90°)`；
 实时 RViz 看板不再叠加旧 EEF 显示偏移。运行此命令前需重建并重启接收端，详见
 [安装变换更新说明](robot_controller.md#左臂-eef-安装变换修正2026-10-07)。
@@ -72,6 +73,7 @@ ros2 launch arm_delta_cmd delta_ctrl.launch.py \
 
 - `机械臂当前关节角`
 - `TCP 标定成功 (mode=measure)`：与上方命令对应，仅表示计算初始化成功。
+- `工具动力学参数已设置`：SDK 设置和下发调用已返回成功，仍需现场确认控制器参数。
 - `机械臂连接成功, 当前模式: 关节阻抗`
 - `delta_ctrl_node 启动`
 

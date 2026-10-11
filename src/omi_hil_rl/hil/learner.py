@@ -57,25 +57,27 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
         replay_dir = run / "replay"
         replay = (open_replay(replay_dir, expected_contract=contract)
                   if replay_dir.exists() else TransitionReplay(replay_dir, contract, capacity, prefetch=False))
-        if recorded_sources:
-            if not getattr(replay, 'is_cached', False):
-                replay.close()
-                raise ValueError('recorded sources require cached replay')
-            replay.add_sources(recorded_sources)
         update_in_progress = False
+        published_any = False
         imported_total, actor_updates, rl_updates = 0, 0, 0
         last_update_completed = None
         def publish_monitored():
+            nonlocal published_any
             before = time.monotonic()
             publish(run, agent)
+            published_any = True
             telemetry.update(published_version=agent.updates, published_ns=time.time_ns(),
                              publish_ms=(time.monotonic()-before)*1000)
             telemetry.event('weights_published', version=agent.updates)
         try:
+            if recorded_sources:
+                if not getattr(replay, 'is_cached', False):
+                    raise ValueError('recorded sources require cached replay')
+                replay.add_sources(recorded_sources)
             if max_updates_per_transition is not None and not getattr(replay, 'is_cached', False):
                 raise ValueError('update budget requires the cached replay persistent catalog')
-            if getattr(replay, 'is_cached', False) and max(min_online, min_demo) > replay.buffer_size:
-                raise ValueError('resident cache cannot reach requested training data thresholds')
+            if getattr(replay, 'is_cached', False):
+                replay.configure_training_thresholds(min_online, min_demo)
             if getattr(replay, 'is_dual', False) and (batch_size < 2 or batch_size % 2):
                 raise ValueError('dual replay requires an even batch size >= 2')
             publish_monitored()
@@ -158,7 +160,7 @@ def run_learner(run, config, *, recipe=None, pretrained=None, capacity=1000,
             replay.close()
             # OOM or another exception may have interrupted one of several
             # optimizer steps. Keep the last good checkpoint in that case.
-            if not update_in_progress:
+            if not update_in_progress and published_any:
                 publish_monitored()
 
 

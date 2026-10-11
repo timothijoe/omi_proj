@@ -9,6 +9,10 @@
 <div id="notice" role="status" class="notice">正在读取会话…</div>
 <nav><button class="tab selected" data-panel="overview">链路总览</button><button class="tab" data-panel="episodes">回合与数据审阅 <span id="episode-count"></span></button><button class="tab" data-panel="events">事件记录</button></nav>
 <section id="overview" class="panel">
+<div class="columns summary-panels">
+<article><div class="card-head"><h2>回合结果</h2><span id="outcome-rate" class="tag"></span></div><div id="outcome-cards" class="outcome-grid"></div><div id="outcome-bar" class="outcome-bar" aria-label="已结束回合的结果分布"></div><p id="outcome-note" class="footnote"></p></article>
+<article><div class="card-head"><h2>Demo / RL Buffer</h2><span id="pool-state" class="tag"></span></div><div id="pool-cards" class="pool-grid"></div><div id="pool-memory"></div><p class="footnote">人工接管可同时属于两个池，底层数据共享；两个池的条数不能直接相加当作独立样本数。</p></article>
+</div>
 <div class="pipeline" id="pipeline"></div>
 <div class="columns">
 <article><div class="card-head"><h2>Actor 与控制仲裁</h2><span id="actor-badge" class="pill unknown">未知</span></div><div id="actor-body"></div><div class="action-title">最终命令 <span>mm / SDK ABC °</span></div><div id="action-vector" class="vector"></div><p class="footnote">回执确认的是已接受命令；实际位移需结合机器人反馈判断。</p><div id="receiver-body"></div></article>
@@ -20,7 +24,7 @@
 </div>
 <article><div class="card-head"><h2>传感器与 Actor 实际输入</h2><span id="sensor-badge" class="pill unknown">未知</span></div><div id="observation-state"></div><div class="table-wrap"><table><thead><tr><th>输入</th><th>状态</th><th>到达频率</th><th>接收年龄</th><th>Header 年龄</th><th>接收 / 通过</th><th>原因</th></tr></thead><tbody id="sensors"></tbody></table></div><p class="footnote">频率为近期回调计数估计；接收年龄与 Header 年龄分开显示，均不等同曝光到执行的延迟。</p><div id="previews" class="previews"></div><p id="preview-note" class="footnote"></p><details id="sensor-bridge" hidden><summary>独立实时传感器看板</summary><p id="bridge-note"></p><img id="bridge-image" alt="独立传感器看板"></details></article>
 </section>
-<section id="episodes" class="panel" hidden><article><div class="card-head"><h2>原始回合与训练片段</h2><label>筛选 <select id="episode-filter"><option value="all">全部回合</option><option value="valid">有有效数据</option><option value="excluded">包含排除数据</option><option value="success">人工标记成功</option><option value="unfinished">中断 / 暂存</option></select></label></div><p class="footnote">保留原始周期和排除原因。打开回合可查看相机、触觉、命令 ID、配对及导入标记。</p><div class="table-wrap"><table><thead><tr><th>回合</th><th>状态 / 结束原因</th><th>周期</th><th>有效 transition</th><th>成功奖励</th><th>策略版本</th><th></th></tr></thead><tbody id="episode-table"></tbody></table></div></article></section>
+<section id="episodes" class="panel" hidden><article><div class="card-head"><h2>原始回合与训练片段</h2><label>筛选 <select id="episode-filter"><option value="all">全部回合</option><option value="completed">已结束回合</option><option value="not_success">未成功（含超时/人工结束）</option><option value="valid">有有效数据</option><option value="excluded">包含排除数据</option><option value="success">人工标记成功</option><option value="timeout">Timeout / 超时</option><option value="manual_stop">人工提前结束</option><option value="failed">异常中止</option><option value="unknown">结束原因未知</option><option value="unfinished">进行中 / 暂存</option></select></label></div><p class="footnote">保留原始周期和排除原因。打开回合可查看相机、触觉、命令 ID、配对及导入标记。</p><div class="table-wrap"><table><thead><tr><th>回合</th><th>状态 / 结束原因</th><th>周期</th><th>有效 transition</th><th>成功奖励</th><th>策略版本</th><th></th></tr></thead><tbody id="episode-table"></tbody></table></div></article></section>
 <section id="events" class="panel" hidden><article><div class="card-head"><h2>状态变化与交接事件</h2><span class="tag">最近 40 条</span></div><div id="event-list"></div></article></section>
 <details class="diagnostics"><summary>会话契约与读取诊断</summary><pre id="diagnostics"></pre></details>
 <footer>OMI · 本机观测服务 <span>页面刷新、图像渲染和审阅在监控进程中进行。训练配置保持原值。</span></footer>
