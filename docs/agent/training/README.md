@@ -1,5 +1,10 @@
 # Training 导航
 
+- [当前操作与文档汇总](../../current_training_guide.md)
+- [纪传体：按主题维护当前机制](evolution/README.md)
+- [编年体：按日期保留实现与验证](chronicles/README.md)
+- [当前新建/续跑/监控指令](../../../tutorials/common_live_commands.md#rl-new)
+
 - [长期章程](charter.md)
 - [当前摘要](current.md)
 - [首批真机在线 RL 与 EEF 时序审计（编年）](chronicles/2026-10-08-first-online-rl-run.md)

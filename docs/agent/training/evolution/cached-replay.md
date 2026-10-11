@@ -4,6 +4,18 @@
 实现位于 `training/cached_replay.py`，只读周期源适配位于 `training/replay_sources.py`。
 启动与预算参数见[教程](../../../../tutorials/cached_replay.md)。
 
+## 当前新会话与恢复方式（2026-10-12）
+
+当前基线以 `--weights-only` 从BC只继承模型，Demo/RL及固定seed都从0开始；
+原BC文件的存在不意味着导入了旧Demo。人工接管的新有效transition填充Demo和RL，底层共享。
+当前启动门槛为两流各100条，batch64；缺少新人工Demo时Learner等待，不能把策略样本改成人工标签。
+下表的“固定初始示范”仅适用于明确导入seed的会话，不是当前weights-only会话的实际占用。
+
+`run_async_rl.sh --run`续跑会重新打开SQLite并重建工作集，没有单独resume开关。
+旧数组不持久化到16 GiB内存快照文件；恢复的是索引、数据与可重建窗口，不保证原随机抽样序列。
+正常退出后，未及登记的已保存完整回合可在下一次导入时补入，不能把磁盘原始数据总量等同于已登记数。
+操作见[新建/续跑/恢复](../../../../tutorials/common_live_commands.md#rl-new)。
+
 ## 数据归属与抽样
 
 | 来源 | Demo | RL/online | 物理驻留副本 |
@@ -46,6 +58,11 @@ Actor继续按原格式保存回合；Learner后台只在完整audit/ready可见
 
 来源路径在本运行目录内时保存相对路径，外部数据保存绝对路径；复制seed到新会话可以复用外部只读示范。
 整份缓存会话备份必须包含这些被引用的原始数据。当前实现不自动搬迁外部依赖。
+
+数据自包含且sources/旧seed索引为空的会话，现可使用 `training_archive.sh` 打包全目录、校验并解包到新路径。
+它拒绝未包含的外部数据依赖和活动写者。内部相对引用随目录一起恢复；exFAT外盘用于归档，正式replay工作目录恢复到本机。
+`probe-buffer`复制临时索引，按临时小预算重建及抽样，原模型/目录/正式预算不改变。
+已完成真实1/2 GiB、batch64的恢复验证，详见[归档与复现](../chronicles/2026-10-11-external-archive-restore.md)。
 
 ## 内存与预取
 

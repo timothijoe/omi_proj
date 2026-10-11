@@ -1,5 +1,9 @@
 # Training 当前摘要
 
+2026-10-12已[同步纪传体与编年体](chronicles/2026-10-12-documentation-consolidation.md)：
+在线RL、缓存、监控三个主题纪传更新到当前基线，补齐weights-only、自动续跑、探索、预算、归档与网页统计。
+旧的20秒/batch2/三物理池和早期未验收描述明确标为历史或旧后端范围；本次仅文档。
+
 2026-10-12文档汇总：[当前训练说明](../../current_training_guide.md)、[全量Markdown索引](../../markdown_index.md)
 及[常用指令](../../../tutorials/common_live_commands.md#rl-new)已整理。
 明确在线RL根据已有run目录自动恢复，区别固定BC评估的resume参数；新建BC空池、原目录续跑、外盘完整恢复及监控分别给出命令。

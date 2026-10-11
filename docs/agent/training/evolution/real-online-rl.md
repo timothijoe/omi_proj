@@ -1,5 +1,10 @@
 # 真机在线 RL：BC 热启动、手柄接管与异步训练
 
+功能状态更新：2026-10-12。本页是按主题维护的纪传体；当前操作见[常用指令](../../../../tutorials/common_live_commands.md#rl-new)，
+最近完整运行与归档见[可运行基线](../chronicles/2026-10-11-runnable-baseline.md)和[外盘恢复验证](../chronicles/2026-10-11-external-archive-restore.md)。
+当前基线为原BC初始化、仅新采数据、45秒、batch64、cached双池及受限高斯探索。
+下文标明日期的早期验收数字不代表当前运行状态；Oct 11最终任务已正常退出，保存版本16677。
+
 2026-10-10新增可选[共享内存缓存双池](cached-replay.md)：`prepare_bc_rl.sh --replay-backend cached`，
 磁盘只登记索引并保留原始数据，后台加载完整transition，Demo/RL共享内存条目，默认16/20 GiB预算。
 自动读取完整periodic回合，可选累计更新额度；[启动教程](../../../../tutorials/cached_replay.md)。
@@ -69,34 +74,66 @@ Actor 只在规定的回合边界检查新权重。`--execute --enable-policy` �
 
 ## 模型初始化与异步更新
 
-当前新会话位于 `local/rl_training/bc_demo_new_20261007_213643_rl_live_01/`，
-由独立种子 `bc_demo_new_20261007_213643_rl_seed_01` 克隆。种子用 BC12045 的
-全部 Actor 参数和同版的 1387 条人工周期示范，Critic/target 新建，编码器冻结。
-该种子初始化阶段的周期标签适配只在 BC 索引导入时使用；新周期数据的诊断规则见上文。
-原 BC checkpoint 不被在线 RL 更新覆盖。
+### BC权重预加载与新数据空池
 
-前 1000 次更新只训练 Critic；之后有至少 100 条有效在线 transition 时，
-正常批次从示范流与在线流各抽一半，batch 默认 2。Actor 每 2 次 Critic 更新
-更新 1 次，学习率 1e-5，损失包含 SAC 项与 10 倍人工动作 BC 项；
-BC 参考网络固定，Actor 编码器继续冻结。Learner 写盘的最新检查点不是经过
-独立真机任务评估选出的“最佳模型”。当前没有新增样本数与更新次数之比的预算限制，
-旧在线样本可以重复被抽取。
+当前本机会话为 `local/rl_training/bc12045_newdata_30s_20261011_01/`，名字中的30s是历史命名，实际45秒。
+`prepare_bc_rl.sh --weights-only --replay-backend cached`只继承BC12045的完整Actor和归一化；
+Critic/target与优化器重新初始化、累计RL计数从0开始，Demo/RL均为空，不读旧dataset或录制文件。
+不加weights-only的旧准备方式仍会导入BC初始Demo；不能混称为“只用新数据”。
+原BC文件不被在线训练覆盖，BC参考副本保留初始化策略；人工动作监督来自本批新Demo。
 
-新会话的三个物理区：
+`--episode-seconds`仅在weights-only新建时覆盖回合时限，统一写入config、模型、session与replay契约。
+不能单独改config留下契约不一致。空Demo模式启动不再依赖旧观测：优先用实时观测做加载探针，
+尚无实时输入时仅做契约形状的数值预热；这不会生成训练数据或代替真实输入门控。
+`--bc-run`当前只接受BC来源；任意RL checkpoint另起空池的通用接口尚未实现。
 
-```text
-replay/demo/initial/        固定初始人工示范，不被在线环形池覆盖
-replay/online/              全部有效在线动作，包括策略与人工来源
-replay/demo/interventions/  在线人工来源动作，供示范流独立采样
-```
+### 学习配置与预算
 
-在线人工动作同时进入 `online` 和 `interventions`，这是双池采样设计；
-不能把两处条数相加当作不同的机器人经历。经验池重开要求干净 checkpoint；
-部分写入或中断留下的 `staging.json` 不自动当作训练数据。
+当前现场命令为batch64、min-online100、min-demo100；CLI默认batch2保留兼容，不能混作当前现场设置。
+新人工有效transition同时填充Demo与RL，结束回合并导入后才可采样；缺少新Demo时Learner等待。
+前1000次只训练Critic，之后正常批次Demo/RL各半；Actor每2次Critic更新一次。
+Critic学习率3e-4、Actor学习率1e-5，Actor损失含SAC项和权重10的人工动作BC项。
+整个共享编码器冻结，包括触觉CNN、历史视觉投影和融合；不是只冻结视觉骨干或只在预热时冻结。
+
+当前gamma0.98、tau0.005。成功仅末条合格transition奖励+1；gamma按transition折扣，十帧输入不额外增加折扣次数。
+触觉解冻、长任务gamma、成功样本优先采样仍是[待改事项](../chronicles/2026-10-11-tactile-gamma-pending.md)，尚未实施。
+
+当前命令显式设置 `--max-updates-per-transition 1`，累计Critic上限为预热1000＋已登记online条数。
+Actor等Start时Learner可继续学到额度上限，然后等待新数据；重启不重置已有计数。
+不传此参数的旧行为仍为持续训练。每50次更新发布当前checkpoint，不声称是独立评估后的最佳策略。
+
+### 自动续跑与回合边界换权重
+
+`run_async_rl.sh --run 已有目录`就是自动恢复入口，没有单独的resume参数。
+Actor加载actor.pt；Learner恢复learner.pt中的Actor/Critic/target、优化器、温度、累计更新数和随机状态，
+并打开已有replay。RAM工作集根据磁盘索引重建，不保证驻留成员或后续抽样次序逐位一致。
+固定BC评估入口的 `--resume` 是另一套CLI。
+
+Actor每新增10个有效回合在结束边界检查新版本，回合中不换；重启立即加载最新已发布权重，
+并以当时有效回合数作为新的检查基点。CLI中的batch、探索和检查间隔仍需本次启动时明确指定。
+正常Ctrl+C关闭Actor/Learner并保存最终checkpoint；传感器、接收端、网页是独立进程。
+只读监控分别显示“已训练/已发布/Actor已加载”，前两者增长不等于机器人已换策略。
+
+### 探索与实际标签
+
+`--exploration-noise-std 0.05 --exploration-noise-clip 0.15`启用归一化tanh后的受限高斯噪声，默认std0关闭。
+只有通过仲裁准备发出的policy动作抽取噪声，最终动作再限幅[-1,1]；人工、握手、复位及无候选时不加噪声。
+两种周期仲裁均支持，旧receipt会话不能静默启用。每次启动需显式传参。
+原始动作和replay标签保存实际加噪命令；exploration审计保留mean_action、clipped_noise与applied_delta。
+实现和真实动作验证见[探索记录](../chronicles/2026-10-11-online-exploration.md)、[batch64现场核验](../chronicles/2026-10-11-batch64-exploration-live.md)。
+
+### 数据后端与旧格式兼容
+
+当前采用[共享cached双池](cached-replay.md)：原始帧留盘，SQLite保存来源，完整transition只在RAM缓存。
+Demo/RL有各自的可采样成员，人工交集共享物理数据，合计默认16 GiB驻留、20 GiB受管管线限制。
+不把两池条数相加当作独立经历，也不把20 GiB当作磁盘采集总量限制。
+
+旧disk后端仍保留 `replay/demo/initial`、`replay/online`、`replay/demo/interventions` 三物理区的兼容布局，
+既有会话不自动转换。当前weights-only会话没有1387条旧固定示范，不能沿用早期三池统计描述它。
 
 ## 完整回合、保存与入池
 
-当前会话每回合 20 秒，从 Start 开始按单调时钟计时。成功终止给最后合格动作
+当前会话每回合45秒，从Start开始按单调时钟计时。成功终止给最后合格动作
 `reward=1, terminated=true`；普通步骤奖励 0；307 和超时作截断并保留 bootstrap。
 接收端回执、动作 ID、数组格式和标签对应关系由后台线程核对。
 新记录写入 `timing_policy=diagnostic_only_v1`：命令相位、回执延迟、EEF 因果关系和间隔异常
@@ -114,6 +151,8 @@ replay/demo/interventions/  在线人工来源动作，供示范流独立采样
 流计数才证明已经导入。Learner 的更新与本地保存异步进行；Ctrl+C 正常退出会
 等待当前完整更新保存。`async_state.json`、`status.json`、`learner.log` 和各回合
 `audit.json` 分别用于确认 Actor 版本、训练进度和数据质量。
+cached后端的imported标记表示已登记到磁盘目录，不保证该数据当前驻留RAM；
+磁盘目录数量和两池可采样成员数量需要分别查看。
 
 ## 回合观测的单帧存储（2026-10-10）
 
@@ -182,13 +221,13 @@ Learner/Actor 检查点已达到版本 6502，Actor 参数已发生更新。
 
 - `async_state.json`：是否干净关闭，真机实际加载的 `policy_version`，
   已完成有效回合数和上次权重检查位置。
-- `status.json` 与 `learner.log`：Critic/Actor 是否更新、三个池的条数，
+- `status.json` 与 `learner.log`：Critic/Actor 是否更新、Demo/RL及磁盘目录的条数，
   Learner 是否异常退出。更新次数与损失不等于任务成功率。
 - `periodic_episodes/*/audit.json`：每回合 `transitions`、`excluded`、
-  `success_label_recorded`；原始审计始终保留，只有 `ready.json` 可入池。
-- 当前保存的版本 6502 尚未做真机验证；有人的短回合测试、RB 可接管和接收端
-  回执检查仍是下一步实际验收。动作效果或 EEF 时序异常时，不应凭训练更新数
-  推断模型可靠。
+  `success_label_recorded`；原始审计始终保留。cached可直接按完整audit核验登记，
+  旧ready路径按完成片段导入，staging本身不能当作合法训练数据。
+- 最新完整停止记录为16677；当前使用版本应以实际checkpoint/遥测为准。
+  后续评估仍需区分自主成功与人工接管，不凭更新次数或有成功标签就推断模型可靠。
 
 具体命令与按键见[异步 RL 教程](../../../../tutorials/async_rl.md)。
 
@@ -201,3 +240,15 @@ Learner/Actor 检查点已达到版本 6502，Actor 参数已发生更新。
 目录也单独列出，不算完整回合。工具不连接 ROS、不发布命令、不修改数据。
 人工视觉检查用于发现画面异常和动作来源疑点；时间因果与入池结论仍以原始审计为准，
 任务成败仍需现场证据。运行方法见[逐帧查看教程](../../../../tutorials/rl_episode_visual_review.md)。
+
+## 归档与恢复边界
+
+`training_archive.sh`提供pack/verify/restore/restore-code/probe-buffer，面向干净停止、数据自包含的cached会话。
+它保存完整模型、原始帧、窗口引用、SQLite和配置，不把RAM数组当作持久化真值；有外部seed/source依赖会拒绝。
+恢复到新的本机POSIX目录，保持相对数据引用；标准库工具先校验再发布目录，不能直接在外盘tar根目录训练。
+临时probe只复制索引、重建一小块buffer并抽样，不训练、不改原checkpoint或正式缓存预算。
+完整归档恢复保留旧RL状态和数据，不等于任意RL权重初始化一个空池。
+
+Oct 11完整140回合及16677模型已归档到指定oct_11_data，原本机目录保留。
+持久化索引53513条，另449条已保存末回合等待续训补登记；外盘已实际解包验证，buffer和模型恢复通过。
+数值和验证边界见[归档编年](../chronicles/2026-10-11-external-archive-restore.md)，步骤见[恢复教程](../../../../tutorials/oct11_archive_restore.md)。

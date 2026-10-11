@@ -1,6 +1,6 @@
 # 项目Markdown全量索引
 
-整理日期：2026-10-12，共 **282份** Markdown。
+整理日期：2026-10-12，共 **283份** Markdown。
 范围为本项目Git已跟踪及未忽略的Markdown；不扫描local实验输出、虚拟环境、外盘包或被忽略的第三方依赖。
 这是全量路径/标题导航；当前训练的内容总结见[当前训练说明](current_training_guide.md)，可复制命令见[常用指令](../tutorials/common_live_commands.md)。
 日期编年保留当时事实，旧命令和状态不自动代表当前默认。
@@ -129,7 +129,7 @@
 | [docs/agent/training/evolution/six-keypoint-review.md](agent/training/evolution/six-keypoint-review.md) | 六关键点自动预标注与人工审核工具 |
 | [docs/agent/training/evolution/training-monitor.md](agent/training/evolution/training-monitor.md) | 统一训练监控：状态、链路与只读审阅 |
 
-## 训练编年记录（72）
+## 训练编年记录（73）
 
 | 文件 | 标题 |
 | --- | --- |
@@ -205,6 +205,8 @@
 | [docs/agent/training/chronicles/2026-10-11-tactile-gamma-pending.md](agent/training/chronicles/2026-10-11-tactile-gamma-pending.md) | 2026-10-11：待改项——触觉编码器训练与长回合奖励折扣 |
 | [docs/agent/training/chronicles/2026-10-11-weights-only-new-data.md](agent/training/chronicles/2026-10-11-weights-only-new-data.md) | 2026-10-11：只继承BC权重，全部训练数据从新会话采集 |
 | [docs/agent/training/chronicles/README.md](agent/training/chronicles/README.md) | Training 编年索引 |
+| [docs/agent/training/chronicles/2026-10-12-documentation-consolidation.md](agent/training/chronicles/2026-10-12-documentation-consolidation.md) | 2026-10-12：操作说明汇总与纪传/编年同步 |
+
 
 ## 接口与存储契约（7）
 

@@ -1,16 +1,19 @@
 # Training 纪传体
 
+功能级事实已于2026-10-12同步当前可运行版本；具体操作见[常用指令](../../../../tutorials/common_live_commands.md)，
+时间证据见[编年索引](../chronicles/README.md)。
+
 - [共享内存缓存双池](cached-replay.md)：Demo/RL独立抽样、共享物理数据、全量磁盘索引、受管字节预算、后台加载与预取。
 
 - [Actor/Learner 统一训练监控](training-monitor.md)：后台心跳、仲裁、传感器、数据链、权重版本和只读回合审阅。
 
-- [真机在线 RL：BC 热启动、手柄接管与异步训练](real-online-rl.md)：当前三池、周期回合、Learner/Actor 版本、首批 1059 条真机 transition 与 EEF 因果配对边界。
+- [真机在线 RL：BC 热启动、手柄接管与异步训练](real-online-rl.md)：weights-only新建空池、自动续跑、45秒/batch64、冻结与gamma、受限探索、权重交接、归档恢复及旧后端兼容。
 
 - [手柄示范录包、动作语义与 BC 数据入口](demo-collection-bc.md)：当前独立gamepad、集成collector和诊断数据的区别；触觉历史、wrench及可视化。
 
 - [六维真机HIL、SAC和Actor/Learner](hil-actor-learner.md)：当前进展、按钮回合、整段审核、验证边界与下一阶段；[操作教程](../../../../tutorials/hil_actor_learner.md)。
 
-- [完整transition磁盘入口](../../../../tutorials/transition_replay.md)：指定目录、Demo/RL分流与恢复；真机组装及learner待接入。
+- [完整transition磁盘入口](../../../../tutorials/transition_replay.md)：旧磁盘后端的目录、分流与恢复；当前真机Learner与cached双池已接入，见上方专题。
 
 - [禁用关节输入的GPU历史拼接训练](nojoint-stack.md)
 
