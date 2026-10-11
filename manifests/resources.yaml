@@ -29,6 +29,18 @@ local_data_storage:
   retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
   restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: oct11-training-external-archive
+    path: /media/zhoutong/zt-think-d1/legion_data/date_related/oct_11_data
+    tracked: false
+    source: Stopped bc12045_newdata_30s_20261011_01 run; final Actor/Learner16677, all 140 raw episodes, 53513 catalog transitions plus 449 saved pending registration, and original BC12045
+    purpose: Verified portable archive with full run tar, standalone checkpoints, original BC, actual source snapshot, environment metadata, restoration CLI/tutorial and real restore evidence
+    restore: See tutorials/oct11_archive_restore.md and archive README.md. Use training_archive.sh verify/restore into a NEW local POSIX directory, then probe-buffer. Original local run retained. Never point live training at run.tar or the exFAT archive root.
+  - id: oct11-real-archive-restore-validation
+    path: local/diagnostics/oct11_archive_restore_20261011
+    tracked: false
+    source: Actual extraction of the external Oct11 archive and its source snapshot
+    purpose: Verify full extraction hashes, 1/2 GiB replay reconstruction, batch64 Demo/mixed sampling, unchanged source artifacts and exact Actor/Learner inference agreement on a restored real observation
+    restore: buffer_report.json, model_report.json and final_archive_verification.json contain evidence. No robot output or training updates. This diagnostic copy is separate from the retained original run and external archive.
   - id: collection-reset-45s-archive-20261011-184301
     path: local/archives/problematic_data/bc12045_newdata_30s_20261011_01_20261011_184301
     tracked: false

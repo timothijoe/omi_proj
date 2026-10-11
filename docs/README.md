@@ -1,5 +1,16 @@
 # OMI 文档总目录
 
+2026-10-12整理：[当前训练说明与文档汇总](current_training_guide.md)
+· [新建 / 自动续跑 / 监控 / 外盘恢复的常用指令](../tutorials/common_live_commands.md#rl-new)
+· [全部项目Markdown索引](markdown_index.md)。在线RL通过已有 `--run` 自动恢复，没有 `--resume` 开关。
+以下日期条目是对应时刻的历史记录；Oct 11最终已正常退出并归档，不把“当时正在运行”视为现在的状态。
+
+Oct 11最终数据已归档：[外盘归档与恢复验证](agent/training/chronicles/2026-10-11-external-archive-restore.md)
+· [checkpoint、buffer重建与续训教程](../tutorials/oct11_archive_restore.md)。
+
+当前可运行基线：[2026-10-11在线HIL RL版本记录](agent/training/chronicles/2026-10-11-runnable-baseline.md)。
+汇总代码版本、原BC/新数据会话、45秒batch64启动命令、双池/探索/监控、现场结果及待改项。
+
 2026-10-11最新：[batch64在线训练与探索噪声现场核验](agent/training/chronicles/2026-10-11-batch64-exploration-live.md)。
 45秒会话正在采集训练，已检查实际策略加噪与人工接管旁路；保存当前命令和运行快照。
 

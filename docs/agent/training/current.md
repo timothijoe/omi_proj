@@ -1,5 +1,21 @@
 # Training 当前摘要
 
+2026-10-12文档汇总：[当前训练说明](../../current_training_guide.md)、[全量Markdown索引](../../markdown_index.md)
+及[常用指令](../../../tutorials/common_live_commands.md#rl-new)已整理。
+明确在线RL根据已有run目录自动恢复，区别固定BC评估的resume参数；新建BC空池、原目录续跑、外盘完整恢复及监控分别给出命令。
+任意RL checkpoint新建空池仍未实现；本次仅文档，模型/参数/数据未改。再次读取当前任务仍CLOSED，最终checkpoint记录16677。
+
+2026-10-11已停止并[完成外盘归档和buffer恢复验证](chronicles/2026-10-11-external-archive-restore.md)。
+`/media/zhoutong/zt-think-d1/legion_data/date_related/oct_11_data/` 保存完整会话、最终16677权重、原BC、代码和教程，
+221646个会话文件SHA核验通过，约5.90 GiB；本机原目录保留。索引53513条，另449条末回合已保存待续训补导入。
+从外盘实际解包后以1/2 GiB预算重建471条缓存、两池batch64抽样和真实模型CPU推理通过；未启动机器人或训练更新。
+新增 `scripts/training_archive.sh` 支持校验/恢复/试装buffer，见[恢复教程](../../../tutorials/oct11_archive_restore.md)。
+
+2026-10-11 20:34：用户确认当前版本可运行，已整理[在线HIL RL可运行基线](chronicles/2026-10-11-runnable-baseline.md)。
+代码定位 `oct_10_branch` / `e57bd5e04c6db88c76b5d4ea9842f43badd5359a`；45秒、batch64、原BC初始化、仅新数据、双池缓存与探索已联通。
+快照：Actor已加载6950，Learner更新7330；57个已结束回合（成功28、timeout25、人工结束2、异常2），另1个暂存。
+文档保存完整续跑命令、数据/模型位置及待办；可运行不等于效果最优，触觉解冻/gamma和现场异常尚待迭代，本次仅记录。
+
 2026-10-11 19:58：[触觉训练与gamma待改记录](chronicles/2026-10-11-tactile-gamma-pending.md)。
 用户要求先记录、不修改。3750 checkpoint确认gamma=0.98、共享编码器仍全冻结；触觉解冻列为待实现。
 成功+1跨100/300/450步的折扣约0.13262/0.002333/0.000113；本批19个有成功标签回合的有效transition中位数278。

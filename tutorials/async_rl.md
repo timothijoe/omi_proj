@@ -1,6 +1,9 @@
 # 异步真机 RL：每 10 个完整回合检查新策略
 
-本次从原始 BC12045 开始的独立会话及可复制命令，见[首次试跑操作页](bc12045_async_rl_trial.md)。
+2026-10-12当前可复制命令见[新建/自动续跑/监控](common_live_commands.md#rl-new)，
+当前状态与历史导航见[文档汇总](../docs/current_training_guide.md)。
+`run_async_rl.sh --run 已有目录`自动恢复模型、优化器与数据，没有独立resume参数；不要在续跑前重新prepare。
+早期从原始 BC12045 开始的独立会话命令见[首次试跑历史操作页](bc12045_async_rl_trial.md)。
 旧 `rl_live_01` 已有 RL 更新；继续旧目录会加载其最新权重，不能视为重新从 BC 初始化。
 
 ## 2026-10-10：回合观测按单帧存储
@@ -22,7 +25,8 @@ print(observation["rgb"].shape)  # (10, 3, 128, 128)
 
 迁移运行目录时一起复制 `episodes/` 和 `periodic_episodes/`，保持两者相对位置。
 训练片段依赖对应回合的 `frames/`，不要仅拷贝片段或单个NPZ文件。
-本次缩小回合记录和训练交接文件，固定容量 `replay/` 的磁盘数组仍保持原布局。
+本段描述单帧存储刚引入时对旧disk后端的兼容；现在也支持[共享内存cached后端](cached_replay.md)，
+其replay目录保存SQLite来源索引，完整transition仅在RAM中重建，不生成旧式展开磁盘数组。
 真实182窗口存储约缩小9.17倍，完整证据见[验证记录](../docs/agent/training/chronicles/2026-10-10-observation-frame-storage.md)。
 
 ## 2026-10-09：默认推理完成后仲裁
