@@ -194,6 +194,9 @@ def main():
     parser.add_argument('--episode-seconds', type=float, default=15.)
     parser.add_argument('--episodes', type=int, default=100000)
     parser.add_argument('--gamepad', default='/dev/input/js0')
+    from omi_hil_rl.real.operator_input import (
+        add_input_arguments, options_from_args, check_operator_input, required_buttons)
+    add_input_arguments(parser)
     parser.add_argument('--home-button-code', type=int, default=314,
                         help='Back key for automatic home between episodes (default: 314)')
     add_gripper_arguments(parser)
@@ -209,6 +212,10 @@ def main():
                         help='default: periodic latest-observation control, timing diagnostics only; resume preserves the session mode')
     parser.add_argument('--resume', action='store_true', help='append new episodes to an existing matching session')
     args = parser.parse_args()
+    try:
+        input_options = options_from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.control_mode is None:
         session_path = args.output/'session.json'
         previous_mode = json.loads(session_path.read_text()).get('mode') if args.resume and session_path.exists() else None
@@ -238,26 +245,23 @@ def main():
     receiver = None
     if args.execute:
         from omi_hil_rl.real.receiver_preflight import inspect_receiver
-        from omi_hil_rl.real.linux_gamepad import LinuxGamepad
-        pad = LinuxGamepad(args.gamepad)
         try:
-            if not pad.poll():
-                parser.error('gamepad unavailable: ' + pad.error)
-            required = {config.start_button, config.success_button, config.stop_button, args.home_button_code}
-            if args.gripper_server:
-                required.update((BTN_A, BTN_B))
-            if not required <= set(pad.button_map):
-                parser.error('configured episode/home/gripper buttons are absent on this gamepad')
-        finally:
-            pad.close()
-        receiver = inspect_receiver(require_manual_receipts=True)
+            input_options = check_operator_input(config, args,
+                required_buttons(config, args.home_button_code, gripper=bool(args.gripper_server)))
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+        receiver_options = dict(require_manual_receipts=True)
+        if input_options.kind == 'spacepilot':
+            receiver_options.update(require_connected=True, expected_manual_rate=config.hz,
+                                    allow_anonymous_subscriptions=True)
+        receiver = inspect_receiver(**receiver_options)
     from .ros_transport import RosTransport
     from omi_hil_rl.training.eef_bc_grid import GridProfile
     gripper = GamepadGripper(args, calibration, args.execute) if args.execute else None
     transport = RosTransport(config, GridProfile(config.wrist_camera).CONTRACT, execute=args.execute,
         gamepad=args.gamepad, topic=receiver['manual_topic'] if receiver else '/omi/action/manual_decision',
         convention=config.sdk_convention, rgb_max_age_ms=args.rgb_max_age_ms,
-        home_button_code=args.home_button_code, gripper=gripper)
+        home_button_code=args.home_button_code, gripper=gripper, input_options=input_options)
     transport.competing_topics = ['/omi/action/decision', '/omi/action/manual_decision']
     transport.receiver_info = receiver
     transport.log_buttons = args.execute

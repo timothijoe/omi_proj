@@ -170,25 +170,18 @@ class Alternating:
 def make_transport(config, recipe, args):
     from .ros_transport import RosTransport
     from omi_hil_rl.real.receiver_preflight import inspect_receiver
-    from omi_hil_rl.real.linux_gamepad import LinuxGamepad
+    from omi_hil_rl.real.operator_input import check_operator_input, required_buttons, options_from_args
     from rclpy.qos import QoSProfile, ReliabilityPolicy
     from std_msgs.msg import Float64MultiArray
-    receiver = inspect_receiver(require_manual_receipts=True)
-    pad = LinuxGamepad(args.gamepad)
-    try:
-        required = {config.start_button, config.success_button, config.stop_button}
-        home_button_code = getattr(args, 'home_button_code', None)
-        if home_button_code is not None:
-            required.add(home_button_code)
-        if getattr(args, 'gripper', None) is not None and args.gripper.args.gripper_server:
-            from omi_hil_rl.real.gamepad_gripper import BTN_A, BTN_B
-            required.update((BTN_A, BTN_B))
-        if getattr(args, 'tag_follow_enabled', False):
-            required.update((304, 305, 310))
-        if not pad.poll() or not required <= set(pad.button_map):
-            raise ValueError('gamepad unavailable or episode/home/gripper buttons absent: ' + pad.error)
-    finally:
-        pad.close()
+    receiver_options = dict(require_manual_receipts=True)
+    if options_from_args(args).kind == 'spacepilot':
+        receiver_options.update(require_connected=True, expected_manual_rate=config.hz,
+                                allow_anonymous_subscriptions=True)
+    receiver = inspect_receiver(**receiver_options)
+    required = required_buttons(config, getattr(args, 'home_button_code', None),
+        gripper=bool(getattr(args, 'gripper', None) is not None and args.gripper.args.gripper_server),
+        tag_follow=getattr(args, 'tag_follow_enabled', False), input_options=options_from_args(args))
+    input_options = check_operator_input(config, args, required)
 
     class RoutedTransport(RosTransport):
         """Keep manual commands on the receiver's manual route, policy on policy route."""
@@ -227,7 +220,8 @@ def make_transport(config, recipe, args):
 
     transport = RoutedTransport(config, recipe['base_contract'], execute=True,
         gamepad=args.gamepad, convention=config.sdk_convention, rgb_max_age_ms=args.rgb_max_age_ms,
-        home_button_code=getattr(args, 'home_button_code', None), gripper=getattr(args, 'gripper', None))
+        home_button_code=getattr(args, 'home_button_code', None), gripper=getattr(args, 'gripper', None),
+        input_options=input_options)
     manual_topic = receiver['manual_topic']
     if manual_topic == '/omi/action/decision':
         transport.close()
@@ -241,7 +235,9 @@ def make_transport(config, recipe, args):
     if getattr(args, 'tag_follow_enabled', False):
         try:
             from omi_hil_rl.real.tag_follow_session import TagFollowSession
-            transport.tag_follow = TagFollowSession(transport.node, args)
+            from omi_hil_rl.real.operator_input import follow_buttons_for_input
+            transport.tag_follow = TagFollowSession(transport.node, args,
+                button_selector=follow_buttons_for_input(transport.pad))
         except BaseException:
             transport.close()
             raise
@@ -267,11 +263,17 @@ def main():
     p.add_argument('--learner-python', type=Path, default=Path('local/cuda-env/bin/python'))
     p.add_argument('--episodes', type=int, default=100000)
     p.add_argument('--gamepad', default='/dev/input/js0')
+    from omi_hil_rl.real.operator_input import add_input_arguments, options_from_args
+    add_input_arguments(p)
     p.add_argument('--rgb-max-age-ms', type=float, default=500.)
     p.add_argument('--train-timeout', type=float, default=1800.)
     p.add_argument('--execute', action='store_true')
     p.add_argument('--enable-policy', action='store_true', help='allow unvalidated RL policy motion when RB released')
     args = p.parse_args()
+    try:
+        options_from_args(args)
+    except ValueError as exc:
+        p.error(str(exc))
     if min(args.updates, args.batch_size, args.episodes, args.train_timeout) <= 0 or args.batch_size < 2:
         p.error('positive counts/timeouts and batch size >= 2 required')
     args.run = args.run.resolve()

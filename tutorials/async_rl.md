@@ -1,5 +1,7 @@
 # 异步真机 RL：每 10 个完整回合检查新策略
 
+人工输入可选[SpacePilot](spacepilot_hil.md)，默认仍是原手柄。设备映射不改变回放契约、policy尺度或仲裁模式；松开接管键会归还策略。
+
 2026-10-12当前可复制命令见[新建/自动续跑/监控](common_live_commands.md#rl-new)，
 当前状态与历史导航见[文档汇总](../docs/current_training_guide.md)。
 `run_async_rl.sh --run 已有目录`自动恢复模型、优化器与数据，没有独立resume参数；不要在续跑前重新prepare。

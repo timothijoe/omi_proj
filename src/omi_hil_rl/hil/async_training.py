@@ -354,6 +354,8 @@ def main():
     p.add_argument('--shutdown-timeout', type=float, default=30.)
     p.add_argument('--episodes', type=int, default=100000)
     p.add_argument('--gamepad', default='/dev/input/js0')
+    from omi_hil_rl.real.operator_input import add_input_arguments, options_from_args
+    add_input_arguments(p)
     p.add_argument('--home-button-code', type=int, default=314,
                    help='Back key for automatic home between episodes (default: 314)')
     add_gripper_arguments(p)
@@ -376,6 +378,10 @@ def main():
     p.add_argument('--arbitration-mode', choices=('after-inference', 'immediate'), default='after-inference',
                    help='periodic RL: choose latest RB/joystick after inference (default); immediate retains interrupting takeover')
     args = p.parse_args()
+    try:
+        options_from_args(args)
+    except ValueError as exc:
+        p.error(str(exc))
     try:
         exploration = GaussianExploration(args.exploration_noise_std, args.exploration_noise_clip)
     except ValueError as exc:

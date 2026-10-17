@@ -1,5 +1,7 @@
 # Hardware 编年索引
 
+- [2026-10-17 SpacePilot接入采集与在线HIL，保留手柄](2026-10-17-spacepilot-hil.md)
+
 - [2026-10-17 SpacePilot 映射到手动控制话题](2026-10-17-spacepilot-control.md)
 
 - [2026-10-17 AprilTag 位姿估计与跟随源码迁入](2026-10-17-apriltag-follow-migration.md)

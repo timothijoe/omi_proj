@@ -29,6 +29,17 @@ local_data_storage:
   retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
   restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: spacepilot-hil-button-profile
+    path: local/spacepilot/hil_buttons.json
+    tracked: false
+    source: User-confirmed physical button events captured by scripts/configure_spacepilot_hil.py
+    purpose: Map actual libspnav button IDs onto existing HIL episode, takeover, home, gripper and tag-follow logical codes
+    restore: This machine uses configs/spacepilot_hil_oct17.json (Menu takeover, key1 start, direct tag keys, auto review only). Recheck physical IDs on another device with the read-only tool; use --preset oct17 to capture key1 or --direct-follow for a custom layout. See tutorials/spacepilot_hil.md.
+  - id: spacepilot-hil-oct17-preset
+    path: configs/spacepilot_hil_oct17.json
+    tracked: true
+    source: User-selected physical buttons measured on this SpacePilot PRO on 2026-10-17
+    purpose: Initial nine-key HIL mapping with direct tag-follow actions and required_review auto
   - id: oct17-control-response-analysis-evidence
     path: docs/evidence/control_response_20261017
     tracked: true

@@ -1,5 +1,7 @@
 # OMI：天机机械臂 Human-in-the-Loop RL
 
+[SpacePilot用于BC/RL采集与在线交互](tutorials/spacepilot_hil.md)：原手柄默认保留，显式 `--input-device spacepilot` 切换；先逐键配置并预览。
+
 [2026-10-17 开发快照](docs/oct17_development_checkpoint.md)：SpacePilot、AprilTag跟随/标定、异步RL接入及起停响应诊断。当前先保存基线，未调整底层停止策略或阻抗参数。
 
 [SpacePilot 机械臂增量控制](tutorials/spacepilot_control.md)：独立终端入口，支持平移/旋转独立 scale，真机方向与手感待验收。

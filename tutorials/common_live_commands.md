@@ -7,6 +7,64 @@
 快速定位：[从BC新建空池](#rl-new) · [Ctrl+C后续跑](#rl-resume) · [通用在线启动](#rl-start) · [监控与回放](#monitor) · [外盘恢复与buffer验证](#archive-restore)。
 完整资料导航见[当前训练说明与文档汇总](../docs/current_training_guide.md)；[全部项目Markdown索引](../docs/markdown_index.md)用于查找历史材料。
 
+## 一键启动与动作菜单
+
+在交互终端执行 [start_common_live.sh](../scripts/start_common_live.sh)：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+bash scripts/start_common_live.sh
+```
+
+脚本启动机器人左臂 A 接收端、D435 彩色流、Daimon 腕部 ROI 相机、双指触觉及六维 wrench，
+等到 EEF、两路相机和双指触觉话题收到数据后，显示动作菜单：
+
+1. 独立手柄操作。
+2. 人工示范采集（20 秒 × 10 回合，新输出目录）。
+3. 固定 BC 评估（已有 BC 目录，1 回合）。
+4. 从 BC 新建在线 RL（新空池，45 秒回合）。
+5. 继续已有在线 RL（恢复所选目录，不重新初始化）。
+0. 关闭本次启动的设备并退出。
+
+菜单会提示手柄路径和相关数据目录，可以回车沿用本页默认值。独立手柄默认 `/dev/input/js1`，
+采集、BC、RL 默认 `/dev/input/js0`。所有进程统一使用 domain 13 和 SUBNET 发现；
+可通过运行前设置 `ROS_DOMAIN_ID` 修改 domain。
+
+Daimon 夹爪由所选动作入口连接，使用项目现有地址和标定，不需要额外夹爪进程。
+手柄、采集、RL 默认启用 A 闭合 / B 张开；**此处 RL 与下文手工命令不同，默认不加 `--no-gripper`**。
+现有固定 BC 入口尚未实现夹爪控制，菜单中已标注；不要为此同时另开手柄动作发布端。
+如需禁用夹爪，在一键脚本后加 `--no-gripper`。
+
+常用选项：
+
+```bash
+# 仅打印设备命令和各动作入口，不连接设备、不创建训练目录
+bash scripts/start_common_live.sh --dry-run
+
+# 首次使用或接收端代码更新后：先校验 SDK、构建，再启动
+bash scripts/start_common_live.sh --build
+
+# 直接进入指定动作；手柄编号按本机实际情况填写
+bash scripts/start_common_live.sh --action gamepad --gamepad /dev/input/js1
+bash scripts/start_common_live.sh --action rl-resume \
+  --run local/rl_training/bc12045_newdata_30s_20261011_01 --gamepad /dev/input/js0
+```
+
+更多参数见 `bash scripts/start_common_live.sh --help`。新 RL 的来源用 `--bc-run`，
+目标用 `--run`；已有目标目录会被拒绝，续跑必须选择 `rl-resume`。
+
+设备日志写入 `local/common_live/<本次时间戳_PID>/`，动作入口直接显示在当前终端。
+可另开终端用 `tail -f <日志目录>/robot.log` 等查看设备输出，或启动下文只读看板。
+反馈话题默认各等待最多 60 秒，可用 `--ready-timeout` 调整；
+设备进程在动作执行期间退出会触发整套会话清理。
+
+按一次 **Ctrl+C** 会先通知动作入口退出，等待回合审计、模型及数据保存，然后依次停止触觉、
+腕部相机、D435、机器人接收端。动作自然结束后也会关闭整套设备，需要换动作时重新运行脚本。
+请保留终端直到退出完成；这些进程是同一次会话的一部分，无需额外终端管理器。
+启动前先停止手工启动的同类设备与动作进程；脚本锁只能阻止重复运行本脚本。
+脚本会使用下文的 `motion_authorized:=true` 和工具参数连接、切换机器人模式，
+执行前仍需按下文完成现场准备并核对工具参数。
+
 ## 先确定本次运行方式
 
 | 用途 | 动作发送端 | 配套入口 |

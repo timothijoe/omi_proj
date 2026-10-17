@@ -1,5 +1,9 @@
 # 操作教程
 
+- [SpacePilot 初版测试：确认键位、只读预览和完整单回合采集指令](spacepilot_first_trial.md)
+
+- [SpacePilot用于BC/RL采集及在线接管：按键配置、预览和输入选择](spacepilot_hil.md)
+
 - [SpacePilot 控制机械臂：预览、发送与独立平移/旋转 scale](spacepilot_control.md)
 
 - [SpacePilot 六自由度物体操控](spacepilot_pose.md)：驱动检查、前 +X / 左 +Y / 上 +Z、实体按键、平移/旋转锁定与导出。

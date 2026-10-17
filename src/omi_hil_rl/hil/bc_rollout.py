@@ -214,6 +214,8 @@ def main():
     parser.add_argument('--device', choices=('cuda', 'cpu'), default='cuda')
     parser.add_argument('--episodes', type=int, default=100000)
     parser.add_argument('--gamepad', default='/dev/input/js0')
+    from omi_hil_rl.real.operator_input import add_input_arguments, options_from_args
+    add_input_arguments(parser)
     parser.add_argument('--rgb-max-age-ms', type=float, default=500.)
     parser.add_argument('--home-button-code', type=int, default=314)
     parser.add_argument('--log-buttons', action='store_true')
@@ -226,6 +228,10 @@ def main():
     parser.add_argument('--wrench-torque-warning', type=float, default=0.4,
                         help='provisional, read-only per-finger baseline-relative torque norm warning')
     args = parser.parse_args()
+    try:
+        options_from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.episodes < 1 or not 0 < args.rgb_max_age_ms < float('inf'):
         parser.error('positive episode count and finite positive RGB age required')
     if any(not 0 < value < float('inf') for value in

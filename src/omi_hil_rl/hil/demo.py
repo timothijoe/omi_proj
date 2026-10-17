@@ -223,9 +223,12 @@ class RawBag:
 
 
 def collect(directory, config, *, episodes=6, execute=False, gamepad="/dev/input/js0",
-            raw_bag=True, all_topics=False, extra_topics=(), fake_steps=8, transport=None):
+            raw_bag=True, all_topics=False, extra_topics=(), fake_steps=8, transport=None,
+            input_options=None):
     if episodes < 1 or fake_steps < 1:
         raise ValueError("positive episodes/steps required")
+    if input_options is not None and input_options.kind == 'spacepilot' and config.transport != 'ros':
+        raise ValueError('SpacePilot collection requires transport=ros; fake demos are synthetic')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     recorder = None
@@ -252,7 +255,8 @@ def collect(directory, config, *, episodes=6, execute=False, gamepad="/dev/input
                         from .ros_transport import RosTransport
                         from omi_hil_rl.training.eef_bc_grid import GridProfile
                         transport = RosTransport(config, GridProfile(config.wrist_camera).CONTRACT,
-                            execute=execute, gamepad=gamepad, convention=config.sdk_convention)
+                            execute=execute, gamepad=gamepad, convention=config.sdk_convention,
+                            input_options=input_options)
                 transport.human_only = True
                 transport.allow_manual_reset = True
                 transport.event_hook = emit
@@ -393,6 +397,8 @@ def main():
     capture.add_argument("--episodes", type=int, default=6)
     capture.add_argument("--execute", action="store_true")
     capture.add_argument("--gamepad", default="/dev/input/js0")
+    from omi_hil_rl.real.operator_input import add_input_arguments, options_from_args
+    add_input_arguments(capture)
     capture.add_argument("--no-raw-bag", action="store_true")
     capture.add_argument("--all-topics", action="store_true", help="record all discovered ROS topics instead of the observation list")
     capture.add_argument("--raw-topic", action="append", default=[])
@@ -407,11 +413,16 @@ def main():
     label.add_argument("--note", default="")
     args = parser.parse_args()
     if args.operation == "collect":
+        try:
+            input_options = options_from_args(args)
+        except ValueError as exc:
+            parser.error(str(exc))
         config = load_config(args.config) if args.config else HILConfig()
         if args.execute and config.transport != "ros":
             parser.error("--execute requires transport=ros")
         collect(args.directory, config, episodes=args.episodes, execute=args.execute, gamepad=args.gamepad,
-            raw_bag=not args.no_raw_bag, all_topics=args.all_topics, extra_topics=args.raw_topic, fake_steps=args.fake_steps)
+            raw_bag=not args.no_raw_bag, all_topics=args.all_topics, extra_topics=args.raw_topic,
+            fake_steps=args.fake_steps, input_options=input_options)
     elif args.operation == "inspect":
         manifests = [json.loads(p.read_text()) for p in sorted(args.directory.glob("episodes/*/demo.json"))]
         coverage_path = args.directory / "raw_recording.json"

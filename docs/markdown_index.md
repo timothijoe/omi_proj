@@ -1,5 +1,7 @@
 # 项目Markdown全量索引
 
+SpacePilot HIL新增：[初版单回合测试](../tutorials/spacepilot_first_trial.md)、[操作教程](../tutorials/spacepilot_hil.md)、[输入机制](agent/hardware/evolution/spacepilot-hil.md)、[开发记录](agent/hardware/chronicles/2026-10-17-spacepilot-hil.md)。
+
 2026-10-17新增：[完整开发快照](oct17_development_checkpoint.md)、[控制响应证据与复现](evidence/control_response_20261017/README.md)。
 
 原分组快照日期：2026-10-12，共 **283份** Markdown；下方分组计数属于该快照，后续新增入口单列于此。

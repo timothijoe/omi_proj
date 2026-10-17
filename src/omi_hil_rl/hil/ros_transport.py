@@ -15,11 +15,20 @@ from omi_hil_rl.training.stack_shadow import StackObservations
 class RosTransport:
     def __init__(self, config, base_contract, *, execute=False, gamepad="/dev/input/js0",
                  topic="/omi/action/decision", convention="sdk-x-forward-z-left", rgb_max_age_ms=None,
-                 home_button_code=None, gripper=None):
+                 home_button_code=None, gripper=None, input_options=None):
         if config.transport != "ros":
             raise ValueError("ROS transport requires a ROS replay contract")
         if convention not in ("sdk-base-aligned", "sdk-x-forward-z-left"):
             raise ValueError("HIL requires an explicit SDK ABC conversion")
+        operator = None
+        if input_options is not None and input_options.kind == 'spacepilot':
+            from omi_hil_rl.real.operator_input import create_operator_input, required_buttons
+            operator = create_operator_input(config, gamepad, input_options)
+            required = required_buttons(config, home_button_code,
+                gripper=bool(gripper is not None and gripper.args.gripper_server))
+            if not required <= set(operator[0].button_map):
+                operator[0].close()
+                raise ValueError('SpacePilot profile lacks required episode/home/gripper buttons')
         import rclpy
         from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
         from sensor_msgs.msg import Image
@@ -33,14 +42,17 @@ class RosTransport:
         self.config, self.topic, self.convention = config, topic, convention
         self.runtime = StackObservations(base_contract, "strict", config.eef_reference,
                                          rgb_max_age_ms=rgb_max_age_ms)
-        self.pad, self.buttons = LinuxGamepad(gamepad), ButtonEvents(config)
+        self.pad = operator[0] if operator is not None else LinuxGamepad(gamepad)
+        self.buttons = ButtonEvents(config)
         self.gripper = gripper
         self.home = GamepadHome(self.node, button_code=home_button_code, require_rb=False) if home_button_code is not None else None
         self.home_active = False
         self.home_requires_release = True
         self.home_status = ''
-        self.mapping = Mapping(hz=config.hz, translation_m_s=config.translation_step_m * config.hz,
-                               rotation_rad_s=config.rotation_step_rad * config.hz)
+        self.mapping = (operator[1] if operator is not None else
+            Mapping(hz=config.hz, translation_m_s=config.translation_step_m * config.hz,
+                    rotation_rad_s=config.rotation_step_rad * config.hz))
+        self.operator_input_info = operator[2] if operator is not None else dict(kind='gamepad', device=gamepad)
         self.publisher = self.node.create_publisher(Float64MultiArray, topic,
             QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)) if execute else None
         self.trace_publisher = self.node.create_publisher(String, "/omi/action/command_trace", 10) if execute else None
@@ -91,7 +103,8 @@ class RosTransport:
         if getattr(self, 'log_buttons', False):
             pressed = tuple(sorted(code for code, held in self.pad.buttons.items() if held))
             if transitions or pressed != getattr(self, 'last_pressed_buttons', ()):
-                print(f'手柄按键：当前={list(pressed)}；事件={list(transitions)}；连接={self.connected}', flush=True)
+                label = 'SpacePilot逻辑按键' if getattr(self, 'operator_input_info', {}).get('kind') == 'spacepilot' else '手柄按键'
+                print(f'{label}：当前={list(pressed)}；事件={list(transitions)}；连接={self.connected}', flush=True)
             self.last_pressed_buttons = pressed
         gripper = getattr(self, 'gripper', None)
         follow = getattr(self, 'tag_follow', None)
@@ -419,6 +432,8 @@ class RosTransport:
             action_contract=self.config.replay_contract()["action_contract"],
             wire_action=wire, wire_units="mm,SDK_ABC_degrees", output_convention=output_convention,
             execution_confirmed=False)
+        if getattr(self, 'operator_input_info', {}).get('kind') == 'spacepilot':
+            trace['operator_input'] = dict(self.operator_input_info)
         self.publisher.publish(msg)
         self.last_command_trace = trace
         trace_publisher = getattr(self, "trace_publisher", None)

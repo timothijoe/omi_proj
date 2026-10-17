@@ -1,5 +1,7 @@
 # Training 当前摘要
 
+2026-10-17：[SpacePilot人工输入](../../../tutorials/spacepilot_hil.md)已接入人工采集、固定BC、异步/交替RL及旧demo/actor入口。默认仍为手柄，显式输入选择才切换；HILConfig与replay契约不变，人工倍率受动作界限约束，policy不受影响。新集成尚未运行真机训练。
+
 2026-10-12已[同步纪传体与编年体](chronicles/2026-10-12-documentation-consolidation.md)：
 在线RL、缓存、监控三个主题纪传更新到当前基线，补齐weights-only、自动续跑、探索、预算、归档与网页统计。
 旧的20秒/batch2/三物理池和早期未验收描述明确标为历史或旧后端范围；本次仅文档。

@@ -1,5 +1,7 @@
 # Hardware 纪传体
 
+- [SpacePilot作为采集与在线HIL人工输入](spacepilot-hil.md)
+
 - [SpacePilot 末端增量发送与独立速度倍率](spacepilot-control.md)
 
 - [AprilTag 手眼标定、手柄跟随、RL 集成与低增益/独立死区](apriltag-follow.md)

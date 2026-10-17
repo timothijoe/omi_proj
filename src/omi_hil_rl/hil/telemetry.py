@@ -175,4 +175,5 @@ def transport_snapshot(transport):
                      home_active=getattr(transport, 'home_active', False)),
         protection=dict(getattr(transport, 'guard_status', {})),
         receiver_routes=dict(getattr(transport, 'receiver_info', {})),
+        operator_input=dict(getattr(transport, 'operator_input_info', {'kind': 'gamepad'})),
         reset_outside_replay=True)

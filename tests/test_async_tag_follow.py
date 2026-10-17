@@ -73,20 +73,27 @@ def test_lb_chords_are_reserved_until_release_even_when_lb_released_first():
     assert not any(e[0] == 305 for e in events)
 
 
-def test_actor_save_start_sdk_route_and_rb_cancel(tmp_path, monkeypatch):
+@pytest.mark.parametrize('direct', [False, True])
+def test_actor_save_start_sdk_route_and_rb_cancel(tmp_path, monkeypatch, direct):
     import omi_hil_rl.hil.ros_transport as module
     now = [1.]
     monkeypatch.setattr(module, 'time', NS(monotonic=lambda: now[0]))
     tr = transport(tmp_path, now)
+    if direct:
+        from omi_hil_rl.real.operator_input import DirectFollowButtons, FOLLOW_TOGGLE, FOLLOW_SAVE
+        tr.tag_follow.buttons = DirectFollowButtons()
+    save = FOLLOW_SAVE if direct else 305
+    toggle = FOLLOW_TOGGLE if direct else 304
+    modifier = {} if direct else {310: True}
     tr._tag_follow_input([])
-    tr.pad.buttons = {310: True, 305: True}
+    tr.pad.buttons = {**modifier, save: True}
     tr._tag_follow_input([])
     np.testing.assert_allclose(load_default(tr.tag_follow.default_path)[:3, 3], [.01, 0, 1])
     assert not tr.tag_follow.active
-    tr.pad.buttons = {310: True}
+    tr.pad.buttons = dict(modifier)
     tr._tag_follow_input([])
     tr.tag_follow.controller.observe(poses(.02), now[0])
-    tr.pad.buttons[304] = True
+    tr.pad.buttons[toggle] = True
     tr._tag_follow_input([])
     assert tr.tag_follow.active
     assert tr.invalidated and tr._tag_follow_resume_after == 1_000_000_000

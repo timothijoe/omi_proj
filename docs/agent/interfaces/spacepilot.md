@@ -1,5 +1,7 @@
 # SpacePilot 输入与位姿导出契约
 
+采集/在线RL新增[HIL输入profile](../hardware/evolution/spacepilot-hil.md)：`omi-spacepilot-hil-input-v1`、固定axis_frame、`buttons`为逻辑码字符串→libspnav实体ID，默认保存在local/spacepilot/hil_buttons.json。它独立于本页位姿快照。配置及使用见[HIL教程](../../../tutorials/spacepilot_hil.md)。
+
 另有独立的[末端增量发送入口](../../../tutorials/spacepilot_control.md)：使用同一设备映射，按速度生成增量并经 SDK 转换发送；不读取本页 JSON 位姿。其连接、动作与验证边界见[控制纪传体](../hardware/evolution/spacepilot-control.md)。下文仅描述原位姿演示。
 
 范围：本地物体位姿演示。当前能力见[纪传体](../hardware/evolution/spacepilot-pose.md)，操作者看[教程](../../../tutorials/spacepilot_pose.md)。

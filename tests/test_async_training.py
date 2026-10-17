@@ -19,7 +19,9 @@ from omi_hil_rl.hil.networks import SAC
 from omi_hil_rl.training.transition_replay import TransitionReplay
 
 
-def test_async_transport_routes_home_and_gripper_without_robot(monkeypatch):
+@pytest.mark.parametrize('input_device', ['gamepad', 'spacepilot'])
+@pytest.mark.parametrize('tag_follow', [False, True])
+def test_async_transport_routes_home_and_gripper_without_robot(monkeypatch, tmp_path, input_device, tag_follow):
     from omi_hil_rl.hil.alternating import make_transport
     from omi_hil_rl.hil.ros_transport import RosTransport
     from omi_hil_rl.real import linux_gamepad, receiver_preflight
@@ -43,6 +45,8 @@ def test_async_transport_routes_home_and_gripper_without_robot(monkeypatch):
         def __init__(self, path): pass
         def poll(self): return True
         def close(self): pass
+    if tag_follow:
+        Pad.button_map = Pad.button_map + ([65536,65537] if input_device == 'spacepilot' else [310])
     monkeypatch.setattr(linux_gamepad, 'LinuxGamepad', Pad)
     published = []
     class Node:
@@ -56,6 +60,7 @@ def test_async_transport_routes_home_and_gripper_without_robot(monkeypatch):
         self.publisher = SimpleNamespace(publish=lambda value: published.append(value))
         self.last_owner = None
         self.gripper = kwargs['gripper']
+        self.pad = Pad(None)
     def fake_publish(self, action, command_id=None, **kwargs):
         routed.append((self.topic, command_id, kwargs))
     monkeypatch.setattr(RosTransport, '__init__', fake_init)
@@ -63,8 +68,24 @@ def test_async_transport_routes_home_and_gripper_without_robot(monkeypatch):
     started = []
     gripper = SimpleNamespace(args=SimpleNamespace(gripper_server='fake'), start=lambda: started.append(True))
     args = SimpleNamespace(gamepad='/dev/input/js0', rgb_max_age_ms=500., home_button_code=314,
-                           gripper=gripper, log_buttons=True)
+                           gripper=gripper, log_buttons=True, tag_follow_enabled=tag_follow)
+    if tag_follow:
+        from omi_hil_rl.real import tag_follow_session
+        monkeypatch.setattr(tag_follow_session, 'TagFollowSession',
+            lambda node, args, button_selector=None: SimpleNamespace(buttons=button_selector))
+    if input_device == 'spacepilot':
+        from omi_hil_rl.real import operator_input
+        mapping = tmp_path/'buttons.json'
+        mapping.write_text(json.dumps(dict(schema=operator_input.PROFILE_SCHEMA,
+            axis_frame=operator_input.PROFILE_FRAME,
+            buttons={str(code):i for i,code in enumerate(Pad.button_map)})))
+        args.input_device, args.spacepilot_map = 'spacepilot', mapping
+        monkeypatch.setattr(operator_input, 'SpacePilotInput', Pad)
     transport = make_transport(HILConfig(transport='ros', review='auto'), dict(base_contract={}), args)
+    if tag_follow:
+        from omi_hil_rl.real.operator_input import DirectFollowButtons
+        assert isinstance(transport.tag_follow.buttons, DirectFollowButtons) == (input_device == 'spacepilot')
+    assert constructed[0]['input_options'].kind == input_device
     assert constructed[0]['home_button_code'] == 314
     assert constructed[0]['gripper'] is gripper and started == [True]
     assert transport.log_buttons

@@ -1,5 +1,7 @@
 # OMI 文档总目录
 
+新增[SpacePilot采集与在线HIL输入](../tutorials/spacepilot_hil.md)：BC/RL人工采集、固定BC和在线RL共用输入后端；原手柄保持默认。[机制与边界](agent/hardware/evolution/spacepilot-hil.md)。
+
 2026-10-17：[开发快照：SpacePilot、AprilTag与控制响应](oct17_development_checkpoint.md)。汇总当前实现、SDK缓存忙证据、四段真实响应分析及待调整事项。
 
 2026-10-17：[SpacePilot 机械臂增量控制](../tutorials/spacepilot_control.md)，支持独立平移/旋转 scale；用户真机试用及四段响应记录已完成，完整方向标定和停止性能仍待验收。

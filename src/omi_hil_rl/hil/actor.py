@@ -13,9 +13,12 @@ from .networks import load_actor
 
 
 def run_actor(run, config, *, episodes=1, device="cpu", execute=False,
-              gamepad="/dev/input/js0", offline_demo=False, success_step=5, deterministic=False):
+              gamepad="/dev/input/js0", offline_demo=False, success_step=5, deterministic=False,
+              input_options=None):
     if episodes < 1:
         raise ValueError("episodes must be positive")
+    if input_options is not None and input_options.kind == 'spacepilot' and config.transport != 'ros':
+        raise ValueError('SpacePilot interaction requires transport=ros')
     run = Path(run)
     contract = config.replay_contract()
     with owner_lock(run, "actor"):
@@ -30,7 +33,7 @@ def run_actor(run, config, *, episodes=1, device="cpu", execute=False,
         else:
             from .ros_transport import RosTransport
             transport = RosTransport(config, recipe["base_contract"], execute=execute, gamepad=gamepad,
-                                     convention=recipe["sdk_convention"])
+                                     convention=recipe["sdk_convention"], input_options=input_options)
         if offline_demo:
             transport.human_only = True
         transport.allow_manual_reset = True
@@ -104,10 +107,16 @@ def main():
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--execute", action="store_true", help="publish tagged real-robot deltas; requires ROS config")
     parser.add_argument("--gamepad", default="/dev/input/js0")
+    from omi_hil_rl.real.operator_input import add_input_arguments, options_from_args
+    add_input_arguments(parser)
     parser.add_argument("--deterministic", action="store_true", help="use mean action, e.g. for BC evaluation")
     parser.add_argument("--offline-demo", action="store_true", help="successful all-human episodes go to demo stream only")
     parser.add_argument("--fake-success-step", type=int, default=5)
     args = parser.parse_args()
+    try:
+        input_options = options_from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.threads < 1:
         parser.error("threads must be positive")
     torch.set_num_threads(args.threads)
@@ -115,7 +124,8 @@ def main():
     if args.execute and config.transport != "ros":
         parser.error("--execute requires a ROS config")
     run_actor(args.run, config, episodes=args.episodes, device=args.device, execute=args.execute,
-              gamepad=args.gamepad, offline_demo=args.offline_demo, success_step=args.fake_success_step, deterministic=args.deterministic)
+              gamepad=args.gamepad, offline_demo=args.offline_demo, success_step=args.fake_success_step,
+              deterministic=args.deterministic, input_options=input_options)
 
 
 if __name__ == "__main__":

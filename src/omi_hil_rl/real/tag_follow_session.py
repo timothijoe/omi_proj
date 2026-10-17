@@ -32,8 +32,8 @@ def detector_module():
 
 class TagFollowSession:
     """Main thread owns controller/buttons; one worker owns the estimator only."""
-    def __init__(self, node, args):
-        self.buttons, self.button_filter = FollowButtons(), FollowButtonFilter()
+    def __init__(self, node, args, *, button_selector=None):
+        self.buttons, self.button_filter = button_selector or FollowButtons(), FollowButtonFilter()
         self.controller = FollowController()
         self.default_path = args.tag_follow_default_pose
         self.camera = self.pool = self.pending = None
@@ -60,7 +60,8 @@ class TagFollowSession:
         except ImportError as exc:
             self.error = f'标签检测依赖不可用: {exc}'
             print('TAG_FOLLOW: '+self.error, flush=True)
-        print('TAG_FOLLOW: LB+305保存，LB+304跟随/停止，RB接管；跟随动作不进入训练回放。'
+        hint = getattr(self.buttons, 'description', 'LB+305保存，LB+304跟随/停止，RB接管')
+        print(f'TAG_FOLLOW: {hint}；跟随动作不进入训练回放。'
               f' 默认文件={self.default_path}', flush=True)
         print('TAG_FOLLOW 控制: '+control_description(), flush=True)
 
