@@ -1,5 +1,23 @@
 # Hardware 当前摘要
 
+2026-10-17最终收纳见[开发快照](../../oct17_development_checkpoint.md)。19:32用户录制已分析：200 Hz/模式3，四次全零后约0.22–0.30秒接近停止，继续X移动约0.44–0.92 mm；对应接收端日志未记录SDK_REJECTED。旧500 Hz日志中的clear_set=0与SDK发送状态忙吻合。暂不更改阻抗、速度或停止策略，优先补齐SDK目标/发送/反馈测量。分析证据纳入docs/evidence，原始录制保留local。
+
+2026-10-17 起停迟滞最新判断：用户实测手柄也有相近延迟。两发送端假ROS/时钟对照未发现SpacePilot额外等待；排查转向共用接收端的目标累加、普通零指令仅停新增目标、阻抗启动参数及运动时回调耗时。短时只读网络往返约0.63 ms、EEF间隔约20 ms，不能据此排除运动时延迟；尚未定位根因或修改执行逻辑。见[接收端排查](evolution/robot-controller.md#待实机核对的语义)。
+
+2026-10-17 SpacePilot 首条动作立即发送：静止→有效非零动作不再等待下个发送周期，持续运动仍保持10 Hz，停止与再次起动均即时处理；速度/scale/坐标映射不变。60项相关测试及6个subtest通过，重启发送程序生效，真机时延改善尚待观察。见[控制说明](evolution/spacepilot-control.md)。
+
+2026-10-17 SpacePilot 方向问题：用户三方向预览已确认前推→SDK +dx、左推→+dz、上提→-dy，纯平移单轴模式没有合并轴。前推/左推同时含较大旋转输入，原六轴模式会将其发出；这尚不能证明原真机现象的根因。需对照纯平移的真实指令与运动，映射未改、真机问题未宣告解决。见[诊断步骤](../../../tutorials/spacepilot_control.md#方向异常时只读诊断)。
+
+2026-10-17 SpacePilot 接收端发现修正：现场需要 domain13/SUBNET（LOCALHOST下不可见）；新入口兼容参数服务正常、唯一订阅类型正确但 DDS 节点名 UNKNOWN 的情况。真实网络只读完整预检通过，话题为 `/omi/controller_test/decision`、10 Hz/base；未发动作。见[当前教程](../../../tutorials/spacepilot_control.md)。
+
+2026-10-17 SpacePilot 现场按键修正：用户报告实体3上报 ID19，机器人控制入口默认启用键已从14改为19，仍可用 `--enable-button` 指定；需重启入口。原 GUI 的历史按键映射未改，见[控制说明](evolution/spacepilot-control.md)。
+
+2026-10-17：[SpacePilot 末端增量发送入口](evolution/spacepilot-control.md)已实现，支持独立平移/旋转 scale、默认按住实体3启用、预览与显式执行、接收端预检和手动话题。离线测试和设备只读连接通过，真机逐轴与操控待验收；见[教程](../../../tutorials/spacepilot_control.md)。下方 SpacePilot 位姿演示仍是独立 GUI 工具。
+
+2026-10-17：[AprilTag 位姿估计与视觉跟随](evolution/apriltag-follow.md)已支持独立窗口和异步 RL 内置运行，LB+305 保存默认关系、LB+304 持续跟随。tag10 多姿态标定已生成20样本 X/Z，平均平移残差3.03 mm，通过用户调整后的3.5 mm门槛。现场旧参数出现振荡后，增益改为0.08、每轴步长0.5 mm/0.2°，平移/旋转死区独立判断并增加恢复阈值；`HOLDING` 时归零但继续监测目标。跟随时效使用本地订阅接收时间，标定配对使用header。最新调参回归83项通过，新参数已在现场启动试用并正常退出，完整闭环精度仍待量化验收。[技术说明](../../marker_detect.md#tag-follow)与[操作教程](../../../tutorials/marker_detect.md#tag-follow)记录当前行为，冻结备份见[迁入记录](chronicles/2026-10-17-apriltag-follow-migration.md)。
+
+2026-10-17：[SpacePilot 六自由度物体位姿](evolution/spacepilot-pose.md)已纳入项目；前 +X、左 +Y、上 +Z，包含 roll 手感修正与实体 1/2/3 模式切换。项目内 6 项专项测试和设备只读连接通过；GUI/人工操作证据见[本次编年](chronicles/2026-10-17-spacepilot-pose.md)。尚未接入机器人、ROS 或 RL。
+
 2026-10-09：接收端修复跨topic迟到的无ID零停止覆盖另一通道动作/回执；带ID零动作仍可正式接管。
 SDK拒绝时新增返回值、目标/反馈关节角和控制器状态诊断。源码及安装副本已构建核对，未重启现场进程。
 本次SDK失败根因尚未确定，详见[真实试跑审计](../training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md)。

@@ -1,0 +1,243 @@
+{
+  "schema": "omi-tag10-handeye-v1",
+  "X": [
+    [
+      -0.023443774914574833,
+      -0.7085616652329663,
+      0.7052593536990776,
+      0.07834004897426278
+    ],
+    [
+      -0.9993920843956634,
+      0.03481897465988171,
+      0.0017608665269266965,
+      0.0328961827144896
+    ],
+    [
+      -0.02580409008366502,
+      -0.7047893341743476,
+      -0.708947207744719,
+      1.2799340631143297
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "Z": [
+    [
+      0.9998405035537677,
+      -0.01568846456348581,
+      0.00853460795751576,
+      -0.2969072129470369
+    ],
+    [
+      -0.01607361260678631,
+      -0.9987605760642555,
+      0.04710573932721385,
+      0.006079093565074736
+    ],
+    [
+      0.007785013237958827,
+      -0.04723540811125394,
+      -0.9988534476035255,
+      0.0650899320680789
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "X_frame": "base_link_from_camera",
+  "Z_frame": "TCP_from_tag10",
+  "translation_unit": "m",
+  "tag_id": 10,
+  "tag_size_m": 0.051,
+  "n_samples": 20,
+  "method": "TSAI",
+  "created_utc": "2026-10-17T10:01:30.043429+00:00",
+  "quality_limits": {
+    "residual_trans_mm_mean": 3.5,
+    "residual_rot_deg_mean": 1.0,
+    "residual_trans_mm_max": 10.0,
+    "residual_rot_deg_max": 3.0,
+    "validation_trans_mm_rms": 5.0,
+    "validation_rot_deg_rms": 2.0
+  },
+  "coverage": {
+    "rotation_span_deg": 53.25567717298997,
+    "rotation_axis_ratio": 0.38178745858585705,
+    "translation_condition": 18.786335215284744
+  },
+  "per_sample_residual_mm_deg": [
+    [
+      2.406677344677357,
+      0.6394012390057289
+    ],
+    [
+      3.8744876478764074,
+      0.9769458021622492
+    ],
+    [
+      1.8484415337259847,
+      1.2332698445532804
+    ],
+    [
+      2.9982169306603437,
+      1.196507103626659
+    ],
+    [
+      1.7362795423970774,
+      1.5987379371636283
+    ],
+    [
+      1.142629000754871,
+      1.044511657587002
+    ],
+    [
+      2.0896743196961385,
+      0.9282404760225051
+    ],
+    [
+      6.599341852875255,
+      1.1670397700894592
+    ],
+    [
+      2.6923133209524543,
+      0.44879983238850624
+    ],
+    [
+      3.4292443382439513,
+      0.8041167637027805
+    ],
+    [
+      3.816769314644326,
+      0.6201485565705523
+    ],
+    [
+      3.7880036023157677,
+      1.9742710427865338
+    ],
+    [
+      2.223868731422047,
+      0.45343258098321476
+    ],
+    [
+      5.760655804653926,
+      0.40848623614171625
+    ],
+    [
+      3.6439728211434783,
+      0.903689540138777
+    ],
+    [
+      1.266897612528123,
+      0.4917651395592919
+    ],
+    [
+      3.8841537556204497,
+      0.8060662690183944
+    ],
+    [
+      1.5729005208188314,
+      0.725928837443754
+    ],
+    [
+      3.219743564268729,
+      0.3417836255842
+    ],
+    [
+      2.6601083723952033,
+      1.0720690048075092
+    ]
+  ],
+  "residual_trans_mm_mean": 3.0327189965835357,
+  "residual_rot_deg_mean": 0.8917605629667872,
+  "residual_trans_mm_max": 6.599341852875255,
+  "residual_rot_deg_max": 1.9742710427865338,
+  "validation_trans_mm_rms": 4.224839781991,
+  "validation_rot_deg_rms": 1.052007357403668,
+  "eef_topic": "/tj/info/eef_left",
+  "base_frame": "base_link",
+  "image_topic": "/camera/camera/color/image_raw",
+  "camera_info_topic": "/camera/camera/color/camera_info",
+  "tcp_source": "receiver calibrated TCP FK; keep receiver TCP settings unchanged",
+  "camera_frame": "camera_color_optical_frame",
+  "image_size": [
+    640,
+    480
+  ],
+  "camera_matrix": [
+    [
+      607.7676391601562,
+      0.0,
+      324.52197265625
+    ],
+    [
+      0.0,
+      607.8294067382812,
+      250.02780151367188
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "distortion": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "exclusion": {
+    "source_file": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_samples_20261017_174855.json",
+    "source_sha256": "c1c253e4fa71bf99cc0e324cd32a9af54bfbe8c149f59fc2db664ba729ae3b69",
+    "excluded_original_indices_1based": [
+      15
+    ],
+    "retained_original_indices_1based": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "reason": "User requested removal of the single largest translation-residual sample",
+    "original_fit_method": "TSAI",
+    "excluded_original_residual_mm_deg": [
+      10.084670080489289,
+      0.876040394165465
+    ],
+    "original_mean_translation_mm": 2.856410379028674,
+    "original_max_translation_mm": 10.084670080489289
+  },
+  "samples_sha256": "f7f81920676d36fad22cc2e993a11407e3dfcfacb8db75d18a7979b706af29a9",
+  "threshold_change": {
+    "metric": "residual_trans_mm_mean",
+    "previous": 3.0,
+    "current": 3.5,
+    "reason": "User explicitly requested 3.5mm mean translation threshold"
+  },
+  "samples_file": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_samples_20261017_174855_exclude_15_20261017_175926_679946.json"
+}

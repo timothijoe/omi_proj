@@ -16,11 +16,13 @@ class LinuxGamepad:
         self.button_events = []
 
     def close(self):
-        if self.fd is not None:
-            os.close(self.fd)
-        self.fd = None
+        # Clear ownership before close: Ctrl+C between close and assignment must
+        # not leave a descriptor to be closed again during outer cleanup.
+        fd, self.fd = self.fd, None
         self.axes.clear()
         self.buttons.clear()
+        if fd is not None:
+            os.close(fd)
 
     def poll(self):
         self.button_events = []

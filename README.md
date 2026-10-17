@@ -1,5 +1,11 @@
 # OMI：天机机械臂 Human-in-the-Loop RL
 
+[2026-10-17 开发快照](docs/oct17_development_checkpoint.md)：SpacePilot、AprilTag跟随/标定、异步RL接入及起停响应诊断。当前先保存基线，未调整底层停止策略或阻抗参数。
+
+[SpacePilot 机械臂增量控制](tutorials/spacepilot_control.md)：独立终端入口，支持平移/旋转独立 scale，真机方向与手感待验收。
+
+[SpacePilot 六自由度物体操控](tutorials/spacepilot_pose.md)：`bash scripts/spacepilot_pose.sh`，前 +X、左 +Y、上 +Z，实体 1/2/3 切换模式；独立可视化，尚未接入机器人控制。
+
 ROS采集与新看板：[传感器教程](tutorials/sensor_collection.md) · [SDK原生看板](tutorials/sdk_native_dashboard.md)。
 历代录包 RViz 回放：[三包与完整命令](tutorials/rviz_representative_bags.md)。
 换机器前必看：[额外拷贝/重新安装清单](tutorials/machine_transfer_checklist.md)；Git不包含SDK、bag、基准和模型资源。

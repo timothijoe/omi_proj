@@ -46,6 +46,10 @@ def timing_diagnostics(tick, following, receipts, interruptions):
 def eligibility(tick, following, receipts, interruptions, *, timing_policy='strict'):
     if following is None or not tick['observation_present'] or not following['observation_present']:
         return 'missing_observation'
+    # An external positioning interval is a data boundary even when timestamps
+    # are diagnostic-only. Never attribute tag-follow movement to an RL action.
+    if tick.get('control_epoch', 0) != following.get('control_epoch', 0):
+        return 'tag_follow_boundary'
     start, end = tick['observation_reference_ns'], following['observation_reference_ns']
     send = tick['command_send_ns']
     diagnostic = timing_policy == 'diagnostic_only_v1'

@@ -358,6 +358,13 @@ def main():
                    help='Back key for automatic home between episodes (default: 314)')
     add_gripper_arguments(p)
     project_root = Path(__file__).resolve().parents[3]
+    p.add_argument('--no-tag-follow', action='store_true', help='Disable LB+A/B AprilTag controls')
+    p.add_argument('--tag-follow-calibration', type=Path, default=project_root/'handeye_result.json',
+                   help='X=T_base_link_camera, Z=T_TCP_tag10; translations in metres')
+    p.add_argument('--tag-follow-default-pose', type=Path,
+                   default=project_root/'ros2/marker_detect/handeye_result/tag_follow_default.json')
+    p.add_argument('--tag-follow-image-topic', default='/camera/camera/color/image_raw')
+    p.add_argument('--tag-follow-camera-info-topic', default='/camera/camera/color/camera_info')
     p.set_defaults(
         gripper_server='192.168.14.11:55551',
         gripper_sdk_root=project_root / 'local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py',
@@ -399,6 +406,11 @@ def main():
     if args.max_updates_per_transition is not None and session.get('replay_backend') != 'omi-cached-dual-replay-v1':
         p.error('--max-updates-per-transition requires a cached replay session')
     config = HILConfig(**json.loads((args.run/'config.json').read_text()))
+    args.tag_follow_enabled = (args.execute and not args.no_tag_follow and
+                               session.get('control_mode') == 'periodic_training_v1')
+    if args.tag_follow_enabled and {304, 305, 310} & {
+            config.start_button, config.success_button, config.stop_button, args.home_button_code}:
+        p.error('LB/A/B are reserved for tag following; choose different episode/home buttons')
     if (session.get('mode') != 'async_hil_v1' or session['contract'] != config.replay_contract() or
             config.transport != 'ros' or config.review != 'auto'):
         p.error('matching ROS auto-review async session required')

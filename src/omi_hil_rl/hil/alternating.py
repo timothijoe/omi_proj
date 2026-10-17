@@ -183,6 +183,8 @@ def make_transport(config, recipe, args):
         if getattr(args, 'gripper', None) is not None and args.gripper.args.gripper_server:
             from omi_hil_rl.real.gamepad_gripper import BTN_A, BTN_B
             required.update((BTN_A, BTN_B))
+        if getattr(args, 'tag_follow_enabled', False):
+            required.update((304, 305, 310))
         if not pad.poll() or not required <= set(pad.button_map):
             raise ValueError('gamepad unavailable or episode/home/gripper buttons absent: ' + pad.error)
     finally:
@@ -198,7 +200,9 @@ def make_transport(config, recipe, args):
                 if self.node.count_publishers(topic):
                     raise RuntimeError('competing controller: ' + topic)
             old_topic, old_publisher = self.topic, self.publisher
-            topic = receiver['manual_topic'] if not command_id or self.last_owner == 'human' else '/omi/action/decision'
+            follow = kwargs.get('source') == 'tag_follow'
+            topic = (receiver['manual_topic'] if not follow and
+                     (not command_id or self.last_owner == 'human') else '/omi/action/decision')
             try:
                 self.topic, self.publisher = topic, self.owned[topic]
                 return super()._publish(action, command_id, **kwargs)
@@ -206,6 +210,7 @@ def make_transport(config, recipe, args):
                 self.topic, self.publisher = old_topic, old_publisher
 
         def stop(self):
+            self._cancel_tag_follow()
             if not hasattr(self, 'owned'):
                 return
             # Both receiver paths must be stopped. No tagged training transition.
@@ -233,6 +238,13 @@ def make_transport(config, recipe, args):
     transport.competing_topics = []  # Checked against BOTH owned endpoints above.
     transport.receiver_info = receiver
     transport.log_buttons = getattr(args, 'log_buttons', False)
+    if getattr(args, 'tag_follow_enabled', False):
+        try:
+            from omi_hil_rl.real.tag_follow_session import TagFollowSession
+            transport.tag_follow = TagFollowSession(transport.node, args)
+        except BaseException:
+            transport.close()
+            raise
     if transport.gripper is not None:
         try:
             transport.gripper.start()

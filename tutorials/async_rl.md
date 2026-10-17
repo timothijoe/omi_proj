@@ -6,6 +6,80 @@
 早期从原始 BC12045 开始的独立会话命令见[首次试跑历史操作页](bc12045_async_rl_trial.md)。
 旧 `rl_live_01` 已有 RL 更新；继续旧目录会加载其最新权重，不能视为重新从 BC 初始化。
 
+<a id="tag-follow"></a>
+
+## 2026-10-17：训练入口内置 AprilTag 默认位姿跟随
+
+`periodic_training_v1` 异步会话默认启用 LB 组合键读取，复用 Actor 的手柄、ROS 节点及指令发布器。
+不用另开 `tag_follow_tag_v2.py`。正常结束当前进程并重新运行原训练命令即可加载新代码；
+本机已经生成 `ros2/marker_detect/handeye_result.json`，需要在原命令中明确传入其路径。
+首次使用或安装位置改变时先做[多姿态标定](marker_detect.md#tag-handeye)；手柄设备号按[设备列表](marker_detect.md#tag-follow)确认，下面示例使用 js0：
+
+```bash
+cd /home/zhoutong/omi_folder/omi_proj
+export ROS_DOMAIN_ID=13
+bash scripts/run_async_rl.sh \
+  --run local/rl_training/bc12045_newdata_30s_20261011_01 \
+  --actor-device cuda --learner-device cuda \
+  --batch-size 64 --publish-every 50 \
+  --reload-every-episodes 10 \
+  --min-online 100 --min-demo 100 \
+  --max-updates-per-transition 1 \
+  --arbitration-mode after-inference \
+  --exploration-noise-std 0.05 --exploration-noise-clip 0.15 \
+  --no-gripper --execute --enable-policy \
+  --gamepad /dev/input/js0 \
+  --tag-follow-calibration /home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_result.json
+```
+
+省略标定参数时读取仓库根目录 `handeye_result.json`。文件需包含 `X=T_base_link_camera`、
+`Z=T_TCP_tag10` 两个米制 4×4 矩阵，TCP 与接收端一致，沿用左臂 A 安装方向；
+原 ID 0–7 标定结果不能直接改字段名使用。缺少标定时可以检测和保存相对位姿，不能启动跟随。
+
+| 按键 | 行为 |
+| --- | --- |
+| LB(310)+305 | 保存 tag10/tag12 当前相对位姿，停止正在进行的跟随 |
+| LB(310)+304 | 按默认关系开始持续跟随；再按一次停止 |
+| RB(311) | 立即取消标签跟随，随后沿用原有手柄仲裁 |
+| Back(314) | 取消标签跟随；回合外沿用原有回 home 功能 |
+| Start(315) | 回合外停止跟随并开始 RL 回合 |
+| 307 / 308 / Ctrl+C | 沿用结束回合、成功标记、退出，同时停止跟随 |
+
+先按住 LB 再按 A/B；释放后跟随继续。LB+A/B 不触发夹爪，单独 A/B 的原行为不变，
+`--no-gripper` 仍可照常使用。默认关系保存到
+`ros2/marker_detect/handeye_result/tag_follow_default.json`，重启自动读取但不会自动启动。
+
+跟随可在等待回合、保存/加载期间及活动回合使用。活动回合内跟随时，暂停策略输出和回合计时，
+Learner 继续用已保存数据训练；停止跟随后清除旧候选，从新观测恢复原仲裁方式。
+跟随动作仅作调整/复位，不作为 RL 或人工干预样本入池。训练转换按 `control_epoch`
+切断跟随前后的 transition，即使 `timing_policy=diagnostic_only_v1` 也不会把复位位移归给前一条策略动作。
+原始观测仍可用于审计；`audit.json` 记录 `tag_follow_paused_seconds`。
+回合停止后的短暂回执收尾期间禁止重新启动跟随，捕获终止观测后才允许复位。
+
+相机默认订阅 `/camera/camera/color/image_raw` 和 `/camera/camera/color/camera_info`，
+使用 tag36h11 的 tag10（51 mm）和 tag12（64 mm）。标签检测在单个后台线程运行，
+只处理最新帧，不等待推理完成即可保存/切换。跟随动作按 10 Hz 经已有 `/omi/action/decision` 发布，
+使用 SDK BASE 的 mm/ABC 角，平移/旋转增益均为 0.08，每轴步长上限为 0.5 mm/0.2°。
+平移≤2.5 mm、旋转≤0.8°时分别停止对应修正，停止后分别超过3.5 mm、1.2°才恢复；
+两部分都停止时显示 `HOLDING` 并发送零增量，目标再次移动可恢复跟随。
+不施加策略探索噪声或再次换轴。标签失效、拒绝或画面过期时归零暂停，重新获取有效标签后恢复；
+手柄断开则停止跟随，重连后需重新按组合键。
+
+跟随时效从本地订阅回调接收图像的单调时间戳计算，120 ms 包含解码和检测耗时，
+不使用 `header.stamp` 判断过期；位姿滤波使用同一接收时钟。该数值不包含相机到接收端的传输延迟。
+
+可选参数：`--tag-follow-default-pose` 修改保存路径，`--tag-follow-image-topic` /
+`--tag-follow-camera-info-topic` 修改相机话题，`--no-tag-follow` 关闭此功能。旧 receipt 会话不启用跟随。
+脚本使用 `local/cuda-env/bin/python`；检测依赖应安装到该环境：
+
+```bash
+local/cuda-env/bin/python -m pip install --no-deps pupil-apriltags
+```
+
+本机该依赖已安装，并在真实训练 Python 环境用合成图像检测到 tag10/tag12；
+按键、路由、断流、回合暂停和训练片段隔离已做无硬件测试。独立入口已进行真机采样与跟随试用；
+训练内的完整切换和新参数的闭环精度仍需单独验收，见[当前功能与验证记录](../docs/marker_detect.md#tag-handeye-files)。
+
 ## 2026-10-10：回合观测按单帧存储
 
 正常退出并等待保存完成，再按原命令重启 async RL（Actor 和 Learner）即可，新格式默认启用。

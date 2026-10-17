@@ -666,7 +666,8 @@ class DeltaCtrlNode(Node):
                 self.last_manual_time = time.monotonic()
                 self.have_goal = any(velocity)
                 self._check_tactile_guard()
-                # An explicit zero (RB release/disconnect/handoff) stops immediately.
+                # Zero stops generating new targets. It does not replace the
+                # last SDK position target or prove that physical motion stopped.
                 return dict(accepted=True)
             else:
                 self._check_tactile_guard()

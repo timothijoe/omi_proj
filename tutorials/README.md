@@ -1,11 +1,16 @@
 # 操作教程
 
+- [SpacePilot 控制机械臂：预览、发送与独立平移/旋转 scale](spacepilot_control.md)
+
+- [SpacePilot 六自由度物体操控](spacepilot_pose.md)：驱动检查、前 +X / 左 +Y / 上 +Z、实体按键、平移/旋转锁定与导出。
+
 - [当前训练操作总览与文档汇总](../docs/current_training_guide.md)：先分清新建空池、旧任务续跑和归档恢复。
+- [Ubuntu 22.04 在线 RL 与人工回合采集依赖](ubuntu2204_online_rl_dependencies.md)：现有传感器和机器人之外的 Python、ROS 与 CUDA 环境检查。
 - [新建 / 自动续跑 / 监控的可复制命令](common_live_commands.md#rl-new)：在线RL没有resume参数，按任务目录自动恢复。
 - [Oct 11归档、checkpoint恢复、buffer重建与续训](oct11_archive_restore.md)。
 - [全部项目Markdown索引](../docs/markdown_index.md)。
 
-- [RealSense AprilTag marker 检测：SSH 无窗口位姿记录与图像窗口操作](marker_detect.md)
+- [AprilTag：位姿记录、多姿态手眼标定与手柄跟随](marker_detect.md)；[独立窗口启动及排错](marker_detect.md#tag-follow) · [首次标定](marker_detect.md#tag-handeye) · [异步 RL 内置跟随](async_rl.md#tag-follow)。
 
 - [Demo/RL共享内存缓存：16/20 GiB预算、自动读取录制数据与启动](cached_replay.md)
 

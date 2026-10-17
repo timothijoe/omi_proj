@@ -94,8 +94,12 @@ class RosTransport:
                 print(f'手柄按键：当前={list(pressed)}；事件={list(transitions)}；连接={self.connected}', flush=True)
             self.last_pressed_buttons = pressed
         gripper = getattr(self, 'gripper', None)
+        follow = getattr(self, 'tag_follow', None)
+        gripper_buttons, gripper_transitions = self.pad.buttons, transitions
+        if follow is not None:
+            gripper_buttons, gripper_transitions = follow.button_filter.gripper_input(self.pad.buttons, transitions)
         if gripper is not None:
-            gripper.tick(self.connected, self.pad.buttons, transitions)
+            gripper.tick(self.connected, gripper_buttons, gripper_transitions)
         events = self.buttons.poll(self.connected, self.pad.buttons, transitions)
         if self.config.review == 'auto':
             events.difference_update({'keep', 'discard'})
@@ -105,6 +109,7 @@ class RosTransport:
         hook = getattr(self, "event_hook", None)
         if hook and events:
             hook("buttons", dict(events=sorted(events), event_times=dict(self.event_times), connected=self.connected))
+        self._tag_follow_input(transitions)
         now = self.node.get_clock().now().nanoseconds
         if self.next_reference is None:
             self.next_reference = now
@@ -143,7 +148,8 @@ class RosTransport:
                 # A release selects the next observation, not a second action
                 # for the same snapshot that just drove a human command.
                 self._policy_resume_after = self.latest[1] if self.latest is not None else -1
-            interrupted = (not self.connected or (rb and not after_inference) or bool(
+            follow_active = follow is not None and follow.active
+            interrupted = (follow_active or not self.connected or (rb and not after_inference) or bool(
                 self.events & {'success', 'manual_stop', 'disconnect', 'discard'}))
             if interrupted or (not after_inference and rb != getattr(self, '_pipeline_rb', rb)) or (
                     self.latest is None and not getattr(self, 'observation_driven', False)):
@@ -151,6 +157,7 @@ class RosTransport:
             self._pipeline_rb = rb
             pipeline.check()
             if (not interrupted and self.latest is not None and
+                    self.latest[1] > getattr(self, '_tag_follow_resume_after', -1) and
                     (after_inference or not getattr(self, 'observation_driven', False) or
                      self.latest[1] > getattr(self, '_policy_resume_after', -1))):
                 pipeline.offer(*self.latest)
@@ -163,6 +170,60 @@ class RosTransport:
             except Exception as exc:
                 monitor.update(sensor_monitor_error=repr(exc))
             self._next_monitor = time.monotonic() + .2
+
+    def _invalidate_tag_follow_policy(self):
+        self.tag_follow_epoch = getattr(self, 'tag_follow_epoch', 0) + 1
+        self._tag_follow_resume_after = self.node.get_clock().now().nanoseconds
+        pipeline = getattr(self, 'policy_pipeline', None)
+        if pipeline is not None:
+            pipeline.invalidate()
+
+    def _cancel_tag_follow(self):
+        follow = getattr(self, 'tag_follow', None)
+        if follow is not None and follow.active:
+            follow.stop()
+            self._invalidate_tag_follow_policy()
+
+    def _tag_follow_input(self, transitions):
+        follow = getattr(self, 'tag_follow', None)
+        if follow is None:
+            return
+        follow.refresh()
+        event = follow.buttons.select(self.connected, self.pad.buttons, transitions)
+        home = getattr(self, 'home', None)
+        home_busy = home is not None and (home.future is not None or home.plan is not None or
+                    self.pad.buttons.get(home.button_code) or any(
+                        code == home.button_code and pressed and not initial for code, pressed, initial in transitions))
+        end = bool(self.events & {'manual_stop', 'success', 'disconnect'})
+        start = 'start' in self.events and not getattr(self, 'tag_follow_episode_active', False)
+        if home_busy or end or start or getattr(self, 'tag_follow_inhibit', False):
+            event = 'stop'
+        active = follow.active
+        if event in ('save', 'toggle') or (event == 'stop' and active):
+            # Cancel the previous route BEFORE saving or switching controllers.
+            self.stop()
+            if not active:
+                self._invalidate_tag_follow_policy()
+            try:
+                if event == 'save':
+                    follow.operate('save', time.monotonic())
+                elif event == 'toggle' and not active:
+                    follow.operate('start', time.monotonic())
+            except (OSError, ValueError) as exc:
+                follow.stop()
+                print(f'TAG_FOLLOW: 操作未完成: {exc}', flush=True)
+            if active and not follow.active:
+                print('TAG_FOLLOW: 已停止；回合内将从新观测恢复策略', flush=True)
+
+    def _tag_follow_tick(self):
+        follow = getattr(self, 'tag_follow', None)
+        if follow is None or not follow.active:
+            return False
+        action = follow.command(time.monotonic())
+        if action is not None:
+            # This is already in SDK BASE. No policy-frame axis swap or noise.
+            self._publish(action, convention='sdk-base-aligned', source='tag_follow')
+        return True
 
     def _handoff_ready(self):
         """Keep the exact next_obs, but wait for a newer window if receipt aged it.
@@ -186,6 +247,8 @@ class RosTransport:
         """Manual positioning between episodes; never a training transition."""
         if not getattr(self, "allow_manual_reset", False) or self.publisher is None:
             return False
+        if self._tag_follow_tick():
+            return True
         home = getattr(self, 'home', None)
         if home is not None:
             if getattr(self, 'home_requires_release', False):
@@ -521,6 +584,7 @@ class RosTransport:
             self.event_times['start'] = time.monotonic()
 
     def stop(self):
+        self._cancel_tag_follow()
         # Zero delta requests a hold; no new motion delta while idle/review.
         if (self.publisher is not None and self.rclpy.ok() and self.node.count_publishers(self.topic) == 1
                 and all(self.node.count_publishers(t) == 0 for t in
@@ -529,6 +593,9 @@ class RosTransport:
 
     def close(self):
         try:
+            follow = getattr(self, 'tag_follow', None)
+            if follow is not None:
+                follow.close()
             self.pad.close()
             self.node.destroy_node()
             if self.owns_context and self.rclpy.ok():

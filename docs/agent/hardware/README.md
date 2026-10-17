@@ -1,5 +1,7 @@
 # Hardware 导航
 
+- [SpacePilot 六自由度物体位姿与模式切换](evolution/spacepilot-pose.md)
+
 - [腕部视频流卡顿：问题、排查与解决过程](evolution/wrist-stream-performance.md)
 
 - [当前Stand方向修正版操作入口](../../../tutorials/corrected_stand_review.md)

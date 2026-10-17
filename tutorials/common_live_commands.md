@@ -155,7 +155,7 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 
 .venv/bin/python scripts/gamepad_test.py \
   --execute \
-  --device /dev/input/js0 \
+  --device /dev/input/js1 \
   --rate 10 \
   --home-button-code 314 \
   --scale 1 \
@@ -301,12 +301,15 @@ bash scripts/run_async_rl.sh \
   --arbitration-mode after-inference \
   --exploration-noise-std 0.05 \
   --exploration-noise-clip 0.15 \
-  --no-gripper --execute --enable-policy
+  --no-gripper --execute --enable-policy \
+  --tag-follow-calibration /home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_result.json
 ```
 
 这正是“resume”：同一路径下已有checkpoint和数据，程序自动恢复，而非重新训练一个随机模型。
 `POLICY_LOADED: version=...`显示Actor实际加载版本；未进一步训练时，该归档基线为16677，以启动日志为准。
 Start开始新回合，RB＋摇杆接管，308成功，307提前结束；`--no-gripper`仅禁用A/B夹爪控制，不主动闭合夹爪。
+
+这条命令同时启用[训练内置 AprilTag 跟随](async_rl.md#tag-follow)：LB+305 保存默认相对位姿，LB+304 开始/停止；跟随期间暂停策略与回合计时，跟随动作不入训练回放。不要另开独立跟随脚本。默认手柄为 js0，若设备编号改变，在命令中追加 `--gamepad /dev/input/jsN`，用[设备列表](marker_detect.md#tag-follow)确认 Xbox 的实际编号。当前增益0.08、每轴每周期上限0.5 mm/0.2°，平移/旋转各自进入死区后归零，均保持时显示 `HOLDING`。
 
 #### D5. 哪些参数随checkpoint恢复，哪些每次写在命令里？
 

@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "result_file": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_result.json",
+  "samples_file": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_samples_20261017_174855_exclude_15_20261017_175926_679946.json",
+  "n_samples": 20,
+  "excluded_original_indices_1based": [
+    15
+  ],
+  "quality_limits": {
+    "residual_trans_mm_mean": 3.5,
+    "residual_rot_deg_mean": 1.0,
+    "residual_trans_mm_max": 10.0,
+    "residual_rot_deg_max": 3.0,
+    "validation_trans_mm_rms": 5.0,
+    "validation_rot_deg_rms": 2.0
+  },
+  "metrics": {
+    "residual_trans_mm_mean": 3.0327189965835357,
+    "residual_rot_deg_mean": 0.8917605629667872,
+    "residual_trans_mm_max": 6.599341852875255,
+    "residual_rot_deg_max": 1.9742710427865338,
+    "validation_trans_mm_rms": 4.224839781991,
+    "validation_rot_deg_rms": 1.052007357403668
+  },
+  "X_Z_load_verified": true,
+  "created_utc": "2026-10-17T10:01:30.043429+00:00"
+}

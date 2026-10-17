@@ -1,0 +1,179 @@
+{
+  "source": "/home/zhoutong/omi_folder/omi_proj/local/diagnostics/control_response/20261017_193243_851241.json",
+  "source_sha256": "e99b61c8f0e96501a0f6fe6a7e2108f8e9fe96f6fe9bcc6b863816663bca6403",
+  "record_result": "interrupted",
+  "record_errors": [],
+  "receive_span_s": 29.645409684999322,
+  "gaps": {
+    "manual_command": {
+      "count": 313,
+      "median_ms": 102.93052099950728,
+      "p95_ms": 103.66078355036734,
+      "max_ms": 104.54865500287269
+    },
+    "joint_feedback": {
+      "count": 1489,
+      "median_ms": 20.0014000020019,
+      "p95_ms": 20.19855224825733,
+      "max_ms": 20.544699000311084
+    },
+    "eef_feedback": {
+      "count": 1488,
+      "median_ms": 19.997264000267023,
+      "p95_ms": 20.221151499572443,
+      "max_ms": 20.464594999793917
+    }
+  },
+  "parameters": {
+    "arm": "A",
+    "ctrl_rate": 200.0,
+    "manual_command_rate": 10.0,
+    "manual_timeout": 0.25,
+    "start_mode": 3,
+    "delta_frame": "base",
+    "manual_delta_topic": "/omi/controller_test/decision",
+    "imp_k": [
+      6.0,
+      6.0,
+      6.0,
+      5.0,
+      3.0,
+      3.0,
+      2.0
+    ],
+    "imp_d": [
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3
+    ]
+  },
+  "pulses": [
+    {
+      "pulse": 1,
+      "direction": "forward",
+      "command_start_s": 2.7237989640016167,
+      "command_x_zero_s": 4.553159586001129,
+      "command_zero_s": 4.553159586001129,
+      "duration_s": 1.8293606219995127,
+      "onset_delay_s": 0.3540994399983912,
+      "x_velocity_at_zero_mm_s": 6.122939015159915,
+      "stop_delay_by_speed_threshold_s": {
+        "0.2": 0.27473881799888034,
+        "0.5": 0.2447388179988801,
+        "1.0": 0.20473881799888005
+      },
+      "joint_stop_delay_s": 0.22995567099860637,
+      "x_travel_after_zero_05s_mm": 0.7361204794995047,
+      "x_travel_after_zero_2s_mm": 0.7839339924219075,
+      "command_x_peak_mm_s": 14.74509005336009,
+      "estimated_x_speed_peak_mm_s": {
+        "0.05": 16.02779641490315,
+        "0.1": 15.749972280990505,
+        "0.2": 15.508282826656341
+      }
+    },
+    {
+      "pulse": 2,
+      "direction": "backward",
+      "command_start_s": 9.127166539001337,
+      "command_x_zero_s": 12.246272429998498,
+      "command_zero_s": 12.3080946150003,
+      "duration_s": 3.1191058909971616,
+      "onset_delay_s": 0.3707318649986764,
+      "x_velocity_at_zero_mm_s": -4.083642729854608,
+      "stop_delay_by_speed_threshold_s": {
+        "0.2": 0.24980378899971534,
+        "0.5": 0.21980378899971598,
+        "1.0": 0.18980378899971662
+      },
+      "joint_stop_delay_s": 0.19503063500087592,
+      "x_travel_after_zero_05s_mm": -0.41257141035748646,
+      "x_travel_after_zero_2s_mm": -0.4363999014321962,
+      "command_x_peak_mm_s": 15.0,
+      "estimated_x_speed_peak_mm_s": {
+        "0.05": 17.063962058136894,
+        "0.1": 16.690877217466777,
+        "0.2": 16.265051437234206
+      }
+    },
+    {
+      "pulse": 3,
+      "direction": "forward",
+      "command_start_s": 17.996487527998397,
+      "command_x_zero_s": 20.358591755000816,
+      "command_zero_s": 20.358591755000816,
+      "duration_s": 2.362104227002419,
+      "onset_delay_s": 0.24141087600162692,
+      "x_velocity_at_zero_mm_s": 6.305661803725864,
+      "stop_delay_by_speed_threshold_s": {
+        "0.2": 0.34930664899921027,
+        "0.5": 0.29930664899920956,
+        "1.0": 0.2093066489992097
+      },
+      "joint_stop_delay_s": 0.3044848190002085,
+      "x_travel_after_zero_05s_mm": 0.8346064641244766,
+      "x_travel_after_zero_2s_mm": 0.9164798062222417,
+      "command_x_peak_mm_s": 15.0,
+      "estimated_x_speed_peak_mm_s": {
+        "0.05": 19.797459959738717,
+        "0.1": 19.42686628270394,
+        "0.2": 18.710856401036153
+      }
+    },
+    {
+      "pulse": 4,
+      "direction": "backward",
+      "command_start_s": 22.958060419001413,
+      "command_x_zero_s": 25.34919215300033,
+      "command_zero_s": 25.34919215300033,
+      "duration_s": 2.391131733998918,
+      "onset_delay_s": 0.4098379849986138,
+      "x_velocity_at_zero_mm_s": -5.119698700076373,
+      "stop_delay_by_speed_threshold_s": {
+        "0.2": 0.2587062509996976,
+        "0.5": 0.2287062509997,
+        "1.0": 0.20870625099969686
+      },
+      "joint_stop_delay_s": 0.2939082310003869,
+      "x_travel_after_zero_05s_mm": -0.6337219284077946,
+      "x_travel_after_zero_2s_mm": -0.6801772430796973,
+      "command_x_peak_mm_s": 13.102409638554217,
+      "estimated_x_speed_peak_mm_s": {
+        "0.05": 15.737788978801746,
+        "0.1": 15.570066257753297,
+        "0.2": 14.678949454508938
+      }
+    }
+  ],
+  "analysis_definitions": {
+    "onset": "signed X displacement >=0.1 mm from preceding 0.3 s median, sustained 0.1 s",
+    "stop": "absolute X velocity below threshold sustained 0.2 s; velocity uses centered 100 ms position difference",
+    "joint_stop": "max absolute joint velocity of left 7 joints <0.15 deg/s sustained 0.2 s",
+    "zero": "first received all-six-zero command after the final nonzero command before the next main X pulse",
+    "timestamps": "local monotonic subscriber receive times, not hardware release or SDK command times"
+  },
+  "waveform_alignment": {
+    "best_lag_s": 0.12,
+    "correlation": 0.9923914037613182,
+    "meaning": "waveform alignment only, not pure network/SDK delay"
+  },
+  "limitations": [
+    "No sender hardware input time, SDK accepted target or send times",
+    "Four X pulses lasted 1.83-3.12 s, not requested half-second steps",
+    "Nonzero Y/Z and rotation components coexist; not a pure-X controlled trial",
+    "No receiver_log or receipt rows; absence does not prove zero SDK errors",
+    "Physical release timing and on-site observation are unknown",
+    "Stop delays depend on threshold; centered finite difference smooths over +/-50 ms"
+  ],
+  "receiver_log_audit": {
+    "path": "/home/zhoutong/.ros/log/python3_181314_1792236613237.log",
+    "sha256": "46cc7e3cefea780d1531cc01fe76021bc32e19a64ed29102ebf2e48de42a20fb",
+    "sdk_rejected_count": 0,
+    "warn_error_count": 0,
+    "scope": "Currently active receiver started before the recording; log inspected after recording. Does not cover unlogged SDK send failures."
+  }
+}

@@ -1,11 +1,33 @@
 # 项目Markdown全量索引
 
-整理日期：2026-10-12，共 **283份** Markdown。
+2026-10-17新增：[完整开发快照](oct17_development_checkpoint.md)、[控制响应证据与复现](evidence/control_response_20261017/README.md)。
+
+原分组快照日期：2026-10-12，共 **283份** Markdown；下方分组计数属于该快照，后续新增入口单列于此。
 范围为本项目Git已跟踪及未忽略的Markdown；不扫描local实验输出、虚拟环境、外盘包或被忽略的第三方依赖。
 这是全量路径/标题导航；当前训练的内容总结见[当前训练说明](current_training_guide.md)，可复制命令见[常用指令](../tutorials/common_live_commands.md)。
 日期编年保留当时事实，旧命令和状态不自动代表当前默认。
 
 重新核对清单可使用 `git ls-files --cached --others --exclude-standard -- '*.md'`（去重后按实际文件计数）。
+
+## 2026-10-17 AprilTag 标定与默认位姿跟随
+
+- [技术说明、控制参数与标定结果](marker_detect.md#tag-follow)
+- [独立跟随启动、按键与排错](../tutorials/marker_detect.md#tag-follow)
+- [多姿态标定](../tutorials/marker_detect.md#tag-handeye)
+- [异步 RL 内置跟随](../tutorials/async_rl.md#tag-follow)
+- [当前能力与验证范围](agent/hardware/evolution/apriltag-follow.md)
+- [原样迁入与校验记录](agent/hardware/chronicles/2026-10-17-apriltag-follow-migration.md)
+
+## 2026-10-17 SpacePilot 新增入口
+
+- [机械臂增量控制教程](../tutorials/spacepilot_control.md)
+- [末端增量发送纪传体](agent/hardware/evolution/spacepilot-control.md)
+- [映射到手动控制话题编年](agent/hardware/chronicles/2026-10-17-spacepilot-control.md)
+
+- [操作者教程](../tutorials/spacepilot_pose.md)
+- [硬件能力纪传体](agent/hardware/evolution/spacepilot-pose.md)
+- [输入与导出接口](agent/interfaces/spacepilot.md)
+- [驱动、演示与项目收纳编年](agent/hardware/chronicles/2026-10-17-spacepilot-pose.md)
 
 ## 文档总览与跨领域说明（11）
 
@@ -18,7 +40,7 @@
 | [docs/current_training_guide.md](current_training_guide.md) | 当前训练说明与文档汇总 |
 | [docs/hil_rl_reproduction.md](hil_rl_reproduction.md) | 仿真 HIL RL 四项复现审计 |
 | [docs/markdown_index.md](markdown_index.md) | 项目Markdown全量索引 |
-| [docs/marker_detect.md](marker_detect.md) | AprilTag marker 相机位姿与手眼标定 |
+| [docs/marker_detect.md](marker_detect.md) | AprilTag 位姿检测、手眼标定与相对位姿跟随 |
 | [docs/quickstart.md](quickstart.md) | 开发最短入口 |
 | [docs/safety.md](safety.md) | 安全与副作用边界 |
 | [docs/tianji_hil_rl.md](tianji_hil_rl.md) | 天机机械臂 HIL RL：早期控制接口调查 |
@@ -59,7 +81,7 @@
 | [tutorials/keyboard_demonstration.md](../tutorials/keyboard_demonstration.md) | 键盘录制 A 臂示范 |
 | [tutorials/local_data_storage.md](../tutorials/local_data_storage.md) | 本机 local 与外接盘数据的使用 |
 | [tutorials/machine_transfer_checklist.md](../tutorials/machine_transfer_checklist.md) | 换机器：额外拷贝与重新安装清单 |
-| [tutorials/marker_detect.md](../tutorials/marker_detect.md) | RealSense AprilTag marker 检测与位姿记录 |
+| [tutorials/marker_detect.md](../tutorials/marker_detect.md) | AprilTag 位姿记录、手眼标定与手柄跟随 |
 | [tutorials/marvin_messages.md](../tutorials/marvin_messages.md) | 项目本地 marvin_msgs 消息包 |
 | [tutorials/no_wrench_policy_record.md](../tutorials/no_wrench_policy_record.md) | 当前操作：无六维力/力矩模型推理与观测录制 |
 | [tutorials/nojoint_stack_training.md](../tutorials/nojoint_stack_training.md) | 不使用关节反馈的历史拼接策略：GPU训练 |

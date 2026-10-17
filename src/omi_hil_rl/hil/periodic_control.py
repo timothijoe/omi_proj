@@ -83,6 +83,10 @@ def observation_action(transport, used_stamp, verified, *, policy=True):
     latest = transport.latest
     if latest is None:
         return None
+    follow = getattr(transport, 'tag_follow', None)
+    if ((follow is not None and follow.active) or
+            latest[1] <= getattr(transport, '_tag_follow_resume_after', -1)):
+        return None
     if policy and not getattr(transport, 'collect_human', False) and getattr(
             transport, 'arbitration_mode', 'immediate') == 'after-inference':
         pipeline = getattr(transport, 'policy_pipeline', None)
@@ -312,6 +316,7 @@ def run_periodic(actor, episodes, *, training=False):
                 _banner(f'等待第 {episode_number}/{episodes} 个 RL 回合：按 Start 开始；RB 可随时接管', '36')
             started = transport.wait_start()
             transport.start_episode()
+            transport.tag_follow_episode_active = True
             episode = uuid.uuid4().hex
             audit = PeriodicAudit(actor.run, episode, config.replay_contract(), actor.version, training=training,
                                   timing_policy='diagnostic_only_v1')
@@ -364,6 +369,9 @@ def run_periodic(actor, episodes, *, training=False):
             telemetry = getattr(actor, 'telemetry', None)
             last_owner = None
             last_rb = bool(transport.pad.buttons.get(311, False))
+            last_loop_time = time.monotonic()
+            following_last_loop = False
+            follow_paused_seconds = 0.
             try:
                 actor.state('ACTIVE', control_mode='observation_driven_10hz',
                             timing_policy='diagnostic_only_v1', arbitration_mode=arbitration_mode, training_ready=False)
@@ -380,6 +388,11 @@ def run_periodic(actor, episodes, *, training=False):
                 while True:
                     transport._pump()
                     now = time.monotonic()
+                    if following_last_loop:
+                        paused = max(0., now - last_loop_time)
+                        deadline += paused
+                        follow_paused_seconds += paused
+                    last_loop_time = now
                     if not transport.connected:
                         raise RuntimeError('gamepad disconnected')
                     if fault:
@@ -397,6 +410,11 @@ def run_periodic(actor, episodes, *, training=False):
                     if now >= deadline:
                         outcome['reason'] = 'timeout'
                         break
+                    follow_tick = getattr(transport, '_tag_follow_tick', None)
+                    following_last_loop = bool(follow_tick and follow_tick())
+                    if following_last_loop:
+                        last_owner = None
+                        continue
                     # Immediate mode handles RB edges here; deferred mode switches only after inference.
                     rb = bool(transport.pad.buttons.get(311, False))
                     if arbitration_mode == 'immediate' and rb != last_rb and last_owner is not None:
@@ -427,6 +445,7 @@ def run_periodic(actor, episodes, *, training=False):
                             observation_reference_ns=latest[1], observation_to_send_ms=delay_ms,
                             inference_ms=inference_ms, diagnostic_only=True)), flush=True)
                     metadata = dict(command_id=command_id, action_source=source, gate=gate,
+                        control_epoch=getattr(transport, 'tag_follow_epoch', 0),
                         arbitration_mode=arbitration_mode,
                         arbitration=getattr(transport, 'last_arbitration', None),
                         exploration=getattr(transport, 'last_exploration', None),
@@ -460,14 +479,21 @@ def run_periodic(actor, episodes, *, training=False):
                 print('PERIODIC_STOP: '+str(exc), flush=True)
             finally:
                 boundary = None
+                outcome['tag_follow_paused_seconds'] = follow_paused_seconds
+                # Drain must capture the episode boundary before any reset motion.
+                transport.tag_follow_inhibit = True
+                transport.tag_follow_episode_active = False
                 if fault_receipt is not None:
                     outcome['receiver_fault'] = fault_receipt
                 stop_ns = transport.node.get_clock().now().nanoseconds
                 if training and transport.latest is not None:
                     boundary = (dict(observation_present=True, observation_reference_ns=transport.latest[1],
+                                     control_epoch=getattr(transport, 'tag_follow_epoch', 0),
                                      eef_receive_ns=getattr(transport, 'latest_eef_time', None),
                                      command_send_ns=transport.node.get_clock().now().nanoseconds), transport.latest[0])
                 transport.stop()
+                if boundary is not None:
+                    boundary[0]['control_epoch'] = getattr(transport, 'tag_follow_epoch', 0)
                 monitor_end = getattr(actor, 'periodic_monitor_end', None)
                 if monitor_end is not None:
                     monitor_end(episode)
@@ -514,6 +540,7 @@ def run_periodic(actor, episodes, *, training=False):
                                 (used_stamp is None or transport.latest[1] > used_stamp) and
                                 (boundary is None or boundary[0]['observation_reference_ns'] <= (used_stamp or 0))):
                             boundary = (dict(observation_present=True,
+                                control_epoch=getattr(transport, 'tag_follow_epoch', 0),
                                 observation_reference_ns=transport.latest[1],
                                 eef_receive_ns=getattr(transport, 'latest_eef_time', None),
                                 **({'terminal_success_stop_ns': stop_ns} if outcome['success'] else {}),
@@ -521,6 +548,7 @@ def run_periodic(actor, episodes, *, training=False):
                 finally:
                     transport.receipt_hook = None
                     transport.observation_hook = None
+                    transport.tag_follow_inhibit = False
                     # No reset is permitted until the boundary is captured.
                     if training and not getattr(transport, 'collect_human', False):
                         _banner('正在保存 RL 回合：等待本地写盘与有效片段校验完成', '33')

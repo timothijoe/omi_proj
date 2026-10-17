@@ -1,5 +1,9 @@
 # 本地资源定位
 
+2026-10-17控制响应原始数据在 `local/diagnostics/control_response/`；重点记录 `20261017_193243_851241.json` 和其analysis目录。小型曲线/结果已进入[证据目录](../../evidence/control_response_20261017/README.md)，原始SHA及复现命令见[开发快照](../../oct17_development_checkpoint.md)。SDK、环境和原始传感器记录仍为本地资源。
+
+2026-10-17 AprilTag 跟随源码原始备份：`local/vendor/apriltag_follow/oct17/`，含两个 Python 原件及 `source_sha256.json`。正式维护文件在 `ros2/marker_detect/` 与 `src/omi_hil_rl/real/tag_follow*.py` / `tag_handeye.py`，已适配 ROS 图像、LB 组合键、异步 RL 入口及多姿态标定，原始备份保持不变。训练环境已安装检测依赖，当前 X/Z 为 `ros2/marker_detect/handeye_result.json`；样本、结果和默认相对位姿是不同文件，来源与质量指标见[当前能力](../hardware/evolution/apriltag-follow.md)。
+
 2026-10-09 新准备的 BC12045 异步 RL 试跑目录：
 `local/rl_training/bc12045_obs_after_inference_20261009_01/`，本机 SSD，Git 忽略。
 由原始 BC12045 和同版 11 段/1387 条示范初始化，准备时 RL version 0、online=0；

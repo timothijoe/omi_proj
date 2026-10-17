@@ -1,0 +1,41 @@
+{
+  "passed": false,
+  "error": "Calibration quality rejected; worst sample=8; {\"residual_trans_mm_mean\": 3.0327189965835357, \"residual_rot_deg_mean\": 0.8917605629667872, \"residual_trans_mm_max\": 6.599341852875255, \"residual_rot_deg_max\": 1.9742710427865338, \"validation_trans_mm_rms\": 4.224839781991, \"validation_rot_deg_rms\": 1.052007357403668}",
+  "exclusion": {
+    "source_file": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_samples_20261017_174855.json",
+    "source_sha256": "c1c253e4fa71bf99cc0e324cd32a9af54bfbe8c149f59fc2db664ba729ae3b69",
+    "excluded_original_indices_1based": [
+      15
+    ],
+    "retained_original_indices_1based": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "reason": "User requested removal of the single largest translation-residual sample",
+    "original_fit_method": "TSAI",
+    "excluded_original_residual_mm_deg": [
+      10.084670080489289,
+      0.876040394165465
+    ],
+    "original_mean_translation_mm": 2.856410379028674,
+    "original_max_translation_mm": 10.084670080489289
+  }
+}

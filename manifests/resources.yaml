@@ -29,6 +29,37 @@ local_data_storage:
   retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
   restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: oct17-control-response-analysis-evidence
+    path: docs/evidence/control_response_20261017
+    tracked: true
+    source: local/diagnostics/control_response/20261017_193243_851241.json
+    purpose: Small verified plot and threshold analysis of four motion segments; original recording remains local
+    restore: Check the raw SHA-256 in analysis.json and run scripts/analyze_control_response.py with a new output directory. See docs/oct17_development_checkpoint.md.
+  - id: oct17-handeye-experiment-snapshot
+    path: ros2/marker_detect/handeye_result.json
+    tracked: true
+    source: Oct17 local tag10 hand-eye samples and excluded-sample validation JSON stored alongside this result
+    purpose: Preserve the current X/Z calibration and quality thresholds as a machine-specific experiment snapshot
+    restore: See docs/marker_detect.md. Recalibrate after camera, tag mounting or TCP changes; do not treat this snapshot as a generic robot configuration.
+  - id: control-response-readonly-captures
+    path: local/diagnostics/control_response
+    tracked: false
+    source: Passive ROS subscriptions and receiver parameter queries via scripts/record_control_response.sh
+    purpose: Manual command edges, joint position and velocity, EEF, receipts and receiver warnings on one local monotonic receive timeline; no SDK target/send timestamp
+    restore: Run the passive recorder with the existing receiver and one user-operated sender. Preserve original JSON captures. No robot commands are published by the recorder. See tutorials/spacepilot_control.md.
+  - id: apriltag-follow-oct17-source-backup
+    path: local/vendor/apriltag_follow/oct17
+    tracked: false
+    source: /home/zhoutong/Downloads/oct17
+    purpose: Original tag_pose.py and tag_follow_tag_v2.py with source_sha256.json provenance; unadapted source copied into ros2/marker_detect
+    restore: Preserve this immutable migration snapshot and verify source_sha256.json before recovery. Downloads originals retained. Runtime handeye_solver.py and X/Z calibration were not supplied; see docs/agent/hardware/evolution/apriltag-follow.md.
+  - id: spacepilot-local-artifacts
+    path: local/spacepilot
+    tracked: false
+    required_for: optional_spacepilot_pose_exports_and_migration_evidence
+    source: Project SpacePilot pose viewer and preserved pre-migration workspace files
+    purpose: Pose JSON snapshots, local viewer log, original source snapshot, SHA-256 inventory and read-only input timing captures under latency/
+    restore: Launch bash scripts/spacepilot_pose.sh; export poses from the GUI. Install spacenavd, libspnav0 and python3-tk on the host. No models or vendor SDK required. Preserve migration_20261017 for provenance; see tutorials/spacepilot_pose.md.
   - id: oct11-training-external-archive
     path: /media/zhoutong/zt-think-d1/legion_data/date_related/oct_11_data
     tracked: false

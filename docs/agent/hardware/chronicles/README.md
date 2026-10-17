@@ -1,5 +1,11 @@
 # Hardware 编年索引
 
+- [2026-10-17 SpacePilot 映射到手动控制话题](2026-10-17-spacepilot-control.md)
+
+- [2026-10-17 AprilTag 位姿估计与跟随源码迁入](2026-10-17-apriltag-follow-migration.md)
+
+- [2026-10-17 SpacePilot 驱动、位姿演示与项目收纳](2026-10-17-spacepilot-pose.md)
+
 - [2026-10-07 左臂 EEF 安装平移修正与实时显示补偿移除](2026-10-07-eef-mount-and-view.md)
 
 - [2026-10-07 实时grid看板外部RGB接收时间显示判定](2026-10-07-grid-camera-receive-freshness.md)

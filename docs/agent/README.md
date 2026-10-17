@@ -1,5 +1,7 @@
 # Agent 知识库
 
+SpacePilot 输入与本地物体操控见 [hardware 当前能力](hardware/evolution/spacepilot-pose.md)。另有[机械臂增量发送入口](hardware/evolution/spacepilot-control.md)，已实现软件接口，真机待验收，尚未接入训练控制链。
+
 2026-10-12训练入口：[当前训练说明与文档汇总](../current_training_guide.md)
 · [常用启动/续跑命令](../../tutorials/common_live_commands.md#rl-new)
 · [全部Markdown索引](../markdown_index.md)。Oct 11在线采集/训练/权重交接已有真实运行与归档证据。

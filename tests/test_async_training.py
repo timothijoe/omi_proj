@@ -73,10 +73,13 @@ def test_async_transport_routes_home_and_gripper_without_robot(monkeypatch):
     transport._publish(np.zeros(6), 'hil:policy')
     transport.last_owner = 'human'
     transport._publish(np.zeros(6), 'hil:human')
+    # Follow is unlabelled positioning on the POLICY topic, even after human ownership.
+    transport._publish(np.zeros(6), convention='sdk-base-aligned', source='tag_follow')
     assert routed == [
         ('/omi/action/manual_decision', None, dict(convention='sdk-base-aligned', source='human_home')),
         ('/omi/action/decision', 'hil:policy', {}),
         ('/omi/action/manual_decision', 'hil:human', {}),
+        ('/omi/action/decision', None, dict(convention='sdk-base-aligned', source='tag_follow')),
     ]
 
 

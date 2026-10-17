@@ -1,5 +1,13 @@
 # OMI 文档总目录
 
+2026-10-17：[开发快照：SpacePilot、AprilTag与控制响应](oct17_development_checkpoint.md)。汇总当前实现、SDK缓存忙证据、四段真实响应分析及待调整事项。
+
+2026-10-17：[SpacePilot 机械臂增量控制](../tutorials/spacepilot_control.md)，支持独立平移/旋转 scale；用户真机试用及四段响应记录已完成，完整方向标定和停止性能仍待验收。
+
+2026-10-17：[AprilTag 默认相对位姿跟随](marker_detect.md#tag-follow)：多姿态 X/Z 标定、LB 组合键、订阅接收时间、低增益/限幅及独立死区已接入；独立窗口与异步 RL 共用控制逻辑。[启动和排错教程](../tutorials/marker_detect.md#tag-follow) · [训练内置入口](../tutorials/async_rl.md#tag-follow) · [现场结果与验证边界](marker_detect.md#tag-handeye-files)。
+
+SpacePilot：[操作教程](../tutorials/spacepilot_pose.md) · [当前能力](agent/hardware/evolution/spacepilot-pose.md) · [本次收纳与验证](agent/hardware/chronicles/2026-10-17-spacepilot-pose.md)。
+
 2026-10-12整理：[当前训练说明与文档汇总](current_training_guide.md)
 · [新建 / 自动续跑 / 监控 / 外盘恢复的常用指令](../tutorials/common_live_commands.md#rl-new)
 · [全部项目Markdown索引](markdown_index.md)。在线RL通过已有 `--run` 自动恢复，没有 `--resume` 开关。
@@ -23,7 +31,7 @@ Oct 11最终数据已归档：[外盘归档与恢复验证](agent/training/chron
 2026-10-11：[缓存启动门槛修正与首轮离线训练实验](agent/training/chronicles/2026-10-11-cached-offline-exp01.md)。
 已完成1200次Critic、100次Actor更新，留出人工动作误差下降；Q估计偏负仍需继续实验，未上机器人。
 
-RealSense AprilTag marker 位姿：[数据流、坐标与输出约定](marker_detect.md) → [SSH 无窗口记录教程](../tutorials/marker_detect.md)。
+RealSense AprilTag：[数据流、坐标与控制约定](marker_detect.md) → [位姿记录、标定与跟随教程](../tutorials/marker_detect.md)。
 
 2026-10-10新增[共享内存Demo/RL双池](agent/training/evolution/cached-replay.md)：全量数据留盘、后台加载、
 默认16/20 GiB数据预算；真实数据验证已完成。[准备与启动命令](../tutorials/cached_replay.md)。

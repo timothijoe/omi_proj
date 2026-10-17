@@ -1,5 +1,11 @@
 # Hardware 纪传体
 
+- [SpacePilot 末端增量发送与独立速度倍率](spacepilot-control.md)
+
+- [AprilTag 手眼标定、手柄跟随、RL 集成与低增益/独立死区](apriltag-follow.md)
+
+- [SpacePilot 六自由度物体位姿](spacepilot-pose.md)
+
 - [触觉与腕部采集解耦：实现方法、数据流与验证边界](sensor-decoupling.md)
 - [RGB与触觉时间基准、接收新鲜度和策略检查](sensor-time-alignment.md)
 

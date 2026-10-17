@@ -1,5 +1,7 @@
 # 接口总索引
 
+- [SpacePilot 输入、操控模式与位姿 JSON 契约](spacepilot.md)
+
 - [local 与外接盘存储、目录映射及恢复边界](local-storage.md)
 
 - [ROS控制接收端：mm/ABC、速度保持与反馈契约](../hardware/evolution/robot-controller.md)

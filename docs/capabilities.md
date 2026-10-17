@@ -1,5 +1,11 @@
 # 能力总表
 
+2026-10-17：[控制响应实测与开发快照](oct17_development_checkpoint.md)。200 Hz/模式3下四段记录确认全零后约0.22–0.30秒近停及0.44–0.92 mm X拖尾；不是物理即停或完整真机性能验收。
+
+新增[AprilTag 默认相对位姿跟随](marker_detect.md#tag-follow)：tag10 多姿态 X/Z 标定、LB+305 保存默认关系、LB+304 跟随及异步 RL 集成。当前使用接收时间检查、0.08增益、0.5 mm/0.2°每轴步长与独立死区；已有现场采样、独立跟随试用和软件回归，完整闭环精度及训练内现场切换仍待量化验收。[操作教程](../tutorials/marker_detect.md#tag-follow)。
+
+新增[SpacePilot 机械臂增量发送](agent/hardware/evolution/spacepilot-control.md)：独立平移/旋转 scale、自动手动路由、显式执行及停止处理已实现；离线验证和设备只读连接通过，真机逐轴与操控手感待验收。原 SpacePilot GUI 仍仅操控虚拟物体。
+
 新增[控制接收端迁移](agent/hardware/evolution/robot-controller.md)：原包与363文件哈希校验、本机Jazzy构建、5项断开设备/假IK测试通过。默认不连接，不代表真机闭环验收。
 
 新增[双相机输入选择](agent/training/evolution/eef-action-space.md#v2可选腕部相机与输入源标记)：
@@ -14,6 +20,8 @@
 
 | 能力 | 当前入口 | 已验证 | 尚未验证 |
 | --- | --- | --- | --- |
+| [AprilTag 标定与默认位姿跟随](marker_detect.md#tag-follow) | `tag_handeye_calibration.py`、`tag_follow_tag_v2.py`、`run_async_rl.sh --tag-follow-calibration ...` | 20样本X/Z通过当前内部门槛；现场独立试用；独立死区、恢复及延迟模型等83项相关回归 | 新参数真实闭环精度/长期稳定性；训练内完整切换现场验收 |
+| [SpacePilot 六自由度物体位姿](agent/hardware/evolution/spacepilot-pose.md) | `bash scripts/spacepilot_pose.sh` | 项目内 6 项自动测试、设备只读连接；GUI 状态见编年 | 最终 roll 手感、实体键逐键人工验收、机器人/ROS/RL 接入 |
 | 独立手柄纯录包与实际指令审阅 | `record_demo_bag.sh`、`training.passive_audit`、`training.passive_preview`、`view_demo_dataset.sh`；[教程](../tutorials/demo_bag_dataset.md) | 用户四包只读审计、335条严格观测/实际wire配对、双指wrench历史、PNG/HTTP及键盘页面部署 | 成功/返回段标注、accepted-command证据、真实BC效果；wrench网络接入 |
 | Stand方向修正版录包可视化 | `scripts/view_corrected_stand_observation_3d.sh` | 新旧链随机角度数学对照、单元测试、RViz启动及截图；派生模型命名归档 | 真机base/TCP及限位；左joint4限位已知不一致，不可控制 |
 | A 臂 MJCF 加载和任务预检 | `python -m omi_hil_rl.sim.preflight --scene ...` | 外部场景在本机加载；headless 仿真与自动测试 | 现场模型、工具和 TCP 一致性 |
