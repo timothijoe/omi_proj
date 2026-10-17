@@ -1,5 +1,7 @@
 # AprilTag 位姿估计与视觉跟随
 
+2026-10-17晚间运行状态：当前SpacePilot在线RL参数显式no_tag_follow=true，按用户要求先关闭marker检测、保存与跟随以测试其他功能；原代码、X/Z标定、默认相对位姿及ID8/2映射保留。启用实现仍为Actor内线程，图像转换/保存/退出没有完全故障隔离；独立Marker节点和总开关按键尚未实现。分析与后续边界见[训练专题](../../training/evolution/spacepilot-bc-online-rl.md#marker功能及隔离边界)。
+
 2026-10-17后续更新：当前工作区已实现ROS相机、手眼标定、LB组合键及独立/异步RL跟随，共用 `real/tag_follow*.py` 控制模块；不再是仅迁入状态。最新接口、参数、现场结果和验证限制统一见[AprilTag专题](../../../marker_detect.md)及[开发快照](../../../oct17_development_checkpoint.md)。以下内容保留本日最初原样迁入阶段的职责、来源与当时待办；其中缺少handeye_solver/标定及旋转转换问题不能直接当作最新实现状态。
 
 更新于 2026-10-17。跟随入口已适配 ROS 图像、手柄默认位姿、异步 RL 集成及 tag10 多姿态标定，已进行现场采样和独立跟随试用。根据振荡反馈下调增益与步长，并增加独立死区和恢复阈值；尚未完成独立的闭环精度量化验收。[原始迁入证据](../chronicles/2026-10-17-apriltag-follow-migration.md)保留迁入时状态，当前行为以本页及技术说明为准。

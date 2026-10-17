@@ -1,6 +1,8 @@
 # Training 当前摘要
 
-2026-10-17：[SpacePilot人工输入](../../../tutorials/spacepilot_hil.md)已接入人工采集、固定BC、异步/交替RL及旧demo/actor入口。默认仍为手柄，显式输入选择才切换；HILConfig与replay契约不变，人工倍率受动作界限约束，policy不受影响。新集成尚未运行真机训练。
+2026-10-17最新：[SpacePilot采集→BC6148→在线RL纪传](evolution/spacepilot-bc-online-rl.md)与[当天编年](chronicles/2026-10-17-spacepilot-bc-online-rl.md)已整理。10个新采回合保留9个正常回合/1499样本；CUDA两阶段2000+4000步得到BC6148，训练MSE0.00223588。按用户要求从BC权重新建空池RL，30秒、累计300、视觉/融合冻结、预热后触觉训练，保留旧after-inference、publish50/reload10及预算比例1。参数经--parameter显式加载，夹爪开启、marker暂关。
+
+23:29:17[只读快照](../../evidence/spacepilot_bc_rl_20261017/README.md)：Actor已加载2750、有效完成49；Learner更新3367/已发布3350，触觉训练true、融合false；50个结束审计（成功标记37、超时11、输入断连1、普通结束1），导出9308条。这是运行中证据，不是最终统计或自主成功率。当前命令见[在线教程](../../../tutorials/spacepilot_bc6148_online_rl.md)。新standalone数据的动作范围已经扩展并随BC6148继承，不能与旧范围模型混用。原手柄保持默认兼容。
 
 2026-10-12已[同步纪传体与编年体](chronicles/2026-10-12-documentation-consolidation.md)：
 在线RL、缓存、监控三个主题纪传更新到当前基线，补齐weights-only、自动续跑、探索、预算、归档与网页统计。

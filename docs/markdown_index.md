@@ -1,5 +1,9 @@
 # 项目Markdown全量索引
 
+2026-10-17全天：[SpacePilot/BC6148/在线RL纪传](agent/training/evolution/spacepilot-bc-online-rl.md)、[编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)、[现场证据](evidence/spacepilot_bc_rl_20261017/README.md)。
+
+SpacePilot BC6148在线RL：[显式setting与旧参数对照、触觉解冻、30秒与累计300回合](../tutorials/spacepilot_bc6148_online_rl.md)。
+
 SpacePilot HIL新增：[初版单回合测试](../tutorials/spacepilot_first_trial.md)、[操作教程](../tutorials/spacepilot_hil.md)、[输入机制](agent/hardware/evolution/spacepilot-hil.md)、[开发记录](agent/hardware/chronicles/2026-10-17-spacepilot-hil.md)。
 
 2026-10-17新增：[完整开发快照](oct17_development_checkpoint.md)、[控制响应证据与复现](evidence/control_response_20261017/README.md)。

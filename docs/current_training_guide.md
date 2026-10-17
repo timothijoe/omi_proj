@@ -1,7 +1,9 @@
 # 当前训练说明与文档汇总
 
-整理日期：2026-10-12。本页汇总Oct 10–11这轮工作和当前可用入口；
-实际操作优先读[真机常用指令](../tutorials/common_live_commands.md)，所有项目Markdown可在
+最新补充：2026-10-17。[SpacePilot/BC6148纪传](agent/training/evolution/spacepilot-bc-online-rl.md)、[当天编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)和[显式参数操作页](../tutorials/spacepilot_bc6148_online_rl.md)记录当前30秒/300回合任务，用户已启动在线采集和训练。
+
+下文保留2026-10-12整理的Oct10–11任务说明及通用操作分类；Oct17实际操作优先读上方专页。
+旧任务操作见[真机常用指令](../tutorials/common_live_commands.md)，所有项目Markdown可在
 [全量索引](markdown_index.md)查找。日期编年是当时证据，不应将其中旧目录、batch2或30秒示例当作当前默认。
 
 ## 先分清五种操作

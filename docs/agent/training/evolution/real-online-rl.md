@@ -1,8 +1,10 @@
 # 真机在线 RL：BC 热启动、手柄接管与异步训练
 
-功能状态更新：2026-10-12。本页是按主题维护的纪传体；当前操作见[常用指令](../../../../tutorials/common_live_commands.md#rl-new)，
+2026-10-17最新配置与现场证据见[SpacePilot/BC6148在线RL专题](spacepilot-bc-online-rl.md)：30秒、累计300、触觉解冻、视觉/融合冻结、--parameter显式加载，夹爪开启、marker暂关；已实际运行。下方45秒和全编码器冻结是Oct11任务的历史基线。
+
+通用机制整理：2026-10-12。本页是按主题维护的纪传体；Oct11操作见[常用指令](../../../../tutorials/common_live_commands.md#rl-new)，
 最近完整运行与归档见[可运行基线](../chronicles/2026-10-11-runnable-baseline.md)和[外盘恢复验证](../chronicles/2026-10-11-external-archive-restore.md)。
-当前基线为原BC初始化、仅新采数据、45秒、batch64、cached双池及受限高斯探索。
+Oct11基线为原BC初始化、仅新采数据、45秒、batch64、cached双池及受限高斯探索。
 下文标明日期的早期验收数字不代表当前运行状态；Oct 11最终任务已正常退出，保存版本16677。
 
 2026-10-10新增可选[共享内存缓存双池](cached-replay.md)：`prepare_bc_rl.sh --replay-backend cached`，

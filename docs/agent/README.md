@@ -1,6 +1,6 @@
 # Agent 知识库
 
-SpacePilot 输入与本地物体操控见 [hardware 当前能力](hardware/evolution/spacepilot-pose.md)。另有[机械臂增量发送入口](hardware/evolution/spacepilot-control.md)，已实现软件接口，真机待验收，尚未接入训练控制链。
+SpacePilot已从[本地物体操控](hardware/evolution/spacepilot-pose.md)、[独立增量发送](hardware/evolution/spacepilot-control.md)接入[人工采集与在线HIL](hardware/evolution/spacepilot-hil.md)。2026-10-17新采数据已训练BC6148并由用户启动在线RL；最新完整现状见[训练纪传](training/evolution/spacepilot-bc-online-rl.md)，过程见[当天编年](training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)。
 
 2026-10-12训练入口：[当前训练说明与文档汇总](../current_training_guide.md)
 · [常用启动/续跑命令](../../tutorials/common_live_commands.md#rl-new)

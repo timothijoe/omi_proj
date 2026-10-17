@@ -1,5 +1,7 @@
 # 操作教程
 
+- [SpacePilot BC6148在线RL：显式setting、旧参数对照、触觉解冻、30秒与累计300回合](spacepilot_bc6148_online_rl.md)
+
 - [SpacePilot 初版测试：确认键位、只读预览和完整单回合采集指令](spacepilot_first_trial.md)
 
 - [SpacePilot用于BC/RL采集及在线接管：按键配置、预览和输入选择](spacepilot_hil.md)

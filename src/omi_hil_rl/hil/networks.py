@@ -157,7 +157,8 @@ class SAC:
     """
     def __init__(self, recipe, contract, *, device="cpu", learning_rate=3e-4,
                  gamma=.98, tau=.005, critic_actor_ratio=2, pretrained=None, image_augmentation=True,
-                 freeze_encoder=False, critic_warmup_updates=0, bc_weight=0., actor_learning_rate=None):
+                 freeze_encoder=False, critic_warmup_updates=0, bc_weight=0., actor_learning_rate=None,
+                 train_tactile_encoder=False, train_fusion_layer=False, encoder_learning_rate=1e-5):
         if recipe["encoder"] == "synthetic-test" and contract["config"]["transport"] != "fake":
             raise ValueError("synthetic encoder is forbidden for real observations")
         if not 0 <= gamma <= 1 or not 0 < tau <= 1 or critic_actor_ratio < 1:
@@ -174,7 +175,14 @@ class SAC:
             raise ValueError('invalid BC protection settings')
         if critic_warmup_updates and not freeze_encoder:
             raise ValueError('critic warmup requires a frozen shared encoder')
+        if (train_tactile_encoder or train_fusion_layer) and (not freeze_encoder or recipe['encoder'] != 'current9stack'):
+            raise ValueError('selective tactile/fusion training requires frozen current9stack encoder')
+        if not math.isfinite(encoder_learning_rate) or encoder_learning_rate <= 0:
+            raise ValueError('invalid encoder learning rate')
         self.freeze_encoder = freeze_encoder
+        self.train_tactile_encoder = train_tactile_encoder
+        self.train_fusion_layer = train_fusion_layer
+        self.encoder_learning_rate = encoder_learning_rate
         self.critic_warmup_updates, self.bc_weight = critic_warmup_updates, bc_weight
         self.actor_learning_rate = learning_rate if actor_learning_rate is None else actor_learning_rate
         if not math.isfinite(self.actor_learning_rate) or self.actor_learning_rate <= 0:
@@ -187,6 +195,12 @@ class SAC:
             encoder.initialize_pretrained(pretrained)
         if freeze_encoder:
             encoder.requires_grad_(False)
+        # Include tactile weights in the optimizer from construction, even while
+        # warmup suppresses their gradients; this keeps restore param groups stable.
+        if train_tactile_encoder:
+            encoder.model.touch.requires_grad_(True)
+        if train_fusion_layer:
+            encoder.model.head.requires_grad_(True)
         self.actor.to(self.device).eval()
         self.critic.to(self.device).eval()
         self.target = deepcopy(self.critic).requires_grad_(False).eval()
@@ -195,11 +209,23 @@ class SAC:
         # detaches it; our fused proprio adapter differs from the reference's
         # separately trainable proprio branch. Standalone BC can still train it.
         self.actor_optimizer = torch.optim.Adam(self.actor.head.parameters(), lr=self.actor_learning_rate)
-        self.critic_optimizer = torch.optim.Adam([p for p in self.critic.parameters() if p.requires_grad], lr=learning_rate)
+        if train_tactile_encoder or train_fusion_layer:
+            self.critic_optimizer = torch.optim.Adam([
+                dict(params=list(self.critic.heads.parameters()), lr=learning_rate),
+                dict(params=[p for p in encoder.parameters() if p.requires_grad], lr=encoder_learning_rate)])
+        else:
+            self.critic_optimizer = torch.optim.Adam([p for p in self.critic.parameters() if p.requires_grad], lr=learning_rate)
         self.alpha_optimizer = torch.optim.Adam([self.temperature_raw], lr=learning_rate)
         self.gamma, self.tau, self.ratio = gamma, tau, critic_actor_ratio
         self.image_augmentation = image_augmentation
         self.learning_rate, self.updates = learning_rate, 0
+        self._configure_encoder_gradients()
+
+    def _configure_encoder_gradients(self):
+        if self.train_tactile_encoder:
+            self.actor.encoder.model.touch.requires_grad_(self.updates >= self.critic_warmup_updates)
+        if self.train_fusion_layer:
+            self.actor.encoder.model.head.requires_grad_(self.updates >= self.critic_warmup_updates)
 
     def observation(self, obs, *, single=False):
         return {key: torch.as_tensor(value, device=self.device).unsqueeze(0) if single
@@ -234,6 +260,8 @@ class SAC:
         actor_update = self.updates + 1 > self.critic_warmup_updates and (self.updates + 1) % self.ratio == 0
         if self.bc_weight and actor_update and (human_batch is None or self.bc_reference is None):
             raise ValueError('protected actor update requires human batch and frozen BC reference')
+        self._configure_encoder_gradients()
+        tactile_trainable = bool(self.train_tactile_encoder and self.updates >= self.critic_warmup_updates)
         obs, nxt = self.observation(batch.observations), self.observation(batch.next_observations)
         if self.image_augmentation and self.recipe['encoder'] == 'current9stack':
             obs, nxt = augment_images(obs), augment_images(nxt)
@@ -270,6 +298,8 @@ class SAC:
             if terminal.any():
                 metrics['terminal_target_mean'] = float(target[terminal].mean())
         metrics['critic_warmup'] = self.updates <= self.critic_warmup_updates
+        metrics['tactile_encoder_trainable'] = tactile_trainable
+        metrics['fusion_layer_trainable'] = bool(self.train_fusion_layer and not metrics['critic_warmup'])
         if actor_update:
             # Freeze critic parameters while retaining dQ/da for the actor.
             flags = [p.requires_grad for p in self.critic.parameters()]
@@ -304,7 +334,10 @@ class SAC:
             hyperparameters=dict(learning_rate=self.learning_rate, gamma=self.gamma, tau=self.tau, critic_actor_ratio=self.ratio,
                                  image_augmentation=self.image_augmentation, freeze_encoder=self.freeze_encoder,
                                  critic_warmup_updates=self.critic_warmup_updates, bc_weight=self.bc_weight,
-                                 actor_learning_rate=self.actor_learning_rate),
+                                 actor_learning_rate=self.actor_learning_rate,
+                                 train_tactile_encoder=self.train_tactile_encoder,
+                                 train_fusion_layer=self.train_fusion_layer,
+                                 encoder_learning_rate=self.encoder_learning_rate),
             bc_reference=None if self.bc_reference is None else self.bc_reference.state_dict(),
             bc_provenance=self.bc_provenance,
             actor=self.actor.state_dict(), critic=self.critic.state_dict(), target=self.target.state_dict(),
@@ -334,6 +367,7 @@ class SAC:
         for name in ("actor_optimizer", "critic_optimizer", "alpha_optimizer"):
             getattr(agent, name).load_state_dict(state[name])
         agent.updates = state["updates"]
+        agent._configure_encoder_gradients()
         torch.set_rng_state(state["torch_rng"].cpu())
         rng = state["numpy_rng"]
         np.random.set_state((rng[0], np.asarray(rng[1], dtype=np.uint32), *rng[2:]))

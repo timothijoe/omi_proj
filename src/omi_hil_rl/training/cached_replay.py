@@ -200,7 +200,8 @@ class CachedDualReplay:
     def validate(self, record, *, origin='online'):
         return self.validator.validate(record, origin=origin)
 
-    def register_episode(self, manifest_path, *, seed=False, expected_hashes=None):
+    def register_episode(self, manifest_path, *, seed=False, expected_hashes=None,
+                         allow_seed_horizon_change=False):
         """Atomically index a complete episode. Used by the loader or seed setup.
 
         Nothing is written to the source. The durable catalog, not a file in a
@@ -211,6 +212,8 @@ class CachedDualReplay:
         from .replay_sources import periodic_records
         path = Path(manifest_path).resolve()
         manifest = json.loads(path.read_text())
+        if allow_seed_horizon_change and not seed:
+            raise ValueError('time-limit transfer is allowed only for explicit initial seeds')
         periodic = path.name == 'audit.json'
         if seed and periodic:
             raise ValueError('initial seed requires reviewed ready segments')
@@ -233,7 +236,11 @@ class CachedDualReplay:
             origin = 'online'
             iterator = periodic_records(path.parent, self.contract, self.validator, summary, reader=self.reader)
         else:
-            if manifest['contract'] != self.contract or not manifest['keep'] or manifest['count'] < 1:
+            from omi_hil_rl.hil.config import same_contract_except_episode_seconds
+            compatible = manifest['contract'] == self.contract or (
+                seed and allow_seed_horizon_change and
+                same_contract_except_episode_seconds(manifest['contract'], self.contract))
+            if not compatible or not manifest['keep'] or manifest['count'] < 1:
                 raise ValueError('unready or mismatched source episode')
             if not seed and manifest['origin'] != 'online':
                 raise ValueError('runtime records require online origin')
@@ -259,6 +266,9 @@ class CachedDualReplay:
                 if expected_hashes is not None and current_sha != expected_hashes[count]:
                     raise ValueError('seed sample hash changed')
                 meta = {k: v for k, v in record.items() if k not in ('observation', 'next_observation', 'executed_action')}
+                if allow_seed_horizon_change:
+                    meta['seed_horizon_transfer'] = dict(source_episode_seconds=manifest['contract']['episode_seconds'],
+                                                         target_episode_seconds=self.contract['episode_seconds'])
                 meta['executed_action'] = np.asarray(record['executed_action']).tolist()
                 row = (key, record['step'], record['observation_time_ns'], int(seed),
                        int(record['action_source']=='human'), self._path(current_path),

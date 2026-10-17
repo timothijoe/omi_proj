@@ -1,5 +1,7 @@
 # Training 纪传体
 
+- [SpacePilot采集、BC6148与显式参数在线RL](spacepilot-bc-online-rl.md)：新示范选择、两阶段CUDA拟合、动作契约、触觉解冻、旧参数回归、恢复和现场证据。
+
 功能级事实已于2026-10-12同步当前可运行版本；具体操作见[常用指令](../../../../tutorials/common_live_commands.md)，
 时间证据见[编年索引](../chronicles/README.md)。
 

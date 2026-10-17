@@ -134,6 +134,18 @@ def checkpoint_probe(run, config, transport):
     return next(read_episode(index[0]['path'], index[0]['manifest']))['observation'], 'recorded_seed'
 
 
+def remaining_episode_budget(run, session, requested):
+    cap = session.get('max_total_episodes')
+    if cap is None:
+        return requested
+    if type(cap) is not int or cap < 1:
+        raise ValueError('invalid persistent episode cap')
+    folder = Path(run)/('periodic_episodes' if session.get('control_mode') == 'periodic_training_v1' else 'episodes')
+    started = {p.parent.name for marker in ('staging.json', 'audit.json', 'ready.json', 'discarded.json')
+               for p in folder.glob('*/'+marker)}
+    return max(0, min(requested, cap-len(started)))
+
+
 class AsyncActor(Alternating):
     """Reuse action inference, but never wait for a learner training budget."""
     def __init__(self, run, config, transport, *, reload_episodes=10, device='cuda', policy=False,
@@ -252,7 +264,12 @@ class AsyncActor(Alternating):
 
     def run_episodes(self, episodes):
         session_path = self.run/'async_session.json'
-        if session_path.exists() and json.loads(session_path.read_text()).get('control_mode') == 'periodic_training_v1':
+        session = json.loads(session_path.read_text()) if session_path.exists() else {}
+        episodes = remaining_episode_budget(self.run, session, episodes)
+        if episodes == 0:
+            print('EPISODE_LIMIT_REACHED: 已达到本任务累计回合上限。', flush=True)
+            return
+        if session.get('control_mode') == 'periodic_training_v1':
             from .periodic_control import run_periodic
             if not hasattr(self.transport, 'arbitration_mode'):
                 self.transport.arbitration_mode = 'after-inference'
@@ -377,7 +394,8 @@ def main():
     p.add_argument('--enable-policy', action='store_true')
     p.add_argument('--arbitration-mode', choices=('after-inference', 'immediate'), default='after-inference',
                    help='periodic RL: choose latest RB/joystick after inference (default); immediate retains interrupting takeover')
-    args = p.parse_args()
+    from .run_settings import parse_settings
+    args = parse_settings(p, 'online')
     try:
         options_from_args(args)
     except ValueError as exc:
@@ -407,6 +425,11 @@ def main():
     if not args.execute and not args.probe_only:
         p.error('use --execute for live collection; --initialize-from only prepares disk data')
     session = json.loads((args.run/'async_session.json').read_text())
+    if not args.probe_only:
+        args.episodes = remaining_episode_budget(args.run, session, args.episodes)
+        if args.episodes == 0:
+            print('EPISODE_LIMIT_REACHED: 已达到本任务累计回合上限；未启动控制或Learner。', flush=True)
+            return
     if args.exploration_noise_std and session.get('control_mode') != 'periodic_training_v1':
         p.error('exploration requires a periodic_training_v1 session')
     if args.max_updates_per_transition is not None and session.get('replay_backend') != 'omi-cached-dual-replay-v1':
@@ -472,6 +495,8 @@ def main():
             # Fail before robot publishers if a different learner owns this directory.
             with owner_lock(args.run, 'learner'):
                 pass
+            from .run_settings import save_settings_snapshot
+            save_settings_snapshot(args, 'online')
             transport = make_transport(config, recipe, args)
             transport.arbitration_mode = args.arbitration_mode if args.enable_policy else 'immediate'
             actor = AsyncActor(args.run, config, transport, reload_episodes=args.reload_every_episodes,

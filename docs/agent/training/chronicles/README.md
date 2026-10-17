@@ -1,5 +1,7 @@
 # Training 编年索引
 
+- [2026-10-17：SpacePilot采集、两阶段BC与显式参数在线RL](2026-10-17-spacepilot-bc-online-rl.md)：从按键/响应到BC6148、30秒空池RL与真实在线运行；含参数决策修正、marker暂关及待办。
+
 - [2026-10-12：操作说明汇总与纪传/编年同步](2026-10-12-documentation-consolidation.md)：自动resume说明、分类导航、常用指令，以及补齐滞后的在线RL/缓存/监控纪传。
 
 - [2026-10-11：外盘归档与buffer恢复验证](2026-10-11-external-archive-restore.md)：16677最终权重、完整会话/原BC/代码归档、逐文件校验、实际解包重建buffer与模型恢复。

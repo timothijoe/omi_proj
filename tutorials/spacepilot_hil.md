@@ -126,4 +126,4 @@ periodic人工采集和immediate仲裁下的SpacePilot人工控制使用与独�
 
 原动作来源仍为human/policy；人工动作trace增加 `operator_input`，含设备类型、profile哈希、倍率和动作上限。profile文件在预检后被改变会拒绝构造运行输入。回放契约和旧数据格式不变，回合外复位仍不入池，标签跟随的control_epoch隔离不变。
 
-当前已写入本轮实测键位并完成真实驱动只读连接；尚未用新集成入口运行真机采集或训练。执行前先完成profile预览，再按原流程做一段人工回合检查。已有停止拖尾问题属于共用接收端，本轮没有更改其执行方式。
+当前已完成键位配置、用户真机采集、CUDA BC训练及用户启动的在线RL。完整结果与23:29运行快照见[训练纪传](../docs/agent/training/evolution/spacepilot-bc-online-rl.md)。当前主RL setting夹爪开启、marker暂关；既有停止拖尾问题属于共用接收端，本轮没有更改其底层执行方式。

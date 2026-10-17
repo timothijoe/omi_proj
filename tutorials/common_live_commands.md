@@ -294,8 +294,8 @@ bash scripts/prepare_bc_rl.sh \
 - `--run`是新任务目录。不会覆盖旧任务，也不会删除原BC。
 - `--weights-only`表示不导入旧Demo或旧RL数据，不能同时传 `--recorded-source`。
   **仅省略recorded-source、却不加weights-only，仍会导入来源BC的旧Demo。**
-- `--episode-seconds 45`设置新任务时限，单位秒；想用30秒就改为30。仅在新建weights-only任务时设置，
-  不要只修改已有 `config.json`，否则可能与checkpoint、session和replay契约冲突。
+- `--episode-seconds 45`设置新任务时限，单位秒；想用30秒就改为30。本节在新建weights-only任务时设置，
+  不要只修改已有 `config.json`，否则可能与checkpoint、session和replay契约冲突。另有保留BC示范、只调整新回合时限并解冻触觉/融合层的[SpacePilot BC6148方案](spacepilot_bc6148_online_rl.md)，按该页执行。
 - 初始RL版本0表示更新计数从0开始；Actor参数已经完整预加载BC12045，并非随机Actor。
 - 新池需要本批人工接管数据。D4设定Demo至少100条、RL至少100条；人工有效transition同时属于两池，
   需结束回合并完成入池后才可采样。只有策略数据时，Learner会等待Demo。

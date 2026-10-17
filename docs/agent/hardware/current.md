@@ -1,8 +1,8 @@
 # Hardware 当前摘要
 
-2026-10-17：[SpacePilot已接入BC/RL采集与在线Actor输入](evolution/spacepilot-hil.md)。原手柄默认保留；新后端保持六轴连续值、原逻辑按键、回执及human标签，配置工具按实际实体键生成profile。软件回归和驱动只读连接通过，正式键位及真机采集尚待用户验证。
+2026-10-17最新：[SpacePilot已接入BC/RL采集与在线Actor输入](evolution/spacepilot-hil.md)。九键profile及数字1 ID12等已经实测，用户完成10回合新采集并训练BC6148，随后启动了实际在线RL；原手柄默认保留。当前Menu接管，ALT成功，Ctrl结束，夹爪开启；marker按用户要求暂关。数字3总开关和独立Marker节点仅讨论，尚未实现。训练结果、参数及23:29现场快照见[训练纪传](../training/evolution/spacepilot-bc-online-rl.md)与[编年](../training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)。
 
-2026-10-17最终收纳见[开发快照](../../oct17_development_checkpoint.md)。19:32用户录制已分析：200 Hz/模式3，四次全零后约0.22–0.30秒接近停止，继续X移动约0.44–0.92 mm；对应接收端日志未记录SDK_REJECTED。旧500 Hz日志中的clear_set=0与SDK发送状态忙吻合。暂不更改阻抗、速度或停止策略，优先补齐SDK目标/发送/反馈测量。分析证据纳入docs/evidence，原始录制保留local。
+2026-10-17早期收纳见[开发快照](../../oct17_development_checkpoint.md)。19:32用户录制已分析：200 Hz/模式3，四次全零后约0.22–0.30秒接近停止，继续X移动约0.44–0.92 mm；对应接收端日志未记录SDK_REJECTED。旧500 Hz日志中的clear_set=0与SDK发送状态忙吻合。底层阻抗及停止策略未改；后续只对齐输入速度和发送节拍。分析证据纳入docs/evidence，原始录制保留local。
 
 2026-10-17 起停迟滞最新判断：用户实测手柄也有相近延迟。两发送端假ROS/时钟对照未发现SpacePilot额外等待；排查转向共用接收端的目标累加、普通零指令仅停新增目标、阻抗启动参数及运动时回调耗时。短时只读网络往返约0.63 ms、EEF间隔约20 ms，不能据此排除运动时延迟；尚未定位根因或修改执行逻辑。见[接收端排查](evolution/robot-controller.md#待实机核对的语义)。
 

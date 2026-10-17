@@ -1,0 +1,1254 @@
+{
+  "captured_at": "2026-10-17T23:29:17.147937+08:00",
+  "capture_scope": "read-only sequential JSON snapshots; active run may advance between reads; not a final or atomic run summary",
+  "code_head": "eb8e3b8a5c614ddacc6abb1693dfcf97af9dc1be",
+  "working_tree_contains_uncommitted_implementation": true,
+  "run": "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+  "settings": {
+    "schema": "omi-online-rl-settings-v1",
+    "description": "Baseline: Oct11 bc12045_newdata_30s_20261011_01 and git 521fd47 common_live_commands D2/D4. Explicit changes: BC6148, SpacePilot mapping/scales, tactile training after warmup, 30s and 300 episodes, and user-enabled gripper buttons. Fusion and visual stay frozen.",
+    "prepare": {
+      "bc_run": "local/rl_training/spacepilot_bc_20261017_213359_2000_4000",
+      "run": "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+      "device": "cuda",
+      "replay_backend": "cached",
+      "cache_target_gib": 16,
+      "cache_limit_gib": 20,
+      "weights_only": true,
+      "episode_seconds": 30,
+      "max_total_episodes": 300,
+      "critic_warmup_updates": 1000,
+      "bc_weight": 10,
+      "actor_learning_rate": 1e-05,
+      "train_tactile_encoder": true,
+      "train_fusion_layer": false,
+      "encoder_learning_rate": 1e-05,
+      "capacity": 4000,
+      "intervention_capacity": 2000,
+      "recorded_source": [],
+      "critic_learning_rate": 0.0003,
+      "discount": 0.98,
+      "target_tau": 0.005,
+      "critic_actor_ratio": 2,
+      "image_augmentation": true
+    },
+    "online": {
+      "run": "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+      "actor_device": "cuda",
+      "learner_device": "cuda",
+      "batch_size": 64,
+      "publish_every": 50,
+      "reload_every_episodes": 10,
+      "min_online": 100,
+      "min_demo": 100,
+      "max_updates_per_transition": 1,
+      "arbitration_mode": "after-inference",
+      "exploration_noise_std": 0.05,
+      "exploration_noise_clip": 0.15,
+      "episodes": 300,
+      "input_device": "spacepilot",
+      "spacepilot_map": "local/spacepilot/hil_buttons.json",
+      "spacepilot_speed_profile": "standalone",
+      "spacepilot_translation_scale": 1.5,
+      "spacepilot_rotation_scale": 0.3,
+      "spacepilot_mode": "all",
+      "spacepilot_dominant_axis": false,
+      "no_gripper": false,
+      "no_tag_follow": true,
+      "tag_follow_calibration": "ros2/marker_detect/handeye_result.json",
+      "learner_python": "local/cuda-env/bin/python",
+      "learner_update_delay": 0.0,
+      "shutdown_timeout": 30.0,
+      "gamepad": "/dev/input/js0",
+      "home_button_code": 314,
+      "rgb_max_age_ms": 500.0,
+      "spacepilot_deadzone": 18.0,
+      "gripper_server": "192.168.14.11:55551",
+      "gripper_sdk_root": "local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py",
+      "gripper_calibration": "tutorials/gripper_limits.json",
+      "gripper_close_speed": 50,
+      "gripper_close_position": 0,
+      "gripper_close_torque": 30,
+      "gripper_open_position": 1000,
+      "tag_follow_default_pose": "ros2/marker_detect/handeye_result/tag_follow_default.json",
+      "tag_follow_image_topic": "/camera/camera/color/image_raw",
+      "tag_follow_camera_info_topic": "/camera/camera/color/camera_info"
+    },
+    "environment": {
+      "ROS_DOMAIN_ID": "13",
+      "ROS_LOCALHOST_ONLY": "0",
+      "ROS_AUTOMATIC_DISCOVERY_RANGE": "SUBNET"
+    }
+  },
+  "initialization": {
+    "samples": 0,
+    "episodes": 0,
+    "streams": {
+      "online": 0,
+      "demonstration": 0,
+      "initial_demonstration": 0,
+      "intervention": 0,
+      "offline_demonstration": 0
+    },
+    "initial_actor_exact": true,
+    "bc_version": 6148,
+    "rl_version": 0,
+    "critic_warmup_updates": 1000,
+    "bc_weight": 10.0,
+    "actor_learning_rate": 1e-05,
+    "encoder_frozen": false,
+    "train_tactile_encoder": true,
+    "train_fusion_layer": false,
+    "encoder_learning_rate": 1e-05,
+    "visual_encoder_frozen": true,
+    "fusion_layer_frozen": true,
+    "critic_learning_rate": 0.0003,
+    "discount": 0.98,
+    "target_tau": 0.005,
+    "critic_actor_ratio": 2,
+    "image_augmentation": true,
+    "tactile_unfreeze_after_updates": 1000,
+    "encoder_freeze_policy": "frozen_visual_selective_encoder_after_critic_warmup_bc_anchor",
+    "historical_seed_is_not_new_robot_experience": true,
+    "weights_only": true,
+    "episode_seconds": 30.0,
+    "source_episode_seconds": 20.0,
+    "max_total_episodes": 300,
+    "replay_backend": "omi-cached-dual-replay-v1"
+  },
+  "loaded_settings": {
+    "source": {
+      "path": "/home/zhoutong/omi_folder/omi_proj/configs/spacepilot_bc6148_online_rl.json",
+      "sha256": "4237b47a8c191c8d1c962707ef4b0b4f19b7a1f691de8d636fc8289222e8e7a3",
+      "section": "online"
+    },
+    "document": {
+      "schema": "omi-online-rl-settings-v1",
+      "description": "Baseline: Oct11 bc12045_newdata_30s_20261011_01 and git 521fd47 common_live_commands D2/D4. Explicit changes: BC6148, SpacePilot mapping/scales, tactile training after warmup, 30s and 300 episodes, and user-enabled gripper buttons. Fusion and visual stay frozen.",
+      "prepare": {
+        "bc_run": "local/rl_training/spacepilot_bc_20261017_213359_2000_4000",
+        "run": "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+        "device": "cuda",
+        "replay_backend": "cached",
+        "cache_target_gib": 16,
+        "cache_limit_gib": 20,
+        "weights_only": true,
+        "episode_seconds": 30,
+        "max_total_episodes": 300,
+        "critic_warmup_updates": 1000,
+        "bc_weight": 10,
+        "actor_learning_rate": 1e-05,
+        "train_tactile_encoder": true,
+        "train_fusion_layer": false,
+        "encoder_learning_rate": 1e-05,
+        "capacity": 4000,
+        "intervention_capacity": 2000,
+        "recorded_source": [],
+        "critic_learning_rate": 0.0003,
+        "discount": 0.98,
+        "target_tau": 0.005,
+        "critic_actor_ratio": 2,
+        "image_augmentation": true
+      },
+      "online": {
+        "run": "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+        "actor_device": "cuda",
+        "learner_device": "cuda",
+        "batch_size": 64,
+        "publish_every": 50,
+        "reload_every_episodes": 10,
+        "min_online": 100,
+        "min_demo": 100,
+        "max_updates_per_transition": 1,
+        "arbitration_mode": "after-inference",
+        "exploration_noise_std": 0.05,
+        "exploration_noise_clip": 0.15,
+        "episodes": 300,
+        "input_device": "spacepilot",
+        "spacepilot_map": "local/spacepilot/hil_buttons.json",
+        "spacepilot_speed_profile": "standalone",
+        "spacepilot_translation_scale": 1.5,
+        "spacepilot_rotation_scale": 0.3,
+        "spacepilot_mode": "all",
+        "spacepilot_dominant_axis": false,
+        "no_gripper": false,
+        "no_tag_follow": true,
+        "tag_follow_calibration": "ros2/marker_detect/handeye_result.json",
+        "learner_python": "local/cuda-env/bin/python",
+        "learner_update_delay": 0.0,
+        "shutdown_timeout": 30.0,
+        "gamepad": "/dev/input/js0",
+        "home_button_code": 314,
+        "rgb_max_age_ms": 500.0,
+        "spacepilot_deadzone": 18.0,
+        "gripper_server": "192.168.14.11:55551",
+        "gripper_sdk_root": "local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py",
+        "gripper_calibration": "tutorials/gripper_limits.json",
+        "gripper_close_speed": 50,
+        "gripper_close_position": 0,
+        "gripper_close_torque": 30,
+        "gripper_open_position": 1000,
+        "tag_follow_default_pose": "ros2/marker_detect/handeye_result/tag_follow_default.json",
+        "tag_follow_image_topic": "/camera/camera/color/image_raw",
+        "tag_follow_camera_info_topic": "/camera/camera/color/camera_info"
+      },
+      "environment": {
+        "ROS_DOMAIN_ID": "13",
+        "ROS_LOCALHOST_ONLY": "0",
+        "ROS_AUTOMATIC_DISCOVERY_RANGE": "SUBNET"
+      }
+    },
+    "effective": {
+      "run": "/home/zhoutong/omi_folder/omi_proj/local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+      "initialize_from": null,
+      "probe_only": false,
+      "probe_updates": 20,
+      "reload_every_episodes": 10,
+      "publish_every": 50,
+      "min_online": 100,
+      "min_demo": 100,
+      "batch_size": 64,
+      "exploration_noise_std": 0.05,
+      "exploration_noise_clip": 0.15,
+      "actor_device": "cuda",
+      "learner_device": "cuda",
+      "learner_python": "/home/zhoutong/omi_folder/omi_proj/local/cuda-env/bin/python",
+      "learner_update_delay": 0.0,
+      "max_updates_per_transition": 1.0,
+      "shutdown_timeout": 30.0,
+      "episodes": 300,
+      "gamepad": "/dev/input/js0",
+      "input_device": "spacepilot",
+      "spacepilot_map": "/home/zhoutong/omi_folder/omi_proj/local/spacepilot/hil_buttons.json",
+      "spacepilot_translation_scale": 1.5,
+      "spacepilot_rotation_scale": 0.3,
+      "spacepilot_deadzone": 18.0,
+      "spacepilot_mode": "all",
+      "spacepilot_dominant_axis": false,
+      "spacepilot_speed_profile": "standalone",
+      "home_button_code": 314,
+      "gripper_server": "192.168.14.11:55551",
+      "gripper_sdk_root": "/home/zhoutong/omi_folder/omi_proj/local/vendor/optical_module_pu/source/OpticalModule_PU/daimon_stuff/dm_gripper_py",
+      "gripper_calibration": "/home/zhoutong/omi_folder/omi_proj/tutorials/gripper_limits.json",
+      "gripper_close_speed": 50,
+      "gripper_close_position": 0,
+      "gripper_close_torque": 30,
+      "gripper_open_position": 1000,
+      "no_tag_follow": true,
+      "tag_follow_calibration": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_result.json",
+      "tag_follow_default_pose": "/home/zhoutong/omi_folder/omi_proj/ros2/marker_detect/handeye_result/tag_follow_default.json",
+      "tag_follow_image_topic": "/camera/camera/color/image_raw",
+      "tag_follow_camera_info_topic": "/camera/camera/color/camera_info",
+      "no_gripper": false,
+      "rgb_max_age_ms": 500.0,
+      "execute": true,
+      "enable_policy": true,
+      "arbitration_mode": "after-inference",
+      "settings": "configs/spacepilot_bc6148_online_rl.json",
+      "print_settings": false
+    },
+    "episodes_this_start": 300
+  },
+  "actor_state": {
+    "phase": "WAIT_START",
+    "policy_version": 2750,
+    "complete_episodes": 49,
+    "last_reload_check": 40,
+    "reload_episodes": 10,
+    "policy_enabled": true,
+    "policy_selection": "latest_validated_not_best",
+    "control_mode": "observation_driven_10hz",
+    "timing_policy": "diagnostic_only_v1",
+    "arbitration_mode": "after-inference",
+    "training_ready": false,
+    "exploration": {
+      "mode": "clipped_gaussian",
+      "std": 0.05,
+      "clip": 0.15,
+      "space": "normalized_post_tanh",
+      "policy_only": true
+    }
+  },
+  "learner_state": {
+    "update": 3367,
+    "critic_loss": 0.0038727500941604376,
+    "alpha": 0.006643522065132856,
+    "batch_samples": 64,
+    "positive_reward_count": 0,
+    "terminal_count": 0,
+    "positive_terminal_count": 0,
+    "reward_mean": 0.0,
+    "q_mean": -0.6967024803161621,
+    "q_min": -0.8553422093391418,
+    "q_max": -0.125435009598732,
+    "target_q_mean": -0.6919758319854736,
+    "target_q_min": -0.8644388318061829,
+    "target_q_max": -0.1516614556312561,
+    "target_q_negative_count": 64,
+    "bootstrap_q_mean": -0.7060977816581726,
+    "td_abs_mean": 0.04836057871580124,
+    "critic_warmup": false,
+    "tactile_encoder_trainable": true,
+    "fusion_layer_trainable": false,
+    "bc_reference_mse": 0.018758710473775864,
+    "bc_reference_max_abs": 0.6462478041648865,
+    "demo_only_warmup": false,
+    "streams": {
+      "online": 4702,
+      "demonstration": 3845,
+      "initial_demonstration": 0,
+      "intervention": 3845,
+      "offline_demonstration": 0
+    },
+    "imported": 0,
+    "replay": {
+      "backend": "omi-cached-dual-replay-v1",
+      "cache_target_bytes": 17179869184,
+      "memory_limit_bytes": 21474836480,
+      "resident_bytes": 17179179612,
+      "resident_unique": 7539,
+      "batch_bytes": 436725504,
+      "loader_reserved_bytes": 19278240,
+      "managed_bytes": 17645457180,
+      "peak_managed_bytes": 17791032348,
+      "metadata_allowance_bytes": 8388608,
+      "loads": 10198,
+      "evictions": 2659,
+      "frame_cache_reserved_bytes": 1885216,
+      "refreshes": 71,
+      "samples": 6734,
+      "sample_seconds": 131.5486765319838,
+      "catalog_seed": 0,
+      "catalog_online": 9308,
+      "catalog_interventions": 4839,
+      "pending_episodes": 0,
+      "min_online_slots": 100,
+      "min_demo_slots": 100,
+      "loader_busy": true,
+      "loader_error": null
+    }
+  },
+  "monitor_actor": {
+    "phase": "WAIT_START",
+    "pid": 330640,
+    "emitted_ns": 1792250957012145695,
+    "progress_ns": 1792250956818231426,
+    "policy_version": 2750,
+    "complete_episodes": 49,
+    "last_reload_check": 40,
+    "reload_episodes": 10,
+    "operator_input": {
+      "kind": "spacepilot",
+      "profile": "/home/zhoutong/omi_folder/omi_proj/local/spacepilot/hil_buttons.json",
+      "profile_sha256": "13cf76fc39cef4adf702297f467e916f8948cd06083101c3460389c6d31de399",
+      "buttons": {
+        "311": 0,
+        "315": 12,
+        "308": 23,
+        "307": 25,
+        "314": 26,
+        "304": 28,
+        "305": 27,
+        "65536": 8,
+        "65537": 2
+      },
+      "axis_frame": "X-forward Y-left Z-up",
+      "required_review": "auto",
+      "translation_scale": 1.5,
+      "rotation_scale": 0.3,
+      "deadzone": 18.0,
+      "mode": "all",
+      "dominant_axis": false,
+      "physical_action_limit": [
+        0.001500000013038516,
+        0.001500000013038516,
+        0.001500000013038516,
+        0.010076663456857204,
+        0.010076663456857204,
+        0.010076663456857204
+      ],
+      "speed_profile": "standalone",
+      "requested_translation_mm_s": 15.0,
+      "requested_rotation_deg_s": 3.0,
+      "single_axis_translation_limit_mm_s": 15.0,
+      "single_axis_rotation_limit_deg_s": 3.0
+    }
+  },
+  "monitor_learner": {
+    "phase": "TRAINING",
+    "pid": 330751,
+    "emitted_ns": 1792250956917064174,
+    "progress_ns": 1792250956562375439,
+    "published_version": 3350,
+    "update": 3367,
+    "update_budget": 10308,
+    "max_updates_per_transition": 1.0
+  },
+  "episodes": {
+    "started": 50,
+    "finished_audits": 50,
+    "outcomes": {
+      "success": 37,
+      "timeout": 11,
+      "gamepad disconnected": 1,
+      "manual_stop": 1
+    },
+    "training_ready": 49,
+    "exported_transitions": 9308,
+    "success_semantics": "operator-marked outcomes can contain human intervention; not autonomous policy success rate",
+    "audits": [
+      {
+        "episode": "04ba047984204488aa31c0bb32f0356e",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 90,
+        "ticks": 92
+      },
+      {
+        "episode": "0ba9ec6155834871813e2517ae7ef733",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 299,
+        "ticks": 301
+      },
+      {
+        "episode": "0f211a511bf941ad9fa62a15bc37b1fa",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 141,
+        "ticks": 142
+      },
+      {
+        "episode": "1284de9e377648c2ad342fd25bffeb54",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 201,
+        "ticks": 203
+      },
+      {
+        "episode": "1734de85b7e941658f7963622f14b158",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 145,
+        "ticks": 146
+      },
+      {
+        "episode": "225787bc0d5d4f1fa415134b2fcecb39",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 109,
+        "ticks": 110
+      },
+      {
+        "episode": "2a13daa7a7f84b4bb75c42a6da537ad1",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 103,
+        "ticks": 105
+      },
+      {
+        "episode": "2ddb987248374633a383086c8fc81040",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 78,
+        "ticks": 80
+      },
+      {
+        "episode": "300bc9965f6c41b5b9ad9cb5f94663e2",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 214,
+        "ticks": 216
+      },
+      {
+        "episode": "3f3cf7bbcb6844efbb6ff3434ce357f9",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 148,
+        "ticks": 150
+      },
+      {
+        "episode": "431de7e4335b41128341d9f54c44a919",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 264,
+        "ticks": 266
+      },
+      {
+        "episode": "46eafcd015cf4ec0a9fa32d62e4178db",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 289,
+        "ticks": 291
+      },
+      {
+        "episode": "4742246cf3224bba9c44ce24a44535fc",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 298,
+        "ticks": 300
+      },
+      {
+        "episode": "4911fce014c447a19dfadd5856c03127",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 258,
+        "ticks": 260
+      },
+      {
+        "episode": "49e4ab89d00c4f099125e3e94b94f25c",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 298,
+        "ticks": 300
+      },
+      {
+        "episode": "4ae4d4b7d7cf488eb654ab631afc6c04",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 96,
+        "ticks": 97
+      },
+      {
+        "episode": "53e5f9a57238442f87ba10a0e05e9447",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 99,
+        "ticks": 100
+      },
+      {
+        "episode": "575c84d31bd64ecdab2df36531710c0b",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 175,
+        "ticks": 177
+      },
+      {
+        "episode": "61b3c134b4154fbaa6d8d5c5afa2987b",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 115,
+        "ticks": 117
+      },
+      {
+        "episode": "62a4e6025a5b46478c2e240f6de46fe7",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 254,
+        "ticks": 256
+      },
+      {
+        "episode": "635dbb7323214f4b80b59c1dc98d1969",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 87,
+        "ticks": 89
+      },
+      {
+        "episode": "63eaaac4ea4d4e01b925e6a4872e4017",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 78,
+        "ticks": 79
+      },
+      {
+        "episode": "6ac0e71eadfb49ce8a7bb86f3793300d",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 135,
+        "ticks": 137
+      },
+      {
+        "episode": "6c899aa03e274220bcc5569d59e4f8ea",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 120,
+        "ticks": 122
+      },
+      {
+        "episode": "7497088d96ee4ea2b55cc3062fc037f6",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 100,
+        "ticks": 102
+      },
+      {
+        "episode": "79e983f7442b4fdea9a01150abfa2be3",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 298,
+        "ticks": 300
+      },
+      {
+        "episode": "853b6e7750bc498bb3f748736f3228f8",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 298,
+        "ticks": 300
+      },
+      {
+        "episode": "86c854b0bb9a4f7388723c9e57e0299c",
+        "reason": "gamepad disconnected",
+        "success": false,
+        "training_ready": false,
+        "transitions": 0,
+        "ticks": 0
+      },
+      {
+        "episode": "90f62ae9ea6e470ca8616d355fe3f2de",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 104,
+        "ticks": 106
+      },
+      {
+        "episode": "9241eaf124984de8a9089e5fabb72341",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 298,
+        "ticks": 300
+      },
+      {
+        "episode": "953f3e0565434c17abdcb56064a10e47",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 203,
+        "ticks": 205
+      },
+      {
+        "episode": "9e2074fcef2d404e9c55b9bdb164093f",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 193,
+        "ticks": 195
+      },
+      {
+        "episode": "ac067df0989d4f6b983436693f13c11f",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 299,
+        "ticks": 301
+      },
+      {
+        "episode": "b0f8797499ea4735ad71219ff1845245",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 132,
+        "ticks": 134
+      },
+      {
+        "episode": "ba555f5138b34c40881d2717bfdd849c",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 134,
+        "ticks": 136
+      },
+      {
+        "episode": "bb2e324857c64607af14047e6036d1c8",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 125,
+        "ticks": 127
+      },
+      {
+        "episode": "c6bef7f09b5044d59f60ed6f0aca95b3",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 299,
+        "ticks": 301
+      },
+      {
+        "episode": "d167e50924bc4831a9e8cbb89d2b8964",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 299,
+        "ticks": 301
+      },
+      {
+        "episode": "d24b6621b1a242c3b51ea507568f5a4c",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 211,
+        "ticks": 213
+      },
+      {
+        "episode": "d4cfb2f6c3454930aedaa6a62adae1eb",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 299,
+        "ticks": 301
+      },
+      {
+        "episode": "d720eba8fc544bab91fd59026789f027",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 165,
+        "ticks": 167
+      },
+      {
+        "episode": "db04f5d613934081a00db82210b826d7",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 180,
+        "ticks": 182
+      },
+      {
+        "episode": "dd946de111154670b489db64cc01f3fe",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 108,
+        "ticks": 110
+      },
+      {
+        "episode": "e134ee1058754ee38914c8d77566e454",
+        "reason": "timeout",
+        "success": false,
+        "training_ready": true,
+        "transitions": 299,
+        "ticks": 301
+      },
+      {
+        "episode": "edab42d8b43d4e36b177b9b42a025481",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 192,
+        "ticks": 194
+      },
+      {
+        "episode": "f0ba6cbb344e4b8ba6532c04c3ee7ba5",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 251,
+        "ticks": 253
+      },
+      {
+        "episode": "f77f63c1c0da4ac29e5b12cfaf5eec59",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 139,
+        "ticks": 141
+      },
+      {
+        "episode": "fdd97b4921d242818b9ea8df7b0164cf",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 127,
+        "ticks": 129
+      },
+      {
+        "episode": "fdff0f32e8b64a02ae860c65d1e6b6b5",
+        "reason": "manual_stop",
+        "success": false,
+        "training_ready": true,
+        "transitions": 280,
+        "ticks": 282
+      },
+      {
+        "episode": "ff890a09da404af0ac8f6d4355f709c2",
+        "reason": "success",
+        "success": true,
+        "training_ready": true,
+        "transitions": 181,
+        "ticks": 183
+      }
+    ]
+  },
+  "bc_data_audit": {
+    "source": "/home/zhoutong/omi_folder/omi_proj/local/rl_episodes/spacepilot_response_20261017_213359",
+    "source_session_sha256": "9be4eabf4de4105b189666561fceb242a97c6136e3b1bbb4067ece11210f6490",
+    "total_original_episodes": 10,
+    "normal_original_episodes": 9,
+    "outcomes": {
+      "success": 3,
+      "timeout": 6,
+      "gamepad disconnected": 1
+    },
+    "excluded_source_episodes": {
+      "53d8d313dd3c41119cd751d616629a9f": "gamepad disconnected"
+    },
+    "segments": 41,
+    "samples": 1499,
+    "samples_by_split": {
+      "training": 1174,
+      "validation": 325
+    },
+    "training_original_episodes": [
+      "015d0561623342f5a179834d526f1f61",
+      "5f32bd260a4d45e5aa8e2e0eb9174049",
+      "7a3d04a059c14371a8bc6409850a84a8",
+      "88ea56b152da496aa8e49e4ee4e27fba",
+      "9faab1915203468a9d176d7df0ec0f41",
+      "a28c6bd17dcd4127836227185679186d",
+      "befc3474e98543879a7f9960d6f69384"
+    ],
+    "validation_original_episodes": [
+      "19c7887c59f34dcb9d53bd1d8bc9b950",
+      "8083942d4ead4367aa334198e7a9890f"
+    ],
+    "full_history_samples": 1499,
+    "nonzero_action_samples": 1436,
+    "action_min": [
+      -1.0,
+      -0.9638554453849792,
+      -0.8795180320739746,
+      -0.498984158039093,
+      -0.5195775032043457,
+      -0.25824251770973206
+    ],
+    "action_max": [
+      1.0,
+      0.8855421543121338,
+      0.8253011703491211,
+      0.392841637134552,
+      0.5133548378944397,
+      0.5195303559303284
+    ],
+    "action_mean": [
+      0.186629980802536,
+      -0.04800665006041527,
+      0.01081236731261015,
+      0.019031649455428123,
+      0.05911664664745331,
+      0.013222083449363708
+    ],
+    "physical_action_scale": [
+      0.001500000013038516,
+      0.001500000013038516,
+      0.001500000013038516,
+      0.010076663456857204,
+      0.010076663456857204,
+      0.010076663456857204
+    ],
+    "label": "human_accepted_command_not_measured_displacement",
+    "source_files_modified": false
+  },
+  "bc_short_training": {
+    "status": "complete",
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "original_episodes": 10,
+    "used_original_episodes": 9,
+    "success": 3,
+    "timeout": 6,
+    "excluded_abnormal": 1,
+    "samples": 1499,
+    "segments": 41,
+    "model": "/home/zhoutong/omi_folder/omi_proj/local/rl_training/spacepilot_bc_20261017_213359_all/actor.pt",
+    "model_sha256": "32587d85fd52aeee2d4dd0bdc3c1732b604cc7fc381bccb34cca0142e2613c64",
+    "evaluation_directory": "/home/zhoutong/omi_folder/omi_proj/local/bc_episodes/spacepilot_response_20261017_213359_eval_01",
+    "policy_version": 1648,
+    "final_all_data_mse": 0.005760604981333017,
+    "baseline_validation_mse": 0.0557139590382576,
+    "baseline_validation_zero_mse": 0.06753195077180862,
+    "baseline_validation_selection_epoch": 2,
+    "validation_samples": 325,
+    "final_training_uses_all_normal_data": true,
+    "final_has_independent_validation": false,
+    "final_optimizer_updates": 1500,
+    "frozen_backbone_unchanged": true,
+    "reload_max_abs_difference": 0.0,
+    "source_metadata_hashes_unchanged": true,
+    "robot_publishers_created": 0,
+    "training_architecture": "current9stack, two RGB views, tactile, EEF state; six-dimensional arm commands",
+    "physical_action_scale": [
+      0.001500000013038516,
+      0.001500000013038516,
+      0.001500000013038516,
+      0.010076663456857204,
+      0.010076663456857204,
+      0.010076663456857204
+    ]
+  },
+  "bc_comparison": {
+    "status": "complete",
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "source_samples": 1499,
+    "normal_original_episodes": 9,
+    "comparison_conditions": "same initial checkpoint, dataset, normalization, architecture, seed and batch size as short run",
+    "same_sample_ids_and_targets": true,
+    "short": {
+      "mse": 0.005760604981333017,
+      "mse_per_axis": [
+        0.009769240394234657,
+        0.013515708036720753,
+        0.004420118406414986,
+        0.002816620049998164,
+        0.002492540515959263,
+        0.0015493923565372825
+      ],
+      "physical_mae_mm_deg": [
+        0.11149225480909866,
+        0.1181078786983529,
+        0.07290881190493911,
+        0.022405607408722345,
+        0.022090235982235532,
+        0.016672266501578492
+      ],
+      "per_original_episode_mse": {
+        "015d0561623342f5a179834d526f1f61": 0.005265435203909874,
+        "19c7887c59f34dcb9d53bd1d8bc9b950": 0.006852578371763229,
+        "5f32bd260a4d45e5aa8e2e0eb9174049": 0.005220034625381231,
+        "7a3d04a059c14371a8bc6409850a84a8": 0.005974676460027695,
+        "8083942d4ead4367aa334198e7a9890f": 0.005935306660830975,
+        "88ea56b152da496aa8e49e4ee4e27fba": 0.006973890587687492,
+        "9faab1915203468a9d176d7df0ec0f41": 0.004060437902808189,
+        "a28c6bd17dcd4127836227185679186d": 0.005339325871318579,
+        "befc3474e98543879a7f9960d6f69384": 0.006203853525221348
+      },
+      "zero_action_samples": 63,
+      "zero_action_predicted_max_component_mean": 0.18548856675624847
+    },
+    "long": {
+      "mse": 0.0022358803544193506,
+      "mse_per_axis": [
+        0.0025091201532632113,
+        0.006536388304084539,
+        0.0013056627940386534,
+        0.0013472576392814517,
+        0.0009811331983655691,
+        0.0007357162539847195
+      ],
+      "physical_mae_mm_deg": [
+        0.05327891418456087,
+        0.06800066552560113,
+        0.04076344182757548,
+        0.014612325211816992,
+        0.013603359254592724,
+        0.01151316592364422
+      ],
+      "per_original_episode_mse": {
+        "015d0561623342f5a179834d526f1f61": 0.0016642126720398664,
+        "19c7887c59f34dcb9d53bd1d8bc9b950": 0.002277627121657133,
+        "5f32bd260a4d45e5aa8e2e0eb9174049": 0.0021044507157057524,
+        "7a3d04a059c14371a8bc6409850a84a8": 0.00242746458388865,
+        "8083942d4ead4367aa334198e7a9890f": 0.0022839047014713287,
+        "88ea56b152da496aa8e49e4ee4e27fba": 0.0028062849305570126,
+        "9faab1915203468a9d176d7df0ec0f41": 0.0015508336946368217,
+        "a28c6bd17dcd4127836227185679186d": 0.0026291306130588055,
+        "befc3474e98543879a7f9960d6f69384": 0.0026668915525078773
+      },
+      "zero_action_samples": 63,
+      "zero_action_predicted_max_component_mean": 0.10734634101390839
+    },
+    "coarse_best": {
+      "stage": "coarse",
+      "update": 2000,
+      "stage_update": 2000,
+      "seconds": 120.18511383700024,
+      "mse": 0.00576054397970438,
+      "worst_episode_mse": 0.046356964856386185
+    },
+    "fine_best": {
+      "stage": "fine",
+      "update": 6000,
+      "stage_update": 4000,
+      "seconds": 356.48702793199845,
+      "mse": 0.0022358803544193506,
+      "worst_episode_mse": 0.03286346420645714
+    },
+    "mse_improvement_factor": 2.576437048586629,
+    "mse_reduction_percent": 61.186709353190835,
+    "coarse_to_fine_factor": 2.5764097655396996,
+    "original_initial_mse": 0.031404413282871246,
+    "overall_fit_improvement_factor": 14.04565911623963,
+    "policy_version": 6148,
+    "optimizer_updates_executed": 6000,
+    "reload_max_abs_difference": 0.0,
+    "frozen_backbone_unchanged": true,
+    "model": "/home/zhoutong/omi_folder/omi_proj/local/rl_training/spacepilot_bc_20261017_213359_2000_4000/actor.pt",
+    "model_sha256": "611afee1d8e3020aebf5269a01b65deb59b8ee49bdaa937851b3058905ea2639",
+    "evaluation_directory": "/home/zhoutong/omi_folder/omi_proj/local/bc_episodes/spacepilot_response_20261017_213359_eval_2000_4000",
+    "previous_model_unchanged": true,
+    "independent_validation": false,
+    "robot_publishers_created": 0
+  },
+  "sources": {
+    "configs/spacepilot_bc6148_online_rl.json": {
+      "sha256": "4237b47a8c191c8d1c962707ef4b0b4f19b7a1f691de8d636fc8289222e8e7a3",
+      "mtime_ns": 1792248941742285579
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/bc_initialization.json": {
+      "sha256": "da8864307c0e3d553c9cc1fe4e5920b75b8c6154449d21c8665afc986940c0a6",
+      "mtime_ns": 1792247408743663359
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/settings_online.json": {
+      "sha256": "98fc99b0c1b57473cd74d80f666a6ed55d9d58c8d50367a2333c43638de84eae",
+      "mtime_ns": 1792249001307321366
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/async_state.json": {
+      "sha256": "2dcd39bf763e0b93f3cbdb485f4734ab0d433679bd5f10805a6d676409519ae5",
+      "mtime_ns": 1792250940858436048
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/status.json": {
+      "sha256": "26872c774457a6383e086d6569f8a8e7be5b0e6cd902a88dd48295794920eb86",
+      "mtime_ns": 1792250956552465202
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/monitor/actor.json": {
+      "sha256": "d5bdf891831003b65cdd71ea6599802e7bd56ec01154ca9277075d6f0a914071",
+      "mtime_ns": 1792250957013201977
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/monitor/learner.json": {
+      "sha256": "bae61f6fdb1fa794801d216a61f88732049ddd2d26b615cbe61dbf14563ca747",
+      "mtime_ns": 1792250956916414906
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/04ba047984204488aa31c0bb32f0356e/audit.json": {
+      "sha256": "5a82f89b31832dfbf35dee4c28e39284a5c211dbf81e70a0ce4c95cea2419433",
+      "mtime_ns": 1792249431613537840
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/0ba9ec6155834871813e2517ae7ef733/audit.json": {
+      "sha256": "f70d5d6b1c1c456f54d982a2fcaaa41fb05921a5ebe54c79822a2342939a2e7d",
+      "mtime_ns": 1792249876360787729
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/0f211a511bf941ad9fa62a15bc37b1fa/audit.json": {
+      "sha256": "c1b6490a68b47b722362f0dd517e530e45962f306b6158ed4a19cb97844cb911",
+      "mtime_ns": 1792250861797025180
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/1284de9e377648c2ad342fd25bffeb54/audit.json": {
+      "sha256": "ac00f9c93d3fb8dbb5e7dc36e5418f3bae0cd4de25ff462363e4763f6b5ed5b4",
+      "mtime_ns": 1792250455379418653
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/1734de85b7e941658f7963622f14b158/audit.json": {
+      "sha256": "a5ecfcf91c917bc16d4d07a78e72ff001d0a066a7eb9f659eda90c3bb1e959ed",
+      "mtime_ns": 1792250352537984295
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/225787bc0d5d4f1fa415134b2fcecb39/audit.json": {
+      "sha256": "7adf3a58a05c5073a5bd5ffb554f1af0a8c55ebc041b39736b833f3c22ab596a",
+      "mtime_ns": 1792249727995608063
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/2a13daa7a7f84b4bb75c42a6da537ad1/audit.json": {
+      "sha256": "f6e09fda7f1f608160802df4e697f35a4dd403b19bef0a5d90b9d3e66b539914",
+      "mtime_ns": 1792249663078719998
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/2ddb987248374633a383086c8fc81040/audit.json": {
+      "sha256": "8b64d2efba789d8217b6dc65531b0943cca6915e92f04c720650d8b1b733ee35",
+      "mtime_ns": 1792249214473553099
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/300bc9965f6c41b5b9ad9cb5f94663e2/audit.json": {
+      "sha256": "293b8a30c49784dbd95105038f5b16297c297d2fa655cfdf82ac76b07b6e2d58",
+      "mtime_ns": 1792250723737018844
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/3f3cf7bbcb6844efbb6ff3434ce357f9/audit.json": {
+      "sha256": "fd9cdb57af467b0b293915478430757622d099f4952fe88a8aedf667af74758d",
+      "mtime_ns": 1792249575760058633
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/431de7e4335b41128341d9f54c44a919/audit.json": {
+      "sha256": "747078ac00b6204fb3af381371cdabb69f783280aca73cabc30fe06d7d2cc9a4",
+      "mtime_ns": 1792250496472513180
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/46eafcd015cf4ec0a9fa32d62e4178db/audit.json": {
+      "sha256": "69cfc8760fb2f94e533dc5fac49b2d976f3a3ecea190e6b1c89c17c739e9114b",
+      "mtime_ns": 1792250278565709926
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/4742246cf3224bba9c44ce24a44535fc/audit.json": {
+      "sha256": "3063072ffacfccadadc056823e106147ce0bb4ad85aa8f277d9da32c49562470",
+      "mtime_ns": 1792250668268151998
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/4911fce014c447a19dfadd5856c03127/audit.json": {
+      "sha256": "82115460a7837068c15f9b43dfc637f09cff57b3f27efa4da27816c2ae282426",
+      "mtime_ns": 1792250603010959802
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/49e4ab89d00c4f099125e3e94b94f25c/audit.json": {
+      "sha256": "893f09d99550beae60cffe71d29c03b4fa94c106a8cf6d9dd6b52106fa53ce7b",
+      "mtime_ns": 1792250125854965555
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/4ae4d4b7d7cf488eb654ab631afc6c04/audit.json": {
+      "sha256": "21f0ee8131f58096df069b34a4b2736feeed563451892edde032afe9a4cff290",
+      "mtime_ns": 1792249823538075583
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/53e5f9a57238442f87ba10a0e05e9447/audit.json": {
+      "sha256": "d834f06e2c467657b0b23461f66a9906669ef60baac24975a9e4d26573a1c910",
+      "mtime_ns": 1792250804012448452
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/575c84d31bd64ecdab2df36531710c0b/audit.json": {
+      "sha256": "fa19d840c15eb85fc34210da17ae02699f63271479c62ae86b95e551911c4b1d",
+      "mtime_ns": 1792250940833160077
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/61b3c134b4154fbaa6d8d5c5afa2987b/audit.json": {
+      "sha256": "196f8f001922e789a4d51a4c2789a8acee1260aefd52c9d8a2178ec8c05f83f5",
+      "mtime_ns": 1792249327406380803
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/62a4e6025a5b46478c2e240f6de46fe7/audit.json": {
+      "sha256": "b2115599e547b688995d50362adf11563a03f6cf3a3594904a67fa2f5886608c",
+      "mtime_ns": 1792250066830735202
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/635dbb7323214f4b80b59c1dc98d1969/audit.json": {
+      "sha256": "ec25f31ccdea0ebe958b583dafae3e500fb51ed35c6ca1ed92003403c1852ecb",
+      "mtime_ns": 1792249641514448860
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/63eaaac4ea4d4e01b925e6a4872e4017/audit.json": {
+      "sha256": "bcfcd5902e8f1cfae754cb8c4d37be07b72b76c5ce5203630d7d0e4acd259911",
+      "mtime_ns": 1792249906132873431
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/6ac0e71eadfb49ce8a7bb86f3793300d/audit.json": {
+      "sha256": "882d53394b590970f9ae3664e89c21388897585713d19daac3893e34da15dfdc",
+      "mtime_ns": 1792249253320040565
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/6c899aa03e274220bcc5569d59e4f8ea/audit.json": {
+      "sha256": "efa7a340220ec89683ba9c11289cc09630f7e80a3a37f6f2102a8625490b9877",
+      "mtime_ns": 1792249474752207238
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/7497088d96ee4ea2b55cc3062fc037f6/audit.json": {
+      "sha256": "0205a86bfa24b92c8c6aa2b0d1054783362182c386b70fb81a32f5894f801247",
+      "mtime_ns": 1792249450846198396
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/79e983f7442b4fdea9a01150abfa2be3/audit.json": {
+      "sha256": "3d90f87b07a1879cad1b6d78cd4c323395a7626335b40c21441cca7b9218665e",
+      "mtime_ns": 1792250323272684698
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/853b6e7750bc498bb3f748736f3228f8/audit.json": {
+      "sha256": "212830af43eb67468d4c4feb1d65b7b3a1d31ac646ecef25ff04777268b45dc9",
+      "mtime_ns": 1792249065227069852
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/86c854b0bb9a4f7388723c9e57e0299c/audit.json": {
+      "sha256": "9b4147c85868bfddafe9eeb36c83d4e3c03b3894566b1f78525df9a1718204b6",
+      "mtime_ns": 1792250421448166203
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/90f62ae9ea6e470ca8616d355fe3f2de/audit.json": {
+      "sha256": "be6c5a651a321d32f2a612d22a06023a4e4e28032f9fde1c8a77baf39b80b15e",
+      "mtime_ns": 1792249192492184293
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/9241eaf124984de8a9089e5fabb72341/audit.json": {
+      "sha256": "10ec56bb0219a6498bc3394da47363f3753471f6991295c1e6a1eb388c0ef22a",
+      "mtime_ns": 1792250546558020847
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/953f3e0565434c17abdcb56064a10e47/audit.json": {
+      "sha256": "ac1b83d6140cc81b86199fc72368a56e0bd1bc244f540b9156b4421df21a28f6",
+      "mtime_ns": 1792249944773468269
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/9e2074fcef2d404e9c55b9bdb164093f/audit.json": {
+      "sha256": "ee75b75afc2043455e21e9178343171f6e9defd1248ba6514b73af838a222b0d",
+      "mtime_ns": 1792249702560883542
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/ac067df0989d4f6b983436693f13c11f/audit.json": {
+      "sha256": "3d285a78119af58ec7364c2b675ed2f7a5d438d299e822efc331be5b552bf02a",
+      "mtime_ns": 1792250399383817969
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/b0f8797499ea4735ad71219ff1845245/audit.json": {
+      "sha256": "819c8e28f8664b2cc4b68d1422e2b4087a019b67e5e73d321ec9616324e33399",
+      "mtime_ns": 1792249161027755923
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/ba555f5138b34c40881d2717bfdd849c/audit.json": {
+      "sha256": "e3e0ccc4c76f11e9619ef9be471d3e67a0454ac0fe11282b75ef659c1bd51603",
+      "mtime_ns": 1792250786029934031
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/bb2e324857c64607af14047e6036d1c8/audit.json": {
+      "sha256": "2cc58e842b21020087a65f0a3ead5a65a79f525dfae21a04c9296b0921399650",
+      "mtime_ns": 1792249093521938100
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/c6bef7f09b5044d59f60ed6f0aca95b3/audit.json": {
+      "sha256": "e40c78af7869b9896382c38d68e31c7b62cf5d790c9f4f7182d6f68d1b411148",
+      "mtime_ns": 1792249306740758953
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/d167e50924bc4831a9e8cbb89d2b8964/audit.json": {
+      "sha256": "4dd857d8517569f0d32cefb40bafff60cca91c92e750ff64863eec2b249e8eb0",
+      "mtime_ns": 1792250221073144237
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/d24b6621b1a242c3b51ea507568f5a4c/audit.json": {
+      "sha256": "5e733fc0912481391e88a23b8187a7bbf117eb9ee4634daeac633a08216adba4",
+      "mtime_ns": 1792250840681223111
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/d4cfb2f6c3454930aedaa6a62adae1eb/audit.json": {
+      "sha256": "d94a17688cde255616327936753315fdd615f2b7d756abdbd87f4800918aa0d7",
+      "mtime_ns": 1792249376227097170
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/d720eba8fc544bab91fd59026789f027/audit.json": {
+      "sha256": "7290fd339bc5f397d4207dedc5ed01f45fa853625f73c35aeee0773d5662c0d4",
+      "mtime_ns": 1792249605293415219
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/db04f5d613934081a00db82210b826d7/audit.json": {
+      "sha256": "9afeb5861ad3c8fbc98da7baab90ebdd46f77fddb9de6bff03bbd57ab1420a54",
+      "mtime_ns": 1792249125946173764
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/dd946de111154670b489db64cc01f3fe/audit.json": {
+      "sha256": "01fda800ca09d6b76d33491ed922ac23b027e2eaae0c38a226a7f09a714b9b37",
+      "mtime_ns": 1792249414125808260
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/e134ee1058754ee38914c8d77566e454/audit.json": {
+      "sha256": "a1cd57cb72981e01d210e60c71d79be8579af93463436184923d1ce4450a8b10",
+      "mtime_ns": 1792250023564625727
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/edab42d8b43d4e36b177b9b42a025481/audit.json": {
+      "sha256": "bb9588e09d7f9962e00ceeed47beb9ee674798cd8e5a000f5ab16ecbe058c945",
+      "mtime_ns": 1792250174019559499
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/f0ba6cbb344e4b8ba6532c04c3ee7ba5/audit.json": {
+      "sha256": "8343d5e78a594a85a2fe343dd6ff65688d0652f9a8786bba3c0918e4ede57080",
+      "mtime_ns": 1792250903696528818
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/f77f63c1c0da4ac29e5b12cfaf5eec59/audit.json": {
+      "sha256": "f971bc35903f009c3021124e5d9a10360450dee1ca6e0c218786cedb14aad5aa",
+      "mtime_ns": 1792249547566382657
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/fdd97b4921d242818b9ea8df7b0164cf/audit.json": {
+      "sha256": "d26a544d22fc6a4f7c02fefe9a816d47239ca2d2fd97229f25b74a34d3a854bb",
+      "mtime_ns": 1792249501080729271
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/fdff0f32e8b64a02ae860c65d1e6b6b5/audit.json": {
+      "sha256": "8a1789297636373ecfb627bd6847b52a559f1f665d1f8b48456bb057ea3e85a3",
+      "mtime_ns": 1792250766245970131
+    },
+    "local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017/periodic_episodes/ff890a09da404af0ac8f6d4355f709c2/audit.json": {
+      "sha256": "c1b5ab2c4fcdc37d31b3bd20ee8a7c094c12cc59c00e9997e00ad09b7862ba16",
+      "mtime_ns": 1792249789209154129
+    },
+    "local/rl_training/spacepilot_bc_20261017_213359_index/data_audit.json": {
+      "sha256": "3317bcc315c5edab201d29bde5643c4cd80ff032a356bd2bf0c3f74b7c57189c",
+      "mtime_ns": 1792244796010443350
+    },
+    "local/rl_training/spacepilot_bc_20261017_213359_index/training_summary.json": {
+      "sha256": "f8fdc5cb170cf7b3945ccd5b91117b2b4d4fcb12637b54adc1f26194f26c28c3",
+      "mtime_ns": 1792245016443738824
+    },
+    "local/rl_training/spacepilot_bc_20261017_213359_index/comparison_2000_4000.json": {
+      "sha256": "1673b93e88ea14f23c05e2a223f2d968f1d69da704ce16862a20ef995ca00ccc",
+      "mtime_ns": 1792245610800945595
+    }
+  }
+}

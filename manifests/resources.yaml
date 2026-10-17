@@ -29,6 +29,33 @@ local_data_storage:
   retained_current_bc_evaluation: local/bc_episodes/demo_new_20261007_213643_eval_01
   restore: Mount the drive at the recorded path for read-only access through old working paths. Restore cold RL sessions to an SSD and verify all hashes before resuming training; exFAT replay writes and recovery are unqualified. Keep runtime environments, SDKs, models and current RL resources local. See tutorials/local_data_storage.md.
 resources:
+  - id: oct17-spacepilot-bc-rl-evidence
+    path: docs/evidence/spacepilot_bc_rl_20261017
+    tracked: true
+    source: Read-only JSON snapshots at 2026-10-17T23:29:17+08:00; source paths and hashes in snapshot.json
+    purpose: BC1648/6148 results, selected settings, applied settings, and live Actor/Learner/episode evidence
+  - id: spacepilot-bc6148-policy
+    path: local/rl_training/spacepilot_bc_20261017_213359_2000_4000
+    tracked: false
+    source: CUDA BC fit over 9 normal original episodes and 1499 accepted-command samples
+    purpose: BC6148 actor.pt, dataset, normalization, training histories and reload-verified predictions
+    restore: Preserve this directory together with the source collection and index; actor.pt SHA256 is 611afee1d8e3020aebf5269a01b65deb59b8ee49bdaa937851b3058905ea2639. See docs/agent/training/evolution/spacepilot-bc-online-rl.md.
+  - id: spacepilot-oct17-human-collection
+    path: local/rl_episodes/spacepilot_response_20261017_213359
+    tracked: false
+    source: 10 user-operated SpacePilot episodes; 3 successes, 6 normal timeouts, 1 abnormal disconnect
+    purpose: Original frames/audits and valid segments used for new BC; source files remain unchanged
+  - id: spacepilot-bc-training-index
+    path: local/rl_training/spacepilot_bc_20261017_213359_index
+    tracked: false
+    source: Validated BC-specific index and per-original-episode split
+    purpose: Data audit, preparation script, source hashes, experiment logs and short/long BC comparison
+  - id: spacepilot-bc6148-active-rl
+    path: local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017
+    tracked: false
+    source: BC6148 weights-only initialization; new online data only
+    purpose: Active 30-second/300-episode task, checkpoints, replay catalog, data and monitoring
+    restore: Resume this complete directory with run_async_rl.sh --parameter configs/spacepilot_bc6148_online_rl.json. Do not prepare over it or copy only actor.pt; see tutorials/spacepilot_bc6148_online_rl.md.
   - id: spacepilot-hil-button-profile
     path: local/spacepilot/hil_buttons.json
     tracked: false

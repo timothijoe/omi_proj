@@ -1,5 +1,7 @@
 # 2026-10-17 开发快照：SpacePilot、AprilTag 与控制响应
 
+本页是19:51提交521fd47附近的早期阶段快照。后续采集接入、按键定制、速度对齐、CUDA BC及在线RL见[全天编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)与[当前纪传](agent/training/evolution/spacepilot-bc-online-rl.md)；下文“先固化/未接训练”类边界只代表当时状态。
+
 本页汇总当前工作区的实现、操作入口、现场证据和待办，供本次本地提交及后续继续开发使用。**当前先固化基线，不提高速度、刚度或更改停止策略；优先补齐SDK提交、目标和反馈测量。**
 
 ## 1. 当前功能与文件

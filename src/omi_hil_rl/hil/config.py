@@ -76,3 +76,19 @@ class HILConfig:
 
 def load_config(path):
     return HILConfig(**json.loads(Path(path).read_text()))
+
+
+def same_contract_except_episode_seconds(source, target):
+    """Time-limit-only seed transfer; observations, actions and rewards must match."""
+    from copy import deepcopy
+    try:
+        for contract in (source, target):
+            seconds = contract['episode_seconds']
+            if not math.isfinite(seconds) or seconds <= 0 or seconds != contract['config']['episode_seconds']:
+                return False
+        adapted = deepcopy(source)
+        adapted['episode_seconds'] = target['episode_seconds']
+        adapted['config']['episode_seconds'] = target['episode_seconds']
+        return adapted == target
+    except (KeyError, TypeError):
+        return False
