@@ -1,5 +1,7 @@
 # Training 编年索引
 
+- [2026-10-18：SpacePilot在线RL停止核验](2026-10-18-spacepilot-rl-stopped.md)：正常退出、最终4628权重、67回合/13360条、索引完整性与剩余233回合续跑交接。
+
 - [2026-10-17：SpacePilot采集、两阶段BC与显式参数在线RL](2026-10-17-spacepilot-bc-online-rl.md)：从按键/响应到BC6148、30秒空池RL与真实在线运行；含参数决策修正、marker暂关及待办。
 
 - [2026-10-12：操作说明汇总与纪传/编年同步](2026-10-12-documentation-consolidation.md)：自动resume说明、分类导航、常用指令，以及补齐滞后的在线RL/缓存/监控纪传。

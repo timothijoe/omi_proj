@@ -1,5 +1,7 @@
 # 项目Markdown全量索引
 
+2026-10-18停止交接：[编年](agent/training/chronicles/2026-10-18-spacepilot-rl-stopped.md)、[证据及校验范围](evidence/spacepilot_rl_stopped_20261018/README.md)。
+
 2026-10-17全天：[SpacePilot/BC6148/在线RL纪传](agent/training/evolution/spacepilot-bc-online-rl.md)、[编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)、[现场证据](evidence/spacepilot_bc_rl_20261017/README.md)。
 
 SpacePilot BC6148在线RL：[显式setting与旧参数对照、触觉解冻、30秒与累计300回合](../tutorials/spacepilot_bc6148_online_rl.md)。

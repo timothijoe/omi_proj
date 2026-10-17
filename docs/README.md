@@ -1,5 +1,7 @@
 # OMI 文档总目录
 
+2026-10-18：[SpacePilot在线RL停止核验与续跑](agent/training/chronicles/2026-10-18-spacepilot-rl-stopped.md) · [最终保存证据](evidence/spacepilot_rl_stopped_20261018/README.md)。最终4628权重、67回合、13360条，正常关闭。
+
 2026-10-17全天进展：[SpacePilot采集、BC6148与在线RL纪传](agent/training/evolution/spacepilot-bc-online-rl.md) · [当天编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md) · [23:29只读证据快照](evidence/spacepilot_bc_rl_20261017/README.md) · [当前参数与操作](../tutorials/spacepilot_bc6148_online_rl.md)。
 
 新增[SpacePilot采集与在线HIL输入](../tutorials/spacepilot_hil.md)：BC/RL人工采集、固定BC和在线RL共用输入后端；原手柄保持默认。[机制与边界](agent/hardware/evolution/spacepilot-hil.md)。

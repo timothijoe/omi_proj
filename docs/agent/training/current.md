@@ -1,5 +1,7 @@
 # Training 当前摘要
 
+2026-10-18停止核验：[编年](chronicles/2026-10-18-spacepilot-rl-stopped.md)与[证据](../../evidence/spacepilot_rl_stopped_20261018/README.md)。任务于10月17日23:42正常CLOSED，无强杀；最终actor.pt/learner.pt均4628，停止前实际操控4150。67回合（成功标记43、超时17、普通结束6、断连1），66可训练、13360条全部登记；原run续跑剩余233回合。权重/索引检查通过，未启动恢复训练；不将成功标记视为自主成功率。
+
 2026-10-17最新：[SpacePilot采集→BC6148→在线RL纪传](evolution/spacepilot-bc-online-rl.md)与[当天编年](chronicles/2026-10-17-spacepilot-bc-online-rl.md)已整理。10个新采回合保留9个正常回合/1499样本；CUDA两阶段2000+4000步得到BC6148，训练MSE0.00223588。按用户要求从BC权重新建空池RL，30秒、累计300、视觉/融合冻结、预热后触觉训练，保留旧after-inference、publish50/reload10及预算比例1。参数经--parameter显式加载，夹爪开启、marker暂关。
 
 23:29:17[只读快照](../../evidence/spacepilot_bc_rl_20261017/README.md)：Actor已加载2750、有效完成49；Learner更新3367/已发布3350，触觉训练true、融合false；50个结束审计（成功标记37、超时11、输入断连1、普通结束1），导出9308条。这是运行中证据，不是最终统计或自主成功率。当前命令见[在线教程](../../../tutorials/spacepilot_bc6148_online_rl.md)。新standalone数据的动作范围已经扩展并随BC6148继承，不能与旧范围模型混用。原手柄保持默认兼容。

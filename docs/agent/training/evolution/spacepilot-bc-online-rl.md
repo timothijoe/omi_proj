@@ -1,6 +1,8 @@
 # SpacePilot 人工采集、BC6148 与显式参数在线 RL
 
-更新于2026-10-17。本页按功能记录当前实现；形成过程见[当天编年](../chronicles/2026-10-17-spacepilot-bc-online-rl.md)。实际命令以[在线操作教程](../../../../tutorials/spacepilot_bc6148_online_rl.md)和[主参数文件](../../../../configs/spacepilot_bc6148_online_rl.json)为准。
+更新于2026-10-18。本页按功能记录当前实现；形成过程见[当天编年](../chronicles/2026-10-17-spacepilot-bc-online-rl.md)。实际命令以[在线操作教程](../../../../tutorials/spacepilot_bc6148_online_rl.md)和[主参数文件](../../../../configs/spacepilot_bc6148_online_rl.json)为准。
+
+最新停止状态：10月17日23:42 Actor/Learner正常退出，最终两份checkpoint均4628，退出前操控使用4150；67个原始回合中66可训练，13360条均已登记，累计上限剩余233。10月18日只读检查保存状态与索引通过；[停止核验](../chronicles/2026-10-18-spacepilot-rl-stopped.md)记录完整口径及续跑边界。以下23:29数值保留为历史运行快照。
 
 ## 当前可用范围
 
