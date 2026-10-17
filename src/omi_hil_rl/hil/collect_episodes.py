@@ -64,7 +64,8 @@ def collect_periodic(run, config, transport, *, episodes=100000, resume=False):
                 config=asdict(config), contract=config.replay_contract(), policy='none',
                 reset_actions_in_replay=False, action_semantics='accepted_command',
                 control_mode='observation_driven_10hz', timing_policy='diagnostic_only_v1',
-                receiver=getattr(transport, 'receiver_info', None)))
+                receiver=getattr(transport, 'receiver_info', None),
+                operator_input=getattr(transport, 'operator_input_info', None)))
         transport.collect_human = True
 
         class HumanPeriodicActor:
@@ -104,7 +105,8 @@ def _collect(run, config, transport, *, episodes, results, resume,
         atomic_json(run / 'session.json', dict(mode='human_rl_episodes', config=asdict(config),
             contract=config.replay_contract(), policy='none', reset_actions_in_replay=False,
             rgb_max_age_ns=getattr(getattr(transport, 'runtime', None), 'rgb_max_age_ns', None),
-            receiver=getattr(transport, 'receiver_info', None)))
+            receiver=getattr(transport, 'receiver_info', None),
+            operator_input=getattr(transport, 'operator_input_info', None)))
     try:
         for _ in range(episodes):
             spool = None
@@ -195,7 +197,7 @@ def main():
     parser.add_argument('--episodes', type=int, default=100000)
     parser.add_argument('--gamepad', default='/dev/input/js0')
     from omi_hil_rl.real.operator_input import (
-        add_input_arguments, options_from_args, check_operator_input, required_buttons)
+        add_input_arguments, options_from_args, check_operator_input, required_buttons, collection_input_config)
     add_input_arguments(parser)
     parser.add_argument('--home-button-code', type=int, default=314,
                         help='Back key for automatic home between episodes (default: 314)')
@@ -229,6 +231,18 @@ def main():
         parser.error('--resume requires an existing session.json')
     config = replace(load_config(args.config) if args.config else HILConfig(transport='ros', wrist_camera='required'),
                      review='auto', episode_seconds=args.episode_seconds)
+    if args.resume and args.input_device == 'spacepilot':
+        # Resume the recorded contract rather than reconstructing new default bounds.
+        previous_session = json.loads((args.output/'session.json').read_text())
+        if args.config is None:
+            config = replace(HILConfig(**previous_session['config']),
+                             review='auto', episode_seconds=args.episode_seconds)
+        if args.spacepilot_speed_profile == 'auto':
+            args.spacepilot_speed_profile = (previous_session.get('operator_input') or {}).get('speed_profile', 'session')
+    try:
+        config, input_options = collection_input_config(config, args)
+    except ValueError as exc:
+        parser.error(str(exc))
     if config.transport != 'ros' or args.episodes < 1:
         parser.error('ROS config and positive episode count required')
     episode_buttons = (config.start_button, config.success_button, config.stop_button,

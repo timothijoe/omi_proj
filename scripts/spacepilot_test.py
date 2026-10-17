@@ -11,7 +11,7 @@ sys.path.insert(0, str(PROJECT_ROOT / 'src'))
 
 from omi_hil_rl.hardware.spacepilot_pose import SpaceNav
 from omi_hil_rl.real.spacepilot_control import (
-    DEFAULT_ENABLE_BUTTON, EnableGate, SpacePilotMapping, selected_action,
+    DEFAULT_ENABLE_BUTTON, EnableGate, SpacePilotMapping, selected_action, MotionSchedule,
 )
 from omi_hil_rl.real.sdk_action import OUTPUT_CONVENTIONS, output_action, format_action_trace
 
@@ -71,10 +71,10 @@ def run(args, mapping, gate):
             print('仅预览，无 ROS 发布。Ctrl+C 退出。', flush=True)
         gate.reset()
         period = 1. / args.rate
-        next_command = last_poll = time.monotonic()
+        last_poll = time.monotonic()
+        schedule = MotionSchedule(args.rate)
         last_print = 0.
         last_state = None
-        moving = False
         while ros is None or ros.ok():
             now = time.monotonic()
             # Discard queued input after a process stall; require a fresh enable press.
@@ -94,13 +94,11 @@ def run(args, mapping, gate):
                     raise RuntimeError('发现策略动作发布者，请先停止策略控制程序')
             # Start and stop edges bypass the deadline. While motion continues,
             # keep --rate even when its magnitude/direction changes; never catch up.
-            is_moving = any(data)
-            send = now >= next_command or (is_moving != moving)
+            send = schedule.due(now, data)
             if send:
                 if pub is not None:
                     pub.publish(Float64MultiArray(data=data))
-                moving = is_moving
-                next_command = time.monotonic() + period
+                schedule.sent(time.monotonic(), data)
             state = (mode, gate.enabled, driver.last_button, driver.name)
             if state != last_state or now - last_print >= .5:
                 debug = (f' | 设备原始[x,y,z,rx,ry,rz]={driver.device_raw}'

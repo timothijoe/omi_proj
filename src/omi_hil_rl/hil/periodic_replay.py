@@ -52,6 +52,16 @@ def eligibility(tick, following, receipts, interruptions, *, timing_policy='stri
         return 'tag_follow_boundary'
     start, end = tick['observation_reference_ns'], following['observation_reference_ns']
     send = tick['command_send_ns']
+    if (tick.get('manual_timing') or following.get('manual_timing')):
+        # Fast edges can reuse an observation or shorten a velocity interval.
+        # Keep all commands in audit, but never invent a 100ms training step.
+        if end <= start:
+            return 'manual_reused_observation'
+        interval_end = following.get('terminal_stop_ns', following['command_send_ns'])
+        if not 80_000_000 <= interval_end - send <= 150_000_000:
+            return 'manual_edge_or_gap_interval'
+        if any(send <= t < following['command_send_ns'] for t in interruptions):
+            return 'manual_interrupted_interval'
     diagnostic = timing_policy == 'diagnostic_only_v1'
     if not diagnostic and not start <= send < end <= following['command_send_ns']:
         return 'noncausal'
@@ -159,6 +169,8 @@ def convert(directory, run, contract, version, ticks, receipts, interruptions, b
                  next_observation_time_ns=following['observation_reference_ns'],
                  action_source=tick['action_source'], command_status='periodic_accepted_command',
                  command_audit=dict(source_episode=outcome['episode'], periodic_tick=i,
+                    manual_timing=tick.get('manual_timing'),
+                    actual_command_interval_s=(following.get('terminal_stop_ns', following['command_send_ns'])-tick['command_send_ns'])/1e9,
                     arbitration_mode=tick.get('arbitration_mode', 'immediate'),
                     arbitration=tick.get('arbitration'),
                     exploration=tick.get('exploration'),

@@ -24,13 +24,21 @@ profile schema为omi-spacepilot-hil-input-v1，buttons的key为原逻辑码字�
 
 ## 动作和数据
 
-人工基础速度来自HILConfig的step×hz；沿用SpacePilot死区、模式、单轴滞回和独立倍率，最终按组缩放到既有action_scale逐轴界内。HILConfig、checkpoint/replay契约不改，policy候选不乘人工倍率。SDK转换仍只发生一次。
+速度方案由--spacepilot-speed-profile控制。session保持HILConfig的step×hz基准及既有动作范围；standalone使用独立工具的10 mm/s、10°/s基准。auto在未指定config的新建人工采集中选择standalone，并在新建时扩展必要的action_scale；已有模型及显式config选择session，续采读取保存的方案。旧checkpoint/replay不静默修改，显式standalone超出其范围时拒绝启动。沿用死区、坐标映射和单轴滞回，SDK转换仍只发生一次。
 
 HIL CLI的SpacePilot倍率默认1.5/0.3，新增--translation-scale/--rotation-scale简写；手柄速度不受其影响。
 
 动作来源继续为human/policy，人工/策略仲裁、奖励与episode语义不变。SpacePilot trace补充operator_input来源/profile哈希/倍率/边界，遥测也带输入来源；已有gamepad遥测字段保留兼容。profile切换只影响下一次启动，不在线修改旧数据或模型。
 
 输入过期150 ms时只归零人工候选，仍按接管归属记录；断连和250 ms轮询停顿清状态并触发原断连流程。启动/重连时按住的键需释放再触发；短按及同批按下/松开保留有序事件。接管释放在在线RL中是归还policy，不是总停机。
+
+## 参考独立工具的响应调整
+
+用户要求先备份后修改，基线提交为7c2d2c5。对照初版实际采集记录spacepilot_test_20261017_211128与211316，非零连续发送间隔分别98.6–102.3ms和95.9–104.9ms，未见长时间发送停顿。主要差异为较低且更早饱和的速度范围，以及启停等待观测节拍。这两次实际平移倍率为2.5，而单轴仍被限制到约5.77mm/s。
+
+MotionSchedule由spacepilot_test.py与HIL共用：零/非零边沿立即发送，连续运动墙钟10Hz，不因方向变化加发，不补发积压。periodic人工采集、immediate仲裁下的人工接管及回合外调整使用该调度；after-inference仍遵守推理后仲裁，receipt入口仍遵守旧配对流程。手柄调度保持原行为。
+
+额外发送允许复用最新观测但不伪造训练步。manual_timing标记对应片段必须观测递增、实际指令间隔80–150ms且无外部中断，其他片段只审计并分段；actual_command_interval_s记录真实间隔，终止边界用停止时刻。新建standalone采集的较大动作范围随数据保存，不能直接混入旧动作范围模型的回放池。
 
 ## 验证范围
 
@@ -40,4 +48,4 @@ HIL CLI的SpacePilot倍率默认1.5/0.3，新增--translation-scale/--rotation-s
 
 后续用户九键预设、单键标签操作和倍率简写落地后的相关回归319 passed、2 skipped（CUDA）。覆盖手柄/SpacePilot两种工厂接线、单键保存/跟随实际控制流程、按键不串入夹爪/回合事件、自动保留约束及模式图标键不改变六轴。新预设真实驱动只读连接通过。
 
-已保存本轮用户选择的键位并验证真实驱动只读连接；尚未完成新输入下的完整真机BC/RL采集或在线训练验收。本轮没有启动机器人动作或真实Learner，也没有修复共用接收端的物理停止拖尾。
+响应调整后的相关回归341 passed、2 skipped（CUDA不可用）。新增逐轴及随机六轴输出与独立工具等价、快速启停、不补发、旧模型范围保护、真实格式审计及训练导出验证。初版已由用户试采两段并生成记录；本次响应调整尚未运行真机回合。助手没有启动机器人动作或真实Learner，也没有修复共用接收端的物理停止拖尾。

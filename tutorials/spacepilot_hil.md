@@ -83,6 +83,7 @@ bash scripts/collect_rl_episodes.sh \
   --episode-seconds 20 --episodes 10 --execute \
   --input-device spacepilot \
   --spacepilot-map local/spacepilot/hil_buttons.json \
+  --spacepilot-speed-profile standalone \
   --spacepilot-translation-scale 1.5 --spacepilot-rotation-scale 0.3
 ```
 
@@ -96,16 +97,30 @@ bash scripts/collect_rl_episodes.sh \
 
 可用 `--spacepilot-mode translation|rotation|all` 和 `--spacepilot-dominant-axis`，死区由 `--spacepilot-deadzone` 指定，默认18、量程参考350。
 
-HIL的动作范围来自本次会话/检查点，**不直接采用独立遥操作的10 mm/s默认值**。倍率1的单轴基础速度为：
+`--spacepilot-speed-profile`决定速度基准：
+
+| 方案 | 速度及数据范围 |
+| --- | --- |
+| `auto`（默认） | 新建且未指定config的人工采集使用standalone；模型入口或显式旧config使用session；续采读取已保存方案 |
+| `standalone` | 与spacepilot_test.py相同的10 mm/s、10°/s基准；倍率1.5/0.3输出15 mm/s、3°/s，新建人工采集同时建立足够的动作范围 |
+| `session` | 保持原会话/模型的速度基准和动作边界，不修改数据或权重 |
+
+standalone遇到范围不足的旧会话/模型会提前拒绝，不能通过静默限幅伪装成速度匹配。新采集扩大后的physical_action_scale须随数据使用，不能直接混入旧范围的模型或回放池。恢复备份前的速度方案可显式选择session。
+
+session方案中，倍率1的单轴基础速度为：
 
 - 平移：`config.translation_step_m × config.hz` m/s。
 - 旋转：`config.rotation_step_rad × config.hz` rad/s。
 
-独立倍率只影响人工输入，0禁用对应组；缩放后如果超过会话逐轴动作上限，按组等比例压回界内。倍率大于1不会扩大checkpoint/replay契约；策略、归一化、模型权重不受影响。回home仍沿用原固定回位算法，不由旋钮倍率调速。
+独立倍率只影响人工输入，0禁用对应组；session方案缩放后如果超过会话逐轴动作上限，按组等比例压回界内。standalone则在启动前验证整个动作范围可容纳，不靠早饱和改变响应曲线。已存在的checkpoint/replay契约及策略输出不变。回home仍沿用原固定回位算法，不由旋钮倍率调速。
 
 ## 5. 仲裁、断连和数据
 
-继承原 `after-inference` / `immediate` 仲裁。默认after-inference下人工选择仍在推理完成后进行；独立遥操作“首条立即发送”的节拍不能绕过RL的观测/回执配对。回合开始、成功、结束、标签跟随和回位依旧由原状态机处理。
+periodic人工采集和immediate仲裁下的SpacePilot人工控制使用与独立工具共用的MotionSchedule：首次非零/归零立即发送，连续运动按墙钟10Hz、方向变化等待下个周期、不补发积压指令。输入不再等待新观测才能发送，仍使用最新可用观测做审计。观测不可用时停止已有人工运动。回合外手动调整也采用相同节拍。
+
+原手柄仍按原观测驱动节拍运行。在线RL显式选择after-inference时仍保留推理完成后仲裁，不能声称此模式下人工输入完全等同独立工具；要即时人工响应使用--arbitration-mode immediate。旧receipt采集入口仍保留原逐条配对机制。
+
+每条额外启停指令记录manual_timing和真实发送时间。相关训练片段必须有递增观测、实际指令间隔80–150ms且没有中途外部停止；过短或重复观测片段仅保留审计并分段，避免伪造完整训练步。有效导出记录actual_command_interval_s。原手柄/旧数据未添加该调度标记，保持原录制规则。
 
 输入超过150 ms未更新时人类候选为零；仍按住接管键时不会因此伪装成policy。设备断连/变更清空状态；轮询停顿超过250 ms丢弃连接中旧事件，并按断连处理。启动或重连时已经按住的键不自动触发，需要松开再按。
 

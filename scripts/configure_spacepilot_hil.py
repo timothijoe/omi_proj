@@ -15,7 +15,7 @@ from omi_hil_rl.hil.config import HILConfig, load_config
 from omi_hil_rl.real.operator_input import (
     DEFAULT_PROFILE, PROFILE_SCHEMA, PROFILE_FRAME, InputOptions, button_labels,
     load_button_profile, create_operator_input, oct17_buttons, DIRECT_FOLLOW_CODES,
-    follow_buttons_for_input,
+    follow_buttons_for_input, collection_input_config,
 )
 
 
@@ -29,6 +29,7 @@ def build_parser():
     p.add_argument('--direct-follow', action='store_true', help='Bind two independent tag actions instead of LB chords')
     p.add_argument('--translation-scale', type=float, default=1.5, help='Read-only preview human translation scale')
     p.add_argument('--rotation-scale', type=float, default=.3, help='Read-only preview human rotation scale')
+    p.add_argument('--spacepilot-speed-profile', choices=('auto','standalone','session'), default='auto')
     p.add_argument('--assign', action='append', default=[], metavar='LOGICAL=DEVICE',
                    help='Create a complete profile from already confirmed IDs, without device connection')
     modes = p.add_mutually_exclusive_group()
@@ -37,9 +38,9 @@ def build_parser():
     return p
 
 
-def preview(config, path, translation_scale=1.5, rotation_scale=.3):
+def preview(config, path, translation_scale=1.5, rotation_scale=.3, speed_profile='session'):
     pad, mapping, info = create_operator_input(config, options=InputOptions(kind='spacepilot', profile=path,
-        translation_scale=translation_scale, rotation_scale=rotation_scale))
+        translation_scale=translation_scale, rotation_scale=rotation_scale, speed_profile=speed_profile))
     follow = follow_buttons_for_input(pad)
     print('只读预览，不连接ROS；逻辑311=接管，315=开始，308=成功，307=结束（自定义配置以列表为准）。')
     print(json.dumps(info, ensure_ascii=False, indent=2))
@@ -149,7 +150,11 @@ def main():
                 print(f'{label}：逻辑{code} ← 设备ID{buttons.get(code, "未配置")}')
             return
         if args.preview:
-            preview(config, args.output, args.translation_scale, args.rotation_scale)
+            preview_args = argparse.Namespace(**vars(args), input_device='spacepilot',
+                spacepilot_translation_scale=args.translation_scale,
+                spacepilot_rotation_scale=args.rotation_scale)
+            config, options = collection_input_config(config, preview_args)
+            preview(config, args.output, args.translation_scale, args.rotation_scale, options.speed_profile)
             return
         if args.output.exists():
             p.error('输出已存在；使用 --show/--preview，或 --output 指定新的配置文件')

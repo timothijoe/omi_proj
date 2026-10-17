@@ -1,8 +1,9 @@
-"""10Hz latest observations drive human commands and asynchronous inference.
+"""Latest observations, standalone-style SpacePilot input, and asynchronous inference.
 
 No blocking command receipt/next-observation join in the publishing loop.
 Raw periodic audit is not itself a training episode. Protected RL sessions opt
 into background export of accepted-command segments; timing is diagnostic only.
+SpacePilot fast-edge intervals have additional replay admission checks.
 """
 import json
 import os
@@ -80,6 +81,7 @@ def observation_action(transport, used_stamp, verified, *, policy=True):
     None means no new command: it never means replace a slow inference with zero.
     """
     transport.last_exploration = None
+    transport.last_manual_timing = None
     latest = transport.latest
     if latest is None:
         return None
@@ -114,10 +116,17 @@ def observation_action(transport, used_stamp, verified, *, policy=True):
             return None
         return np.zeros(6, np.float32), source, 'receiver_handshake', latest, stamp, None
     if human:
-        if stamp == used_stamp:
-            return None
         action = (transport.mapping.action(transport.pad.axes).astype(np.float32)
                   if transport.pad.buttons.get(311, False) else np.zeros(6, np.float32))
+        schedule = getattr(transport, 'spacepilot_schedule', None)
+        if schedule is not None:
+            now = time.monotonic()
+            if not schedule.due(now, action):
+                return None
+            transport.last_manual_timing = dict(scheduling='spacepilot_wallclock_10hz_edges_v1',
+                motion_edge=bool(np.any(action)) != schedule.moving)
+        elif stamp == used_stamp:
+            return None
         return action, 'human', 'human', latest, stamp, None
     if not policy:
         if stamp == used_stamp:
@@ -300,6 +309,13 @@ def run_periodic(actor, episodes, *, training=False):
            else 'RB takeover does not wait for inference'), flush=True)
     print('OBSERVATION_CONTROL: 100ms latest observation; infer then send; timing diagnostic only; '+
           ('background replay export' if training else 'audit-only recording'), flush=True)
+    if getattr(transport, 'spacepilot_schedule', None) is not None:
+        if arbitration_mode == 'immediate':
+            print('SPACEPILOT_CONTROL: 人工动作首次有效/回中立即发送，持续运动10Hz；'
+                  '额外启停指令保留审计，过短或重复观测片段不入训练池。', flush=True)
+        else:
+            print('SPACEPILOT_CONTROL: 当前after-inference仍等待推理后仲裁；'
+                  '需要即时人工响应时使用--arbitration-mode immediate。', flush=True)
     if getattr(transport, 'collect_human', False):
         print('PERIODIC_CONTROL: Start(315)进入回合；移动机械臂需持续按住RB(311)并推动摇杆。', flush=True)
     completed_episodes = 0
@@ -412,14 +428,25 @@ def run_periodic(actor, episodes, *, training=False):
                         break
                     follow_tick = getattr(transport, '_tag_follow_tick', None)
                     following_last_loop = bool(follow_tick and follow_tick())
+                    manual_schedule = getattr(transport, 'spacepilot_schedule', None)
                     if following_last_loop:
+                        if manual_schedule is not None:
+                            manual_schedule.reset()
                         last_owner = None
                         continue
-                    # Immediate mode handles RB edges here; deferred mode switches only after inference.
-                    rb = bool(transport.pad.buttons.get(311, False))
-                    if arbitration_mode == 'immediate' and rb != last_rb and last_owner is not None:
+                    if manual_schedule is not None and transport.latest is None and manual_schedule.moving:
                         audit.submit('interrupt', transport.node.get_clock().now().nanoseconds)
                         transport.stop()
+                        manual_schedule.reset()
+                        last_owner = None
+                    # Immediate mode handles RB edges here; deferred mode switches only after inference.
+                    rb = bool(transport.pad.buttons.get(311, False))
+                    if (arbitration_mode == 'immediate' and rb != last_rb and last_owner is not None
+                            and not (manual_schedule is not None and getattr(transport, 'collect_human', False))):
+                        audit.submit('interrupt', transport.node.get_clock().now().nanoseconds)
+                        transport.stop()
+                        if manual_schedule is not None:
+                            manual_schedule.reset()
                         last_owner = None
                     last_rb = rb
                     selected = observation_action(transport, used_stamp, verified,
@@ -434,6 +461,9 @@ def run_periodic(actor, episodes, *, training=False):
                     transport.last_owner = source
                     transport.command_anchor_ns = latest[1] if latest is not None else None
                     wire = transport._publish(action, command_id)
+                    manual_timing = getattr(transport, 'last_manual_timing', None)
+                    if manual_schedule is not None and (manual_timing is not None or (source == 'human' and gate == 'receiver_handshake')):
+                        manual_schedule.sent(time.monotonic(), action)
                     known[command_id] = (source, wire)
                     unacknowledged[command_id] = now
                     last_owner = source
@@ -445,6 +475,7 @@ def run_periodic(actor, episodes, *, training=False):
                             observation_reference_ns=latest[1], observation_to_send_ms=delay_ms,
                             inference_ms=inference_ms, diagnostic_only=True)), flush=True)
                     metadata = dict(command_id=command_id, action_source=source, gate=gate,
+                        manual_timing=manual_timing,
                         control_epoch=getattr(transport, 'tag_follow_epoch', 0),
                         arbitration_mode=arbitration_mode,
                         arbitration=getattr(transport, 'last_arbitration', None),
@@ -491,6 +522,8 @@ def run_periodic(actor, episodes, *, training=False):
                                      control_epoch=getattr(transport, 'tag_follow_epoch', 0),
                                      eef_receive_ns=getattr(transport, 'latest_eef_time', None),
                                      command_send_ns=transport.node.get_clock().now().nanoseconds), transport.latest[0])
+                    if getattr(transport, 'spacepilot_schedule', None) is not None:
+                        boundary[0]['terminal_stop_ns'] = stop_ns
                 transport.stop()
                 if boundary is not None:
                     boundary[0]['control_epoch'] = getattr(transport, 'tag_follow_epoch', 0)
@@ -544,6 +577,7 @@ def run_periodic(actor, episodes, *, training=False):
                                 observation_reference_ns=transport.latest[1],
                                 eef_receive_ns=getattr(transport, 'latest_eef_time', None),
                                 **({'terminal_success_stop_ns': stop_ns} if outcome['success'] else {}),
+                                **({'terminal_stop_ns': stop_ns} if getattr(transport, 'spacepilot_schedule', None) is not None else {}),
                                 command_send_ns=transport.node.get_clock().now().nanoseconds), transport.latest[0])
                 finally:
                     transport.receipt_hook = None

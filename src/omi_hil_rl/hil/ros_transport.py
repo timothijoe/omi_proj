@@ -53,6 +53,9 @@ class RosTransport:
             Mapping(hz=config.hz, translation_m_s=config.translation_step_m * config.hz,
                     rotation_rad_s=config.rotation_step_rad * config.hz))
         self.operator_input_info = operator[2] if operator is not None else dict(kind='gamepad', device=gamepad)
+        from omi_hil_rl.real.spacepilot_control import MotionSchedule
+        self.spacepilot_schedule = MotionSchedule(config.hz) if operator is not None else None
+        self.spacepilot_reset_schedule = MotionSchedule(config.hz) if operator is not None else None
         self.publisher = self.node.create_publisher(Float64MultiArray, topic,
             QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)) if execute else None
         self.trace_publisher = self.node.create_publisher(String, "/omi/action/command_trace", 10) if execute else None
@@ -299,6 +302,14 @@ class RosTransport:
                 return False
             self.reset_requires_release = False
         now = time.monotonic()
+        schedule = getattr(self, 'spacepilot_reset_schedule', None)
+        if schedule is not None:
+            action = self.mapping.action(self.pad.axes).astype(np.float32) if held else np.zeros(6, np.float32)
+            if (held or getattr(self, 'reset_held', False) or schedule.moving) and schedule.due(now, action):
+                self._publish(action)
+                schedule.sent(time.monotonic(), action)
+            self.reset_held = held
+            return False
         if held and now >= getattr(self, "next_reset_tick", 0.):
             self._publish(self.mapping.action(self.pad.axes).astype(np.float32))
             self.next_reset_tick = now + 1 / self.config.hz
@@ -316,6 +327,8 @@ class RosTransport:
         self.reset_held = False
         self.reset_requires_release = True
         self.next_reset_tick = 0.
+        if getattr(self, 'spacepilot_reset_schedule', None) is not None:
+            self.spacepilot_reset_schedule.reset()
         queued_start = bool(getattr(self, 'queue_start_during_save', False) and
                             self.connected and 'start' in self.events)
         self.queue_start_during_save = False
@@ -355,6 +368,8 @@ class RosTransport:
         """
         if getattr(self, 'policy_pipeline', None) is not None:
             self.policy_pipeline.invalidate()
+        if getattr(self, 'spacepilot_schedule', None) is not None:
+            self.spacepilot_schedule.reset()
 
     def reset_history(self):
         """Explicitly discard sensor history, e.g. for a fresh preview."""

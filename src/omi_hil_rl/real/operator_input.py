@@ -120,6 +120,7 @@ class InputOptions:
     mode: str = 'all'
     dominant: bool = False
     expected_profile_sha256: str = None
+    speed_profile: str = 'auto'
 
     def __post_init__(self):
         if self.kind not in ('gamepad', 'spacepilot'):
@@ -130,6 +131,8 @@ class InputOptions:
             raise ValueError('SpacePilot deadzone must be in [0,350)')
         if self.mode not in ('translation', 'rotation', 'all'):
             raise ValueError('Unknown SpacePilot axis mode')
+        if self.speed_profile not in ('auto', 'standalone', 'session'):
+            raise ValueError('Unknown SpacePilot speed profile')
 
 
 def add_input_arguments(parser):
@@ -144,6 +147,8 @@ def add_input_arguments(parser):
     parser.add_argument('--spacepilot-deadzone', type=float, default=18.)
     parser.add_argument('--spacepilot-mode', choices=('translation','rotation','all'), default='all')
     parser.add_argument('--spacepilot-dominant-axis', action='store_true')
+    parser.add_argument('--spacepilot-speed-profile', choices=('auto', 'standalone', 'session'), default='auto',
+                        help='auto: standalone speeds for fresh unconfigured human collection; session bounds for existing runs/models')
 
 
 def options_from_args(args):
@@ -153,7 +158,28 @@ def options_from_args(args):
                         rotation_scale=getattr(args, 'spacepilot_rotation_scale', .3),
                         deadzone=getattr(args, 'spacepilot_deadzone', 18.),
                         mode=getattr(args, 'spacepilot_mode', 'all'),
-                        dominant=getattr(args, 'spacepilot_dominant_axis', False))
+                        dominant=getattr(args, 'spacepilot_dominant_axis', False),
+                        speed_profile=getattr(args, 'spacepilot_speed_profile', 'auto'))
+
+
+def collection_input_config(config, args):
+    """Only a fresh unconfigured collection may establish larger action bounds."""
+    options = options_from_args(args)
+    if options.kind != 'spacepilot':
+        return config, options
+    fresh = not getattr(args, 'resume', False) and not getattr(args, 'config', None)
+    profile = options.speed_profile
+    if profile == 'auto':
+        profile = 'standalone' if fresh else 'session'
+    options = replace(options, speed_profile=profile)
+    if fresh and profile == 'standalone':
+        config = replace(config,
+            translation_step_m=max(config.translation_step_m, .01*options.translation_scale/config.hz),
+            rotation_step_rad=max(config.rotation_step_rad, math.radians(10)*options.rotation_scale/config.hz))
+    # Pin resolution so preflight and transport do not silently revert to auto.
+    args.spacepilot_speed_profile = profile
+    SpacePilotHILMapping(config, options)  # Validate before devices/output directories.
+    return config, options
 
 
 class SpacePilotInput:
@@ -248,12 +274,19 @@ class SpacePilotInput:
 class SpacePilotHILMapping:
     def __init__(self, config, options):
         from .spacepilot_control import SpacePilotMapping
+        self.speed_profile = 'session' if options.speed_profile == 'auto' else options.speed_profile
+        standalone = self.speed_profile == 'standalone'
         self.mapping = SpacePilotMapping(
-            rate=config.hz, speed_mm_s=config.translation_step_m*config.hz*1000,
-            rotation_deg_s=math.degrees(config.rotation_step_rad*config.hz),
+            rate=config.hz, speed_mm_s=10. if standalone else config.translation_step_m*config.hz*1000,
+            rotation_deg_s=10. if standalone else math.degrees(config.rotation_step_rad*config.hz),
             translation_scale=options.translation_scale, rotation_scale=options.rotation_scale,
             deadzone=options.deadzone, mode=options.mode, dominant=options.dominant)
         self.limit = np.asarray(config.action_scale, dtype=float)
+        peak = np.array([self.mapping.linear_speed/config.hz]*3 + [self.mapping.angular_speed/config.hz]*3)
+        if standalone and np.any(peak > self.limit * (1+1e-6)):
+            raise ValueError('Standalone SpacePilot speed exceeds this session/model action contract; '
+                             'use a fresh collection or --spacepilot-speed-profile session. '
+                             'Existing checkpoints/replay must not be rescaled in place.')
         self.generation = None
 
     def action(self, axes):
@@ -292,7 +325,11 @@ def create_operator_input(config, gamepad='/dev/input/js0', options=None):
     mapping = SpacePilotHILMapping(config, options)
     info.update(translation_scale=options.translation_scale, rotation_scale=options.rotation_scale,
                 deadzone=options.deadzone, mode=options.mode, dominant_axis=options.dominant,
-                physical_action_limit=config.action_scale.tolist())
+                physical_action_limit=config.action_scale.tolist(), speed_profile=mapping.speed_profile,
+                requested_translation_mm_s=mapping.mapping.linear_speed*1000,
+                requested_rotation_deg_s=math.degrees(mapping.mapping.angular_speed),
+                single_axis_translation_limit_mm_s=min(mapping.mapping.linear_speed, config.translation_step_m*config.hz)*1000,
+                single_axis_rotation_limit_deg_s=math.degrees(min(mapping.mapping.angular_speed, config.rotation_step_rad*config.hz)))
     return SpacePilotInput(buttons), mapping, info
 
 
@@ -327,5 +364,9 @@ def check_operator_input(config, args, required):
     finally:
         pad.close()
     print('人工输入：'+json.dumps(info, ensure_ascii=False), flush=True)
+    if options.kind == 'spacepilot':
+        print(f"SpacePilot速度方案={info['speed_profile']}；单轴指令上限 "
+              f"{info['single_axis_translation_limit_mm_s']:.3f} mm/s、"
+              f"{info['single_axis_rotation_limit_deg_s']:.3f} degree/s。", flush=True)
     return (replace(options, expected_profile_sha256=info['profile_sha256'])
             if options.kind == 'spacepilot' else options)

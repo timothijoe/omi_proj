@@ -9,6 +9,26 @@ from omi_hil_rl.hardware.spacepilot_pose import filtered, select_axes
 DEFAULT_ENABLE_BUTTON = 19  # User-reported physical key 3 on current device setup.
 
 
+class MotionSchedule:
+    """Immediate zero/nonzero edges, otherwise wall-clock cadence without catch-up."""
+    def __init__(self, rate=10.):
+        if not math.isfinite(rate) or rate <= 0:
+            raise ValueError('Positive finite command rate required')
+        self.period = 1. / rate
+        self.reset()
+
+    def reset(self):
+        self.moving = False
+        self.next_command = 0.
+
+    def due(self, now, action):
+        return now >= self.next_command or bool(np.any(action)) != self.moving
+
+    def sent(self, now, action):
+        self.moving = bool(np.any(action))
+        self.next_command = now + self.period
+
+
 @dataclass
 class SpacePilotMapping:
     rate: float = 10.0

@@ -2,6 +2,8 @@
 
 记录日期：2026-10-17。本文记录本轮确认的按键方案和下一步测试指令；完整输入机制与其他入口见 [SpacePilot HIL 教程](spacepilot_hil.md)。
 
+调整前备份提交：`7c2d2c5`。本文命令已更新为参考 `spacepilot_test.py` 的响应版本：新建人工采集使用相同速度基准，首次有效动作与回中立即发送，持续运动10Hz。
+
 ## 当前方案
 
 3D 鼠标作为现有采集／RL Actor 的人工输入，不额外启动动作发布节点。默认输入仍是原手柄，旧命令无需修改；显式指定 `--input-device spacepilot` 才切换。
@@ -29,7 +31,9 @@
 - 人工平移倍率：`--translation-scale 1.5`。
 - 人工旋转倍率：`--rotation-scale 0.3`。
 - 本次采用 `--spacepilot-mode all`，允许六轴运动，不开启单轴优先。
-- 倍率相对于当前会话的基础速度，且受既有动作范围限制；不会放大策略输出或修改检查点／回放契约。
+- 本文新建采集显式使用 `--spacepilot-speed-profile standalone`，基准为10 mm/s及10°/s；1.5／0.3对应平移合速度上限15 mm/s、旋转角速度上限3°/s，与独立工具一致。
+- 新数据集在创建时记录足够的动作范围。它与旧5.77 mm/s单轴范围的数据／模型不是同一归一化契约，不能直接混池或冒充旧checkpoint的数据。需要沿用旧范围时改用 `--spacepilot-speed-profile session`。
+- 已有模型／会话默认保留其原动作范围；不会静默扩大旧模型输出。显式请求standalone而范围不足时会在连接设备前拒绝。
 - ID26、27、28 虽然印有运动模式图标，本机驱动没有为其配置特殊动作，HIL 输入代码也不通过它们切换模式。
 
 本预设要求 `review=auto`，不启用人工审阅。304／305 用于夹爪控制，不触发保留／丢弃；有效数据按现有流程自动保存，异常或无效数据仍受原有效性检查约束。
@@ -46,6 +50,7 @@ cd /home/zhoutong/omi_folder/omi_proj
 .venv/bin/python scripts/configure_spacepilot_hil.py --show
 
 .venv/bin/python scripts/configure_spacepilot_hil.py --preview \
+  --spacepilot-speed-profile standalone \
   --translation-scale 1.5 \
   --rotation-scale 0.3
 ```
@@ -76,12 +81,15 @@ bash scripts/collect_rl_episodes.sh \
   --execute \
   --input-device spacepilot \
   --spacepilot-map local/spacepilot/hil_buttons.json \
+  --spacepilot-speed-profile standalone \
   --translation-scale 1.5 \
   --rotation-scale 0.3 \
   --spacepilot-mode all
 ```
 
 看到等待开始提示后，按数字 1 开始；按住 Menu 操作旋钮，按 ALT 成功结束或 Ctrl 普通结束，也可等到回合超时。夹爪键按上表操作。回 home 只在回合外生效。
+
+`--episode-seconds 20`表示每回合最长20秒，**不是满20秒就判成功**。开始键触发回合计时；ALT在期限内标记成功并结束，Ctrl提前普通结束，期限到达仍未标成功则超时结束。有效的非成功回合也可自动保存，供后续RL学习。
 
 **本条人工采集入口不启用标签跟随，ID8／ID2 的实际功能留到在线 RL 入口测试。** 不能通过同时启动独立 `spacepilot_test.py --execute` 来补充这些功能；集成 Actor 已负责动作发布。
 
@@ -91,4 +99,6 @@ bash scripts/collect_rl_episodes.sh \
 
 软件相关回归：319 项通过，2 项因当前解释器 CUDA 不可用而跳过。覆盖原手柄兼容、独立标签键不串入夹爪／回合事件、回位与跟随仲裁、倍率限幅，以及模式图标键不改变六轴映射。新预设的真实驱动只读连接已通过。
 
-尚未完成本预设下的完整真机采集或在线 RL 验收。下一步记录 Menu 单独确认结果、实际运动与夹爪行为、回合结束及数据保存结果；随后再验证在线 RL 的人工接管／还权和两个标签键。共用接收端的物理停止拖尾不属于本轮按键修改范围。
+上述319项是备份前版本。响应调整后的相关回归341项通过、2项CUDA测试跳过，另覆盖与独立工具六轴数值一致、启停时间、旧契约不变和训练导出。新调度逐条记录指令；重复使用同一观测、持续不足80ms或超过150ms、被中途外部停止的相关片段只保留审计，不生成虚假的100ms训练步。有效片段记录实际指令间隔。
+
+用户已在初版下试采两段并反馈手感差异；本次响应调整尚未进行真机回合验证。下一步在新目录试采并记录实际运动、夹爪、结束及保存结果；随后再验证在线 RL 的人工接管／还权和两个标签键。共用接收端的物理停止拖尾不属于本轮按键修改范围。
