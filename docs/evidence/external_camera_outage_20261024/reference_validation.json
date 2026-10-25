@@ -1,0 +1,12 @@
+{
+  "window_files_checked": 46361,
+  "window_file_hash_errors": [],
+  "source_hash_errors": [],
+  "nested_frame_files_referenced": 48170,
+  "missing_frames": [],
+  "unsafe_or_removed_frame_references": [],
+  "deleted_episodes_rediscovered": [],
+  "seconds": 24.43158415099606,
+  "scope": "All remaining catalog source/window hashes and nested frame existence; nested frame payloads decoded only in buffer probe, not all rehashed.",
+  "passed": true
+}

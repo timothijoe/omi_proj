@@ -1,5 +1,13 @@
 # Hardware 当前摘要
 
+2026-10-24 23:06：[本轮完整快照与统一健康监控待办](../../oct24_development_checkpoint.md)。末端反馈已升级为绿色独立bar列，与HUMAN／POLICY并列；右侧停靠配置遗漏已修复，但延时面板消失尚未复现。独立后台＋RViz总览＋现有网页详情目前是建议方案，尚未开发。
+
+2026-10-24 V2后续：移除Wrist full／A raw／B raw，九幅观测图改为三列布局；新增只读EEF数值与人工／策略六维命令条形图，路由读取接收端实际参数。外部ROI过期时保留末帧并标红STALE秒数，避免闪黑，训练门控未改变。[教程](../../../tutorials/grid_live_review_v2.md#eef与控制信号栏) · [开发记录](chronicles/2026-10-24-grid-live-review-v2.md)。
+
+2026-10-24外部相机断流后已恢复接收；独立测试和新旧看板均确认中断并非V2话题改错。训练latest路径期间沿用缓存旧RGB，已按用户要求清理20个入池回合；完整时间边界、数据与权重影响见[训练编年](../training/chronicles/2026-10-24-external-camera-outage-cleanup.md)。本次未改传感器驱动或断流训练门控。
+
+2026-10-24：[实时观测V2](evolution/grid-live-review-v2.md)新增独立启动入口，原V1代码与布局保留。原图由RViz直接订阅，ROI与六路触觉图分别用独立进程转换，接收统计单独运行；默认不逐帧保存PNG。软件与隔离ROS合成故障测试通过，真实传感器性能需现场观察。[操作教程](../../../tutorials/grid_live_review_v2.md)。
+
 2026-10-17最新：[SpacePilot已接入BC/RL采集与在线Actor输入](evolution/spacepilot-hil.md)。九键profile及数字1 ID12等已经实测，用户完成10回合新采集并训练BC6148，随后启动了实际在线RL；原手柄默认保留。当前Menu接管，ALT成功，Ctrl结束，夹爪开启；marker按用户要求暂关。数字3总开关和独立Marker节点仅讨论，尚未实现。训练结果、参数及23:29现场快照见[训练纪传](../training/evolution/spacepilot-bc-online-rl.md)与[编年](../training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)。
 
 2026-10-17早期收纳见[开发快照](../../oct17_development_checkpoint.md)。19:32用户录制已分析：200 Hz/模式3，四次全零后约0.22–0.30秒接近停止，继续X移动约0.44–0.92 mm；对应接收端日志未记录SDK_REJECTED。旧500 Hz日志中的clear_set=0与SDK发送状态忙吻合。底层阻抗及停止策略未改；后续只对齐输入速度和发送节拍。分析证据纳入docs/evidence，原始录制保留local。

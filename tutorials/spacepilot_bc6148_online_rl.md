@@ -1,5 +1,9 @@
 # SpacePilot BC6148 在线 RL：显式 setting 与旧配置对照
 
+2026-10-24 23:06补充：现场当前任务为`local/rl_training/spacepilot_bc6148_rl_20261024_215949`，初始化记录为从BC6148空池启动；主JSON默认run仍指向旧任务。**续跑这个新任务须在下文运行命令中额外指定`--run local/rl_training/spacepilot_bc6148_rl_20261024_215949`**，已有任务不需重新prepare。实际进程／遥测快照、完整命令及剩余问题见[工作快照](../docs/oct24_development_checkpoint.md)。以下清理数字和30897权重属于旧任务历史，不能套到新任务。
+
+2026-10-24：[断流数据清理及当前状态](../docs/agent/training/chronicles/2026-10-24-external-camera-outage-cleanup.md)。已正常停止任务并移除20个问题回合／5681条经验，当前剩余45994条、累计回合名额70；最新30897权重未回滚，仍可能受历史污染。下文命令保留为接口说明，本次没有自动续跑；先明确是否回退／重训权重及断流门控方案，不把清数据等同于清模型。
+
 `--parameter`与原`--settings`完全等价，均显式加载同一JSON；下文统一使用`--parameter`。
 
 当前唯一主配置：[configs/spacepilot_bc6148_online_rl.json](../configs/spacepilot_bc6148_online_rl.json)。初始化和在线运行均必须在使用命令中显式传 `--parameter`；老CLI接口保留兼容，但本流程不依赖省略参数后的默认值。

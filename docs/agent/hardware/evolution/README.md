@@ -1,5 +1,7 @@
 # Hardware 纪传体
 
+- [实时观测V2：独立原图、分进程触觉转换与诊断](grid-live-review-v2.md)
+
 - [SpacePilot作为采集与在线HIL人工输入](spacepilot-hil.md)
 
 - [SpacePilot 末端增量发送与独立速度倍率](spacepilot-control.md)

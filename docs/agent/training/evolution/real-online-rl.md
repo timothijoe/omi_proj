@@ -1,5 +1,11 @@
 # 真机在线 RL：BC 热启动、手柄接管与异步训练
 
+2026-10-24数据质量事件：[断流与清理记录](../chronicles/2026-10-24-external-camera-outage-cleanup.md)。当前latest／时序仅诊断会持续使用断流前RGB，20个回合5681条问题经验已按用户要求从活动目录及索引删除；剩余45994条。任务已正常CLOSED，保存30897，权重没有回滚，不能称为未受污染；断流保护仍未新增，不自动恢复训练。
+
+删除原始回合后，累计上限读取任务内 `episode_removals.json`（`omi-episode-removals-v1`），
+以现有原始ID与 `started_episode_ids` 的并集计算已开始次数，避免删除数据返还回合名额。
+该台账不是训练数据或导入来源，备份也不在自动扫描范围。本次已开始230、上限300剩余70。
+
 2026-10-17最新配置与现场证据见[SpacePilot/BC6148在线RL专题](spacepilot-bc-online-rl.md)：30秒、累计300、触觉解冻、视觉/融合冻结、--parameter显式加载，夹爪开启、marker暂关；已实际运行。下方45秒和全编码器冻结是Oct11任务的历史基线。
 
 通用机制整理：2026-10-12。本页是按主题维护的纪传体；Oct11操作见[常用指令](../../../../tutorials/common_live_commands.md#rl-new)，

@@ -1,0 +1,513 @@
+{
+  "captured_at": "2026-10-24T17:13:47.673934+08:00",
+  "run": "/home/zhoutong/omi_folder/omi_proj/local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+  "scope": "read-only live-source SQLite backup; original NPZ metadata scan; first/middle/last windows per affected episode decoded and hashed",
+  "last_camera_receive_ns": 1792830749898357869,
+  "last_camera_receive_time": "2026-10-24T16:32:29.898358+08:00",
+  "last_confirmed_no_publisher_probe": "2026-10-24T17:07:54.729656+08:00",
+  "first_recorded_fresh_observation_after_gap": {
+    "episode": "ccdac8a625b04cd89e05e3cf27aa0565",
+    "stamp": 1792832916832220928,
+    "rgb_rx": 1792832916816194731,
+    "present": true
+  },
+  "first_recorded_new_rgb_receive_time": "2026-10-24T17:08:36.816195+08:00",
+  "scanned_registered": 9857,
+  "affected_registered": 5681,
+  "affected_episodes": 20,
+  "affected_human": 489,
+  "affected_policy": 5192,
+  "affected_success_rewards": 4.0,
+  "raw_frozen_actions": 5882,
+  "raw_gates": {
+    "receiver_handshake": 31,
+    "policy": 5362,
+    "human": 489
+  },
+  "frozen_observation_ticks": 5959,
+  "age_counts_in_scanned_range": {
+    "current_rgb_age_gt_500ms": 5681,
+    "current_rgb_age_gt_5s": 5681
+  },
+  "episodes": [
+    {
+      "episode": "8a314d17baf64aeda4a66882617170ff",
+      "start": "2026-10-24T16:34:07.832221+08:00",
+      "end": "2026-10-24T16:34:37.632221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 300,
+      "human": 0,
+      "policy": 299,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        10200
+      ],
+      "rgb_age_seconds_min": 97.933863059,
+      "rgb_age_seconds_max": 127.733863059
+    },
+    {
+      "episode": "e873980bbe9548d88c380baa71192e23",
+      "start": "2026-10-24T16:35:01.332221+08:00",
+      "end": "2026-10-24T16:35:31.232221+08:00",
+      "affected_registered": 300,
+      "audit_transitions": 300,
+      "ticks": 301,
+      "human": 0,
+      "policy": 300,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        10200
+      ],
+      "rgb_age_seconds_min": 151.433863059,
+      "rgb_age_seconds_max": 181.333863059
+    },
+    {
+      "episode": "4d4fa702823646e7b856f0de58d7fe91",
+      "start": "2026-10-24T16:36:17.032221+08:00",
+      "end": "2026-10-24T16:36:46.932221+08:00",
+      "affected_registered": 300,
+      "audit_transitions": 300,
+      "ticks": 301,
+      "human": 0,
+      "policy": 300,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        10200
+      ],
+      "rgb_age_seconds_min": 227.133863059,
+      "rgb_age_seconds_max": 257.033863059
+    },
+    {
+      "episode": "bc8d117fe0c744b596a102af88f584bb",
+      "start": "2026-10-24T16:37:13.832221+08:00",
+      "end": "2026-10-24T16:37:43.732221+08:00",
+      "affected_registered": 298,
+      "audit_transitions": 298,
+      "ticks": 299,
+      "human": 0,
+      "policy": 298,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 283.933863059,
+      "rgb_age_seconds_max": 313.833863059
+    },
+    {
+      "episode": "6a64f361172049e9b97a2302a80fb4c5",
+      "start": "2026-10-24T16:38:01.632221+08:00",
+      "end": "2026-10-24T16:38:31.432221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 300,
+      "human": 0,
+      "policy": 299,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 331.733863059,
+      "rgb_age_seconds_max": 361.533863059
+    },
+    {
+      "episode": "e58cb61b4925403c95a3be11c8d55157",
+      "start": "2026-10-24T16:39:07.032221+08:00",
+      "end": "2026-10-24T16:39:36.832221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 300,
+      "human": 0,
+      "policy": 299,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 397.133863059,
+      "rgb_age_seconds_max": 426.933863059
+    },
+    {
+      "episode": "43b13b0482f14153bc88c3b12654c658",
+      "start": "2026-10-24T16:40:22.332221+08:00",
+      "end": "2026-10-24T16:40:52.232221+08:00",
+      "affected_registered": 300,
+      "audit_transitions": 300,
+      "ticks": 301,
+      "human": 0,
+      "policy": 300,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 472.433863059,
+      "rgb_age_seconds_max": 502.333863059
+    },
+    {
+      "episode": "849683a32ce3463a8f37d13ac45ea737",
+      "start": "2026-10-24T16:41:18.132221+08:00",
+      "end": "2026-10-24T16:41:47.932221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 300,
+      "human": 0,
+      "policy": 299,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 528.233863059,
+      "rgb_age_seconds_max": 558.033863059
+    },
+    {
+      "episode": "29401b0627b64645962243fc3532be9c",
+      "start": "2026-10-24T16:42:28.432221+08:00",
+      "end": "2026-10-24T16:42:58.232221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 300,
+      "human": 0,
+      "policy": 299,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 598.533863059,
+      "rgb_age_seconds_max": 628.333863059
+    },
+    {
+      "episode": "2eabe5da4bfe4bc2a38b62de46b19eb9",
+      "start": "2026-10-24T16:43:26.832221+08:00",
+      "end": "2026-10-24T16:43:56.732221+08:00",
+      "affected_registered": 300,
+      "audit_transitions": 300,
+      "ticks": 301,
+      "human": 0,
+      "policy": 300,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 656.933863059,
+      "rgb_age_seconds_max": 686.833863059
+    },
+    {
+      "episode": "d718aa8f993844a9bc2fe9123c4617eb",
+      "start": "2026-10-24T16:44:14.832221+08:00",
+      "end": "2026-10-24T16:44:44.732221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 301,
+      "human": 42,
+      "policy": 257,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 704.933863059,
+      "rgb_age_seconds_max": 734.833863059
+    },
+    {
+      "episode": "cd4a1121693a48fd894bf3ae246a4460",
+      "start": "2026-10-24T16:45:09.332221+08:00",
+      "end": "2026-10-24T16:45:38.432221+08:00",
+      "affected_registered": 291,
+      "audit_transitions": 291,
+      "ticks": 293,
+      "human": 47,
+      "policy": 244,
+      "outcome": "success",
+      "success_rewards": 1.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 759.433863059,
+      "rgb_age_seconds_max": 788.533863059
+    },
+    {
+      "episode": "327b86ff70164bb0a9ebf5bf872c959e",
+      "start": "2026-10-24T16:46:35.832221+08:00",
+      "end": "2026-10-24T16:46:56.432221+08:00",
+      "affected_registered": 206,
+      "audit_transitions": 206,
+      "ticks": 208,
+      "human": 16,
+      "policy": 190,
+      "outcome": "success",
+      "success_rewards": 1.0,
+      "policy_versions": [
+        11100
+      ],
+      "rgb_age_seconds_min": 845.933863059,
+      "rgb_age_seconds_max": 866.533863059
+    },
+    {
+      "episode": "f893f721d0b84450a38cdd9f8cd07d5a",
+      "start": "2026-10-24T16:47:08.332221+08:00",
+      "end": "2026-10-24T16:47:38.132221+08:00",
+      "affected_registered": 298,
+      "audit_transitions": 298,
+      "ticks": 300,
+      "human": 117,
+      "policy": 181,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 878.433863059,
+      "rgb_age_seconds_max": 908.233863059
+    },
+    {
+      "episode": "a9e41a8b753a4dc480ad7fe1adcf5401",
+      "start": "2026-10-24T16:47:54.232221+08:00",
+      "end": "2026-10-24T16:48:24.132221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 301,
+      "human": 70,
+      "policy": 229,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 924.333863059,
+      "rgb_age_seconds_max": 954.233863059
+    },
+    {
+      "episode": "e3db377cc2c742ea87f90d6678ec010e",
+      "start": "2026-10-24T16:49:19.032221+08:00",
+      "end": "2026-10-24T16:49:48.932221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 301,
+      "human": 15,
+      "policy": 284,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 1009.133863059,
+      "rgb_age_seconds_max": 1039.033863059
+    },
+    {
+      "episode": "80b126c7109244f18a7621f6e4786649",
+      "start": "2026-10-24T16:50:03.732221+08:00",
+      "end": "2026-10-24T16:50:23.132221+08:00",
+      "affected_registered": 194,
+      "audit_transitions": 194,
+      "ticks": 196,
+      "human": 52,
+      "policy": 142,
+      "outcome": "success",
+      "success_rewards": 1.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 1053.833863059,
+      "rgb_age_seconds_max": 1073.233863059
+    },
+    {
+      "episode": "d203e549aa9441219bf14f368d2fef4b",
+      "start": "2026-10-24T16:50:40.332221+08:00",
+      "end": "2026-10-24T16:51:10.132221+08:00",
+      "affected_registered": 298,
+      "audit_transitions": 298,
+      "ticks": 300,
+      "human": 33,
+      "policy": 265,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 1090.433863059,
+      "rgb_age_seconds_max": 1120.233863059
+    },
+    {
+      "episode": "efdd1a4a8c2d48b193a0a4325c6a7391",
+      "start": "2026-10-24T16:51:31.432221+08:00",
+      "end": "2026-10-24T16:51:51.932221+08:00",
+      "affected_registered": 205,
+      "audit_transitions": 205,
+      "ticks": 207,
+      "human": 51,
+      "policy": 154,
+      "outcome": "success",
+      "success_rewards": 1.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 1141.533863059,
+      "rgb_age_seconds_max": 1162.033863059
+    },
+    {
+      "episode": "501a9f41bbe54b1a9e5744ca4d96a0c9",
+      "start": "2026-10-24T16:52:13.332221+08:00",
+      "end": "2026-10-24T16:52:43.232221+08:00",
+      "affected_registered": 299,
+      "audit_transitions": 299,
+      "ticks": 301,
+      "human": 46,
+      "policy": 253,
+      "outcome": "timeout",
+      "success_rewards": 0.0,
+      "policy_versions": [
+        12000
+      ],
+      "rgb_age_seconds_min": 1183.433863059,
+      "rgb_age_seconds_max": 1213.333863059
+    }
+  ],
+  "samples_checked": 60,
+  "sample_all_windows_same_rgb": true,
+  "distinct_rgb_hashes_across_checked_windows": [
+    "8fddacf29500e9e2e508ca069c1d0e9ae25ec3eafb1cc755b395e1c8cb88742b"
+  ],
+  "errors": [],
+  "first_affected_record": {
+    "id": 34085,
+    "episode": "8a314d17baf64aeda4a66882617170ff",
+    "step": 1,
+    "path": "periodic_episodes/8a314d17baf64aeda4a66882617170ff/000001.npz",
+    "next_path": "periodic_episodes/8a314d17baf64aeda4a66882617170ff/000002.npz",
+    "stamp": 1792830847832220928,
+    "time": "2026-10-24T16:34:07.832221+08:00",
+    "rgb_receive_ns": 1792830749898357869,
+    "next_rgb_receive_ns": 1792830749898357869,
+    "rgb_age_s": 97.933863059,
+    "human": false,
+    "reward": 0.0,
+    "policy_version": 10200,
+    "camera_mask": [
+      1,
+      1
+    ],
+    "warnings": [
+      "rgb:old_receive"
+    ]
+  },
+  "last_affected_record": {
+    "id": 39765,
+    "episode": "501a9f41bbe54b1a9e5744ca4d96a0c9",
+    "step": 300,
+    "path": "periodic_episodes/501a9f41bbe54b1a9e5744ca4d96a0c9/000300.npz",
+    "next_path": "periodic_episodes/501a9f41bbe54b1a9e5744ca4d96a0c9/boundary.npz",
+    "stamp": 1792831963232220928,
+    "time": "2026-10-24T16:52:43.232221+08:00",
+    "rgb_receive_ns": 1792830749898357869,
+    "next_rgb_receive_ns": null,
+    "rgb_age_s": 1213.333863059,
+    "human": false,
+    "reward": 0.0,
+    "policy_version": 12000,
+    "camera_mask": [
+      1,
+      1
+    ],
+    "warnings": [
+      "rgb:old_receive"
+    ]
+  },
+  "raw_affected_episodes": 21,
+  "excluded_original_episodes": [
+    {
+      "episode": "de474674dc3a4fd4ad45d0365a9aee48",
+      "policy_version": 12000,
+      "arbitration_mode": "after-inference",
+      "success": false,
+      "reason": "receiver receipt link silent for 1s; stopped (not a per-command wait)",
+      "tag_follow_paused_seconds": 0.0,
+      "ticks": 171,
+      "observation_ticks": 174,
+      "timing_policy": "diagnostic_only_v1",
+      "pairing_is_diagnostic": true,
+      "matched_pairs": 147,
+      "invalid_pairs": 24,
+      "nonzero_action_ticks": 170,
+      "training_ready": false,
+      "schema": "omi-periodic-audit-v1",
+      "reason_for_separate_format": "periodic velocity replacement; no legacy transition fabrication",
+      "transitions": 0,
+      "segments": [],
+      "excluded": {
+        "abnormal_end": 171
+      },
+      "observation_storage_version": "omi-observation-frames-v1",
+      "stored_observation_frames": 183
+    }
+  ],
+  "post_recovery_pixel_check": {
+    "registered_transitions": 1536,
+    "unique_windows": 1547,
+    "unique_frame_files": 1601,
+    "windows_containing_known_frozen_rgb": [],
+    "errors": [],
+    "scope": "All ten RGB slots in current/next windows of post-recovery records present in the database snapshot; no claim about later live writes"
+  },
+  "training_evidence": {
+    "first_affected_import_marker_time": "2026-10-24T16:35:16.610320+08:00",
+    "first_import_event_after_first_bad_audit": {
+      "time_ns": 1792830917601399037,
+      "kind": "replay_imported",
+      "count": 299,
+      "role": "learner",
+      "session": "c7f721b2d7b7407c8305ae8c1834d878",
+      "time": "2026-10-24T16:35:17.601399+08:00"
+    },
+    "last_published_before_first_bad_import_event": {
+      "time_ns": 1792830903735842800,
+      "kind": "weights_published",
+      "version": 10950,
+      "role": "learner",
+      "session": "c7f721b2d7b7407c8305ae8c1834d878",
+      "time": "2026-10-24T16:35:03.735843+08:00"
+    },
+    "latest_publish_in_snapshot": {
+      "time_ns": 1792833224334830837,
+      "kind": "weights_published",
+      "version": 14400,
+      "role": "learner",
+      "session": "c7f721b2d7b7407c8305ae8c1834d878",
+      "time": "2026-10-24T17:13:44.334831+08:00"
+    },
+    "per_batch_sample_ids_logged": false,
+    "checkpoint_files_in_run": [
+      "actor.pt",
+      "learner.pt"
+    ],
+    "caveat": "Catalog contamination confirmed. No per-batch IDs: cannot identify exactly which bad records participated in gradients or quantify task performance impact. Current weights must not be claimed clean."
+  },
+  "original_bc6148_integrity": {
+    "path": "local/rl_training/spacepilot_bc_20261017_213359_2000_4000/actor.pt",
+    "sha256": "611afee1d8e3020aebf5269a01b65deb59b8ee49bdaa937851b3058905ea2639",
+    "matches_oct17_documented_hash": true
+  },
+  "live_recovery_probe": {
+    "checked_at": "2026-10-24T17:10:18.744168+08:00",
+    "duration_s": 10,
+    "received": 39,
+    "hz": 4.686952032284894,
+    "publishers": 1,
+    "distinct_headers": 39,
+    "image": {
+      "width": 640,
+      "height": 480,
+      "encoding": "rgb8"
+    }
+  },
+  "interval_interpretation": "Last received source frame at 16:32:29.898 local actor receive clock. No publisher observed through 17:07:54.730; new RGB in recorded data by 17:08:36.816. Exact physical NIC failure/recovery second unavailable without continuous source logs.",
+  "finished_audit_at": "2026-10-24T17:18:16.789414+08:00"
+}

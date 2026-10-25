@@ -1,0 +1,56 @@
+{
+  "status": "passed",
+  "checkpoint_version": 30897,
+  "robot_output": false,
+  "training_updates": 0,
+  "streams": {
+    "online": 261,
+    "demonstration": 235,
+    "initial_demonstration": 0,
+    "intervention": 235,
+    "offline_demonstration": 0
+  },
+  "cache": {
+    "backend": "omi-cached-dual-replay-v1",
+    "cache_target_bytes": 1073741824,
+    "memory_limit_bytes": 2147483648,
+    "resident_bytes": 1073271468,
+    "resident_unique": 471,
+    "batch_bytes": 291150336,
+    "loader_reserved_bytes": 0,
+    "managed_bytes": 1374695628,
+    "peak_managed_bytes": 1374695628,
+    "metadata_allowance_bytes": 8388608,
+    "loads": 471,
+    "evictions": 0,
+    "frame_cache_reserved_bytes": 1885216,
+    "refreshes": 1,
+    "samples": 2,
+    "sample_seconds": 0.053239806002238765,
+    "catalog_seed": 0,
+    "catalog_online": 45994,
+    "catalog_interventions": 12651,
+    "pending_episodes": 0,
+    "min_online_slots": 1,
+    "min_demo_slots": 1,
+    "loader_busy": false,
+    "loader_error": null
+  },
+  "batch_size": 64,
+  "rgb_shape": [
+    64,
+    10,
+    3,
+    128,
+    128
+  ],
+  "tactile_shape": [
+    64,
+    10,
+    10,
+    16,
+    24
+  ],
+  "note": "RAM selection rebuilt, not a bitwise replay of the old sampling sequence",
+  "original_checkpoints_and_catalog_unchanged": true
+}

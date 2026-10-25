@@ -1,5 +1,7 @@
 # 操作教程
 
+- [实时观测V2：独立原图、触觉面板与延迟诊断](grid_live_review_v2.md)，原V1入口保留。
+
 - [SpacePilot BC6148在线RL：显式setting、旧参数对照、触觉解冻、30秒与累计300回合](spacepilot_bc6148_online_rl.md)
 
 - [SpacePilot 初版测试：确认键位、只读预览和完整单回合采集指令](spacepilot_first_trial.md)

@@ -1,5 +1,9 @@
 # Training 当前摘要
 
+2026-10-24 23:05:58只读核对：当前实际训练已是新任务`local/rl_training/spacepilot_bc6148_rl_20261024_215949`，初始化记录为BC6148空池、RL从0开始；Actor WAIT_START／已加载6150，Learner TRAINING／更新6472／已发布6450。网页8768指向该新任务。下方45994条、30897权重和剩余70是旧任务清理时快照。主JSON默认run仍指向旧任务，续跑新任务需显式`--run`。见[完整快照、入口与待办](../../oct24_development_checkpoint.md)；本次仅记录，没有启动／停止训练，也未重新审计新任务全部数据。
+
+2026-10-24最新：[外部相机断流审计与清理](chronicles/2026-10-24-external-camera-outage-cleanup.md)。16:32:29后断流，17:07:54仍不可见、17:08:36记录已恢复；latest模式持续沿用旧RGB。用户授权删除已入池的20个回合：已归档校验后从活动目录删除20个完整原始回合、30个派生片段及SQLite的5681条经验，51675→45994（人工12651、策略33343）。另1个原已排除的异常回合保留。Actor/Learner正常停止，最终30897、停止前Actor30200；权重未回滚，仍可能受污染，未自动重启。累计已开始230、剩余70，删除台账防止返还20名额。临时缓存重建及batch64双池抽样通过；断流采集／入池门控尚未修复。下方Oct17–18数字保留为历史。
+
 2026-10-18停止核验：[编年](chronicles/2026-10-18-spacepilot-rl-stopped.md)与[证据](../../evidence/spacepilot_rl_stopped_20261018/README.md)。任务于10月17日23:42正常CLOSED，无强杀；最终actor.pt/learner.pt均4628，停止前实际操控4150。67回合（成功标记43、超时17、普通结束6、断连1），66可训练、13360条全部登记；原run续跑剩余233回合。权重/索引检查通过，未启动恢复训练；不将成功标记视为自主成功率。
 
 2026-10-17最新：[SpacePilot采集→BC6148→在线RL纪传](evolution/spacepilot-bc-online-rl.md)与[当天编年](chronicles/2026-10-17-spacepilot-bc-online-rl.md)已整理。10个新采回合保留9个正常回合/1499样本；CUDA两阶段2000+4000步得到BC6148，训练MSE0.00223588。按用户要求从BC权重新建空池RL，30秒、累计300、视觉/融合冻结、预热后触觉训练，保留旧after-inference、publish50/reload10及预算比例1。参数经--parameter显式加载，夹爪开启、marker暂关。

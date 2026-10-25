@@ -1,0 +1,14 @@
+{
+  "scope": "Original v1 live grid viewer files preserved when adding v2; not a frozen SDK/environment snapshot",
+  "baseline_head": "9609886b9ab29f1a43f57513c1d5e1ea7c768310",
+  "files": {
+    "scripts/view_grid_observation_live.sh": "a0c05b3df313b35e242b1479a86d3959533ad9e84458adb5df3bbfc7e3400171",
+    "scripts/grid_live_observation.rviz": "922d5abcabe5bf302eaf0265d0b872a5cd7e659ec35aaa619ecbbcaa28d5e6dd",
+    "src/omi_hil_rl/real/grid_live_review.py": "93fe88bc889b6d5fc484fad354c932a14fc266454afe03ccfe7d094d694d73d0",
+    "src/omi_hil_rl/real/grid_recorded_review.py": "1f0efb15da8c89ad64e7d5bd8552fa23b99d67be8c99022541a3cd326d651cf0",
+    "src/omi_hil_rl/real/recorded_observation.py": "8d64fd7e0684275ba34a86dc4793037e43e2fbe11fc444165b387201ab97494d",
+    "src/omi_hil_rl/real/tactile_vectors.py": "8f87da36660687529f11e2dab2d20e6cac18cb4df8ef90359e0ca2f476cf6de2",
+    "src/omi_hil_rl/real/wrist_recorded_review.py": "67494c5648dfd46e1a9c8bf05ff5874e1882c6e4fda11f7aba917edf428ee73e",
+    "ros2/omi_sensors/config/live_dashboard_network.xml": "a0ff72fd8170560b73765e937d3276e16f936f7a22e86815473db87f520dbea8"
+  }
+}

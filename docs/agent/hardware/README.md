@@ -1,5 +1,7 @@
 # Hardware 导航
 
+- [实时观测V2：独立面板与接收／绘图隔离](evolution/grid-live-review-v2.md)
+
 - [SpacePilot 六自由度物体位姿与模式切换](evolution/spacepilot-pose.md)
 
 - [腕部视频流卡顿：问题、排查与解决过程](evolution/wrist-stream-performance.md)

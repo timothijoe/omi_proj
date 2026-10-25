@@ -1,5 +1,13 @@
 # OMI 文档总目录
 
+2026-10-26提交前整理：[V2、数据清理、当前进展与待办汇总](oct24_development_checkpoint.md)。已实现内容与尚未实施的统一监控／断流门控分开记录；其中任务运行状态是10月24日快照，不代表10月26日现场状态。
+
+2026-10-24 23:06：[本轮完整工作快照与待办](oct24_development_checkpoint.md)。汇总V2九图与三列bar、停靠修复、旧任务20回合清理、当前新任务`spacepilot_bc6148_rl_20261024_215949`及统一健康监控建议。监控新方案尚未实施，断流入池门控待修复；下方旧任务清理数字是当时快照。
+
+2026-10-24：[外部相机断流、旧图入池审计与20回合清理](agent/training/chronicles/2026-10-24-external-camera-outage-cleanup.md)。已删除20个原始回合／30个片段及5681条经验，剩余45994；Actor/Learner已停止，30897权重未回滚、仍可能受历史污染。累计300上限剩余70，断流门控尚未修复。
+
+2026-10-24：[实时观测V2：独立原图、触觉面板与接收／绘图诊断](../tutorials/grid_live_review_v2.md)。新入口保留V1，单路绘图独立进程；[实现与边界](agent/hardware/evolution/grid-live-review-v2.md)。
+
 2026-10-18：[SpacePilot在线RL停止核验与续跑](agent/training/chronicles/2026-10-18-spacepilot-rl-stopped.md) · [最终保存证据](evidence/spacepilot_rl_stopped_20261018/README.md)。最终4628权重、67回合、13360条，正常关闭。
 
 2026-10-17全天进展：[SpacePilot采集、BC6148与在线RL纪传](agent/training/evolution/spacepilot-bc-online-rl.md) · [当天编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md) · [23:29只读证据快照](evidence/spacepilot_bc_rl_20261017/README.md) · [当前参数与操作](../tutorials/spacepilot_bc6148_online_rl.md)。

@@ -1,0 +1,48 @@
+{
+  "completed_at": "2026-10-24T20:54:03.613488+08:00",
+  "run": "/home/zhoutong/omi_folder/omi_proj/local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017",
+  "removed_original_episodes": 20,
+  "removed_segment_directories": 30,
+  "removed_transitions": 5681,
+  "removed_human": 489,
+  "removed_policy": 5192,
+  "removed_success_rewards": 4,
+  "counts_before": {
+    "records": 51675,
+    "human": 13140,
+    "policy": 38535,
+    "seed": 0,
+    "sources": 227
+  },
+  "counts_after": {
+    "records": 45994,
+    "human": 12651,
+    "policy": 33343,
+    "seed": 0,
+    "sources": 207
+  },
+  "original_directories_remaining": 210,
+  "original_started_episodes": 230,
+  "remaining_episode_budget": 70,
+  "historical_episodes_not_refunded": true,
+  "target_paths_absent": true,
+  "retained_sql_rows_unchanged": true,
+  "remaining_catalog_references_exist": true,
+  "sqlite_integrity": "ok",
+  "model_and_config_hashes_unchanged": true,
+  "excluded_abnormal_episode_preserved": "de474674dc3a4fd4ad45d0365a9aee48",
+  "deleted_files": 23372,
+  "deleted_payload_bytes": 549783538,
+  "backup": "/home/zhoutong/omi_folder/omi_proj/local/archives/camera_outage_20261024_20_episodes",
+  "backup_archive": {
+    "archive": "removed_data.tar",
+    "inventory": "removed_files.sha256.jsonl",
+    "prefix": "removed",
+    "sha256": "9a2030b29a614accd909d98fbee23ac2ddf043de9c4b4759e5352bad301e88c0",
+    "inventory_sha256": "ece3f0019708558996c10d96bf08d2e8dbbb891974882d2c86e976a7620ce16c",
+    "files": 23372,
+    "bytes": 549783538
+  },
+  "training_restarted": false,
+  "checkpoint_warning": "Experience removed; saved RL weights are not reverted and may contain prior learning from these records."
+}

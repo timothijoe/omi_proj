@@ -1,5 +1,9 @@
 # 项目Markdown全量索引
 
+2026-10-24：[完整工作快照、当前新任务与统一监控待办](oct24_development_checkpoint.md)。包含已完成项、验证边界、历史清理与当前run区分，以及带`--run`的正确续跑入口。
+
+2026-10-24：[实时观测V2教程](../tutorials/grid_live_review_v2.md)、[独立面板机制](agent/hardware/evolution/grid-live-review-v2.md)、[V2开发编年](agent/hardware/chronicles/2026-10-24-grid-live-review-v2.md)；[相机断流与20回合清理编年](agent/training/chronicles/2026-10-24-external-camera-outage-cleanup.md)、[审计／清理证据](evidence/external_camera_outage_20261024/README.md)。下方原分组数量保留历史快照口径。
+
 2026-10-18停止交接：[编年](agent/training/chronicles/2026-10-18-spacepilot-rl-stopped.md)、[证据及校验范围](evidence/spacepilot_rl_stopped_20261018/README.md)。
 
 2026-10-17全天：[SpacePilot/BC6148/在线RL纪传](agent/training/evolution/spacepilot-bc-online-rl.md)、[编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)、[现场证据](evidence/spacepilot_bc_rl_20261017/README.md)。

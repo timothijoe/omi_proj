@@ -1,5 +1,9 @@
 # 当前训练说明与文档汇总
 
+2026-10-26文档整理：[本轮完整进展与待办](oct24_development_checkpoint.md)。最后一次运行核查为10月24日23:06，新任务是`local/rl_training/spacepilot_bc6148_rl_20261024_215949`，初始化记录为BC6148空池；主JSON默认run仍指向旧任务，续跑新任务须显式传`--run`。这不是10月26日现场运行状态确认，完整命令与证据边界见快照。
+
+2026-10-24旧任务清理快照：[相机断流、旧图入池与20回合清理](agent/training/chronicles/2026-10-24-external-camera-outage-cleanup.md)。清理时任务正常停止，20个回合／30片段／5681条经验从活动数据与索引删除，剩余45994；当时最终30897权重未回滚，可能受历史污染。旧任务累计300回合当时还剩70，不能把删除数据理解为恢复20名额或清除模型影响，也不能套用到新任务。断流采集／入池门控尚未修复。
+
 最新补充：2026-10-17。[SpacePilot/BC6148纪传](agent/training/evolution/spacepilot-bc-online-rl.md)、[当天编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)和[显式参数操作页](../tutorials/spacepilot_bc6148_online_rl.md)记录当前30秒/300回合任务，用户已启动在线采集和训练。
 
 下文保留2026-10-12整理的Oct10–11任务说明及通用操作分类；Oct17实际操作优先读上方专页。

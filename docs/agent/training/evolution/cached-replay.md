@@ -1,5 +1,12 @@
 # 双池共享内存缓存与全量磁盘索引
 
+2026-10-24已执行一次停止状态的数据清理：[外部相机断流事件](../chronicles/2026-10-24-external-camera-outage-cleanup.md)。
+20个原始回合及30个派生片段先隔离备份，随后从活动目录和SQLite删除5681条经验及20条来源记录。
+清理必须先释放运行中的缓存与所有写者；仅删NPZ不能清除RAM条目且会破坏索引引用。
+本次其余records/sources行内容保持不变，SQLite完整性、全部剩余窗口哈希与帧存在性、临时缓存重建／抽样通过。
+活动目录删除后不会由扫描自动重新登记；隔离备份不在sources或当前run内。
+删除数据不会撤销已发生的学习更新，当前权重未因此恢复为干净模型。
+
 2026-10-10新增可选后端 `omi-cached-dual-replay-v1`。
 实现位于 `training/cached_replay.py`，只读周期源适配位于 `training/replay_sources.py`。
 启动与预算参数见[教程](../../../../tutorials/cached_replay.md)。

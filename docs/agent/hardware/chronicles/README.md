@@ -1,5 +1,7 @@
 # Hardware 编年索引
 
+- [2026-10-24 独立原图与触觉面板V2](2026-10-24-grid-live-review-v2.md)
+
 - [2026-10-17 SpacePilot接入采集与在线HIL，保留手柄](2026-10-17-spacepilot-hil.md)
 
 - [2026-10-17 SpacePilot 映射到手动控制话题](2026-10-17-spacepilot-control.md)

@@ -143,6 +143,16 @@ def remaining_episode_budget(run, session, requested):
     folder = Path(run)/('periodic_episodes' if session.get('control_mode') == 'periodic_training_v1' else 'episodes')
     started = {p.parent.name for marker in ('staging.json', 'audit.json', 'ready.json', 'discarded.json')
                for p in folder.glob('*/'+marker)}
+    # Removing invalid recordings must not replenish a cumulative episode cap.
+    removals = Path(run)/'episode_removals.json'
+    if removals.exists():
+        ledger = json.loads(removals.read_text())
+        ids = ledger.get('started_episode_ids')
+        if (ledger.get('schema') != 'omi-episode-removals-v1' or not isinstance(ids, list)
+                or any(not isinstance(ident, str) or not ident or '/' in ident or '\\' in ident
+                       for ident in ids) or len(set(ids)) != len(ids)):
+            raise ValueError('invalid removed-episode ledger')
+        started.update(ids)
     return max(0, min(requested, cap-len(started)))
 
 
