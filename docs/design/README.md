@@ -1,11 +1,10 @@
-# 设计文档
+# 设计与待办
 
-- [双相机ROI选择约定：第一版](camera-roi-v1.md)
+这里记录待实现方案或维护规则，不作为已实现能力说明。实现事实见[模块导航](../README.md)。
 
-- [文档体系与维护规则](documentation-system.md)
-- [HIL RL 跨领域架构](hil-architecture.md)
-- [真机触觉观测、录制与可视化验证需求](tactile-observation-requirements.md)
-- [ROS 到真机策略输入：现状、缺口与实施方案](ros-to-policy-integration.md)
-- [录包BC与ROS影子推理第一版目标](bag-bc-shadow-policy.md)
+- [统一健康监控与数据新鲜度](system-health-monitoring.md)：本轮优先待办；监控、入池门控与动作处置分开。
+- [传感器完整性与物理解释验收](sensor-validation.md)：持续验收目标，非当前profile默认能力。
+- [文档维护规则](documentation-system.md)：当前阅读路线与事实维护位置。
+- [2026-10-26文档重构记录](documentation-reorganization.md)：来源、迁移方式、检查结果和剩余边界。
 
-具体实现事实见 [Agent 知识库](../agent/README.md)；人类操作步骤见 [教程](../../tutorials/README.md)。
+旧集成设计和阶段性方案保留在对应[模块归档](../archive/README.md)。

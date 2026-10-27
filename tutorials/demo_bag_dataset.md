@@ -9,7 +9,7 @@
 当前使用两个独立进程：`gamepad_test.py` 遥操作，`record_demo_bag.sh` 只录包。
 训练更新：四个日期bag已通过新的[含wrench的BC转换与训练入口](passive_bag_bc_wrench.md)
 生成1005条样本并启动CUDA训练。下述`passive_preview`仍是独立审阅格式，不直接作为训练数据。
-已完成四个真实bag的检查及第三包335条观测—实际指令配对预览；[检查记录](../docs/agent/training/chronicles/2026-10-05-passive-demo-audit.md)和[数据契约](../docs/agent/training/evolution/demo-collection-bc.md)说明适用范围。
+已完成四个真实bag的检查及第三包335条观测—实际指令配对预览；[检查记录](../docs/archive/bc/records/training/chronicles/2026-10-05-passive-demo-audit.md)和[数据契约](../docs/modules/bc.md)说明适用范围。
 
 ## 1. 启动手柄
 
@@ -185,7 +185,7 @@ scripts/view_demo_dataset.sh \
 这里“缺后继EEF”指指令到达后、下一参考时刻之前没有收到符合要求的新EEF，并不表示该时段完全没有EEF反馈，也不能单凭这项筛选推断EEF频率低。例如下一参考时刻为100ms、指令在99ms到达，最近EEF在98ms、下一条在118ms，则此候选仍被排除。此例仅解释配对规则，不是实测时间。正式passive BC不要求后继EEF；167条被排除的数字仅来自第三包预览，不推广到其他包。
 少数观测过旧或有约0.3～0.4秒接收间断，需要按用途清洗。
 原始四包没有成功标记，也尚未确认是否使用自动返回，因此不能自动认定整包都是成功人工示范。
-详情见[四包检查编年](../docs/agent/training/chronicles/2026-10-05-passive-demo-audit.md)。
+详情见[四包检查编年](../docs/archive/bc/records/training/chronicles/2026-10-05-passive-demo-audit.md)。
 
 ## 7. 其它两种数据入口
 

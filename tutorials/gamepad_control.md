@@ -1,6 +1,6 @@
 # 手柄控制、SDK 换轴与 RB 接管
 
-完整实现及演进见[功能开发记录](../docs/agent/hardware/evolution/gamepad-control.md)。
+完整实现及演进见[功能开发记录](../docs/archive/teleoperation/records/hardware/evolution/gamepad-control.md)。
 
 ## 当前使用哪个程序
 

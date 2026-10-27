@@ -7,20 +7,20 @@
 EEF 因果、帧龄、相位及回执延迟只记录告警，不再因此排除已接受的训练动作。
 BC 读取支持这些带 `timing_policy=diagnostic_only_v1` 的新标签。
 恢复旧 receipt 会话时未指定模式会沿用原模式，也可显式 `--control-mode receipt`。
-需正常退出并重启采集程序；[完整说明](../docs/agent/training/chronicles/2026-10-09-observation-driven-control.md)。
+需正常退出并重启采集程序；[完整说明](../docs/archive/online-rl/records/training/chronicles/2026-10-09-observation-driven-control.md)。
 
 当前推荐的人工周期采集功能、现场证据与日志解释见
-[2026-10-07 多回合采集记录](../docs/agent/training/chronicles/2026-10-07-human-periodic-collection.md)。
+[2026-10-07 多回合采集记录](../docs/archive/online-rl/records/training/chronicles/2026-10-07-human-periodic-collection.md)。
 本页后半部分保留早期 `receipt` 同步模式与离线训练阶段说明；操作周期模式时以本节和该记录为准。
 
 2026-10-09 起，Start 保留等待期间积累的最近10帧观测；完整且新鲜时无需重新预热。
 同步与周期采集均生效，需正常退出并重启当前采集程序。该次修改保留了原时效门槛，随后周期模式已按上方新约定调整；
-回合仍从 Start 计时。[修改与软件验证记录](../docs/agent/training/chronicles/2026-10-09-start-history-retention.md)。
+回合仍从 Start 计时。[修改与软件验证记录](../docs/archive/online-rl/records/training/chronicles/2026-10-09-start-history-retention.md)。
 
 ## 新一批示范采集（2026-10-07）
 
 当前计划：新采人工数据→审核→训练新BC→用对应示范和新BC初始化双池在线RL。
-双池实现、验证结果与待办见[开发交接记录](../docs/agent/training/chronicles/2026-10-07-dual-replay.md)。
+双池实现、验证结果与待办见[开发交接记录](../docs/archive/replay/records/training/chronicles/2026-10-07-dual-replay.md)。
 现有双池目录仍使用旧8回合，下面的采集不会自动替换其模型或种子。
 
 确认现场安全、传感器及接收端运行，并关闭其他动作发布程序后，由操作者执行：
@@ -71,7 +71,7 @@ bash scripts/collect_rl_episodes.sh \
 该通用报错不能直接确认为包络限制；当前按用户要求保留保护设置、暂缓排查。
 `keep=false`不用于训练；`keep=true`也需核实实际运动及标签后再作为新BC示范。
 `demo_new_20261007_213643` 已完成独立两阶段 BC 拟合，训练产物和方法见
-[新采周期数据 BC 记录](../docs/agent/training/chronicles/2026-10-07-new-periodic-human-bc.md)。
+[新采周期数据 BC 记录](../docs/archive/bc/records/training/chronicles/2026-10-07-new-periodic-human-bc.md)。
 训练 MSE 是同数据拟合指标，不代表真机成功率；新 BC 尚未自动导入旧 RL 双池。
 
 ## 2026-10-07：断点续采与分次采集
@@ -124,8 +124,8 @@ bash scripts/train_rl_offline.sh \
 不要删除原始episodes，也不要手工把clean标志改为true。
 恢复采集/训练不意味着恢复机器人位置，物理复位仍由人工完成。
 
-本次网络对齐与中断恢复见[2026-10-07阶段记录](../docs/agent/training/chronicles/2026-10-07-shared-serl-resume.md)；
-此前采集实现与现场数据检查见[2026-10-06阶段记录](../docs/agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)。
+本次网络对齐与中断恢复见[2026-10-07阶段记录](../docs/archive/online-rl/records/training/chronicles/2026-10-07-shared-serl-resume.md)；
+此前采集实现与现场数据检查见[2026-10-06阶段记录](../docs/archive/online-rl/records/training/chronicles/2026-10-06-rl-episode-collection-audit.md)。
 
 ## 早期 receipt 模式记录与限制
 
@@ -158,7 +158,7 @@ bash scripts/train_rl_offline.sh \
 按用户指定以315/308/307键码为准，不依赖面板字母；Back 默认键码314，可用 `--home-button-code` 修改。
 A/B沿用 `gamepad_test.py` 的夹爪SDK、已知行程标定和默认参数；默认启用，`--no-gripper` 可关闭。
 默认连接 `192.168.14.11:55551`，读取 `tutorials/gripper_limits.json`；速度50、力矩上限30%、
-闭合位置0、张开位置1000。可用 `--gripper-*` 参数覆盖，与[直接手柄入口](gamepad_control.md#夹爪-sdk-与-a-b-按键)相同。
+闭合位置0、张开位置1000。可用 `--gripper-*` 参数覆盖，与[直接手柄入口](gamepad_control.md)相同。
 夹爪命令不属于当前六维机械臂RL动作，也不会作为可回放的夹爪动作写入训练数据。
 开始、成功、手动终止采用按下边沿，启动或重连时先松开对应按钮再按；按住不会重复触发。
 RB采用按住使能逻辑；成功和手动终止不要求同时按RB。

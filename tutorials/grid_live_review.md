@@ -86,7 +86,7 @@ RViz只读取这套显示TF，不向现场 `/tf`、`/tf_static`、`/joint_states
 
 依赖沿用录包看板：ROS Jazzy、RViz、NumPy/Pillow及可选marvin_msgs。
 缺marvin_msgs时跳过可选关节订阅；即使其余topic缺失仍能显示状态。
-现场证据和限制见[纪传体](../docs/agent/hardware/evolution/grid-live-review.md)。
+现场证据和限制见[纪传体](../docs/modules/visualization.md)。
 
 ## 现场 Jointfeedback 定义（2026-10-04 修正）
 

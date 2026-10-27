@@ -2,7 +2,7 @@
 
 > 对应脚本：`hand_eye_calibration.py`（D435 + AprilTag 四角板，eye-to-hand）
 
-运行命令见[marker 检测教程](../../tutorials/marker_detect.md)，当前数据流和输出约定见[技术说明](../../docs/marker_detect.md)。
+运行命令见[marker 检测教程](../../tutorials/marker_detect.md)，当前数据流和输出约定见[技术说明](../../docs/archive/marker/records/marker_detect.md)。
 
 ## 1. 要解决的问题
 

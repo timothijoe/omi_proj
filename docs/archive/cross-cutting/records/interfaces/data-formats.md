@@ -1,0 +1,178 @@
+> 历史资料：原路径 `docs/agent/interfaces/data-formats.md`；2026-10-26归档。正文中的运行状态和参数只适用于原记录时期。
+> 当前说明见[模块入口](../../../../current.md)；本页保留原过程与证据。
+
+# 数据格式与单位
+
+## cached 双池目录（2026-10-10）
+
+`replay/manifest.json.backend=omi-cached-dual-replay-v1`，记录完整contract、cache/limit字节预算、
+刷新参数和外部录制来源。`catalog.sqlite3`的sources保存完整来源指纹与登记结果，records保存
+源NPZ/后继NPZ定位、SHA-256、时间、动作/奖励/结束等metadata和seed/human归属。
+只有校验完成的整个来源才以一个SQLite事务提交，不持久化内存中的展开数组。
+
+内存两组索引共享一份完整transition；seed只属Demo，online human同时属于Demo/RL，policy只属RL。
+`stream_counts`是驻留可采样数量，`storage_stats.catalog_*`是已登记的全量数量。
+本会话的imported兼容标记含 `catalog_registered=true,resident_not_guaranteed=true`；外部来源不写标记。
+周期audit与其ready片段只登记一次，未完成的周期staging不提前导入。
+来源文件和帧依赖需要一直保留；搬迁外部源不是仅修改原始文件名就能完成的索引迁移。
+具体恢复和预算边界见[机制说明](../../../replay/records/training/evolution/cached-replay.md)。
+
+## periodic 回合单帧存储（2026-10-10）
+
+新回合 staging/audit 和 ready 片段 manifest 标记
+`observation_storage_version=omi-observation-frames-v1`；audit 另记 `stored_observation_frames`。
+原观测、动作、边界 NPZ 的 `metadata.observation_storage.observation` 含：
+
+- `version`：`omi-observation-frames-v1`。
+- `directory`：相对此 NPZ 所在目录的帧库路径。
+- `frames`：按从旧到新排列的十个 SHA-256 ID。
+
+ready 片段记录额外包含 `metadata.observation_storage.next_observation`，同样引用原回合帧库。
+帧文件为 `periodic_episodes/<episode>/frames/<id>.npz`，保留单帧各字段的原dtype与shape；
+原十帧数组的首维在存储时去掉，读取时 stack 恢复。`history_mask` 单帧为标量，缺帧占位保持原值。
+SHA-256 按排序后的字段名、dtype.str、shape及C顺序原始字节计算；读取验证内容哈希。
+时间与动作元数据保持原格式；内容相同的两个时刻可共用帧，但不合并观测节拍或动作记录。
+
+无引用的旧 `observation__*`/`next_observation__*` 内嵌数组仍支持读取；同一字段同时内嵌和引用则拒绝。
+空观测保持空观测，不重建为虚构的全零有效窗口。
+共享读取入口：`hil.observation_storage.ObservationReader.read` 和 `hil.exchange.read_episode`。
+训练片段依赖原 `periodic_episodes` 帧目录，归档时与 `episodes` 一起保留；固定容量 replay 未改格式。
+
+## observation 驱动的周期记录（2026-10-09）
+
+仲裁模式另记为 `arbitration_mode=after-inference|immediate`，存在于运行状态、回合摘要、
+每条动作及导出 transition 的 `command_audit`。新默认模式还记录 `arbitration.rb`、
+`arbitration.observation_reference_ns` 与 `arbitration.policy_candidate_normalized`。
+模型候选仅审计；`normalized_action` / `executed_action` 与 `action_source` 记录实际选择并接受的动作。
+
+新周期采集/评估/RL 的 `audit.json` 与动作元数据包含 `timing_policy=diagnostic_only_v1`。
+`ticks` 计数已发送动作，`observation_ticks` 计数独立观测快照，两者在慢推理时可不同。
+`observations/<reference_ns>.npz` 保存观测数组、真实历史 mask、源 header/接收时间及诊断；
+根目录 `<index>.npz` 保存每条命令与其实际输入快照，`inference_ms` 和 `command_send_ns` 记录耗时与真实发送时间。
+`timing_diagnostics.json` 与动作索引对应；摘要 `timing_diagnostics` 计数时序告警，`excluded` 才是实际排除。
+`pairing.json` 保留旧检查的诊断结果，新记录由 `pairing_is_diagnostic=true` 明示不作为时序入池门槛。
+导出的 `command_audit` 同样带时序模式、告警与原始命令/回执，BC 读取据此采用相同规则；
+旧数据没有该标记时维持原严格校验，不自动重导历史数据。
+详情见[当前训练机制](../../../online-rl/records/training/evolution/real-online-rl.md)。
+
+## 训练监控遥测（只读、尽力而为）
+
+`RUN/monitor/{actor,learner}.json` 使用 `schema=omi-monitor-v1`，包含角色、独立 session、PID、
+`emitted_ns`（后台写者心跳）和 `progress_ns`（生产循环进度），均为本机系统时间纳秒。
+Actor 另有仲裁、输入状态和可选预览；预览单独保留 ROS `reference_ns` 和本机 `generated_ns`，
+不能把两种时钟直接相减作为延迟。Learner 记录更新、流计数和最新发布确认。
+`*.events.jsonl` 是独立角色事件日志；监控快照不承担 replay 提交或恢复职责。
+旧状态文件没有心跳时只显示历史状态。[完整语义](../../../visualization/records/training/evolution/training-monitor.md)。
+
+## bag-eef-bc-v2（可选腕部）
+
+新增wrist_rgb uint8 `(N,3,128,128)`、camera_mask float32 `(N,2)`，顺序external/wrist。
+mask为启用且新鲜的0/1标记；外部固定必需。源选择off/required/optional、ROI和归一化等
+保存在manifest与checkpoint，必须一致。关闭/缺失腕部为零图＋mask0，不能冒充有效黑图。
+原state26、tactile10×16×24、action6不变。规则见[契约](../../../policy/records/training/evolution/eef-action-space.md#v2可选腕部相机与输入源标记)。
+
+## bag-eef-bc-v1（未来状态变化代理）
+
+RGB/触觉沿用bag-bc-v1；state为26维，追加当前EEF xyz/xyzw；action为6维米/弧度旋转向量。
+`target_pose`只用于标签审计，`actual_horizon_ns=label_ns-source_ns[eef]`保存真实跨度。
+基座系增量按当前录制位姿重建，旋转左乘；具体时间、形状、单位与拒绝规则见
+[末端动作契约](../../../policy/records/training/evolution/eef-action-space.md)。不兼容旧7关节检查点。
+新 `omi_action_msgs/msg/EefActionProposal` 仅表示影子策略候选，不是选定/下发动作。
+
+
+双相机ROI几何与插值约定见[第一版说明](../../../sensors/design/camera-roi-v1.md)。
+外部(.507,.426,.40)、腕部(.500,.704,.36)依次表示中心X比例、中心Y比例、短边比例；
+两路输出128×128。当前新看板外部最近邻、腕部Lanczos，不能当成统一的训练插值契约；
+旧七关节BC及EEF v1不接腕部；EEF v2已按固定ROI＋最近邻接入可选腕部。
+
+## bag-bc-v1（实验、仅影子推理）
+
+`training.bag_bc_data.CONTRACT`为训练/推理共同契约；不兼容时拒绝加载。
+NPZ含rgb uint8 `(N,3,128,128)`、tactile float32 `(N,10,16,24)`、state float32 `(N,19)`、
+action float32 `(N,7)`，以及int64 reference_ns、label_ns、source_ns。触觉通道为
+A def_x/def_y/shear_x/shear_y/depth，再B同序；状态为左7关节、A六维wrench、B六维wrench。
+action是显式假设的左臂绝对弧度目标，并非已确认执行动作；触觉单位未物理标定。
+label取reference+100ms起第一条指令（额外等待≤50ms），源观测不晚于reference且年龄≤250ms。
+manifest含episode内容指纹、来源和样本文件SHA256；训练统计只取训练episode。
+影子JSON含epoch、参考/源时间、action_target_rad、推理/等待耗时和shadow_only；
+它不是控制器消息。机制与限制见[纪传体](../../../bc/records/training/evolution/bag-bc-shadow.md)。
+
+## 触觉表示名称
+
+术语定义以[领域词汇表](../../../../../CONTEXT.md)为准。现有接口名称保持不变：
+
+| 讨论名称 | 当前字段或产物 |
+| --- | --- |
+| 原始触觉图 | raw；策略字段 `tactile_raw` 是缩放后的双指原始触觉图 |
+| 触觉数值场 | `deformation` 形变场、`shear` 剪切相关场、`depth` 深度场 |
+| 触觉可视化图 | 数值场绘制的 RGB 箭头图或热力图 |
+
+例如 `a/deformation` 是“A 形变场”；dashboard 中带箭头的 A deformation 面板是
+“A 形变箭头图”。wrench 是六维整体数值量，不属于空间数值场。策略 observation
+是多种输入的集合，dashboard 是人用组合画面，二者不混称。
+
+新增回放触觉数值契约：带源 header 的 `32FC2` deformation/shear、配对 raw、带基准哈希
+和身份的 JSON metadata。详见[实时触觉显示](../../../sensors/records/hardware/evolution/tactile-live.md#数据契约)。
+此契约尚未并入策略 observation 或 replay。
+
+## 环境契约
+
+动作是 `float32[7]`，每轴归一化范围 `[-1,1]`，代表相对于当前关节角的增量；在当前仿真每轴满量程为 `0.04 rad`。观测字典含 `state: float32[14]`（前七关节角 `rad`，后七关节速度 `rad/s`）、`tcp_pos: float32[3]` 和 `target_tcp_pos: float32[3]`（世界坐标 `m`），共 20 个数值。`terminated` 表示任务成功，`truncated` 表示步数上限。训练 progress 与评估 sparse 奖励的定义见 [训练纪传体](../../../simulation/records/training/evolution/hil-training.md#2-奖励与回合结束)。
+
+`info` 至少包含 `policy_action`、可选 `human_action`、`executed_action`、`action_source`、`commanded_joint_target_rad`、`tcp_error_m`、`model_kind` 和 `task`。此处 `executed_action` 是经过仲裁和限位的**命令增量**，不是经真实设备反馈确认的实际运动。
+
+`action_source` 目前只有 `policy` / `human`，其中 `human` 包括脚本教师和真人输入。教师身份、输入设备和奖励模式没有独立字段；仅凭 JSONL 的来源标签无法证明真人干预。代理任务与 A 臂任务的奖励距离单位不同，不能混用。
+
+## JSONL
+
+`TransitionRecorder` 每步写一行 JSON：`episode`、`step`、`observation`、`policy_action`、`human_action`、`executed_action`、`commanded_joint_target_rad`、`action_source`、`reward`、`next_observation`、`terminated`、`truncated`、`model_kind`、`task`、`tcp_error_m`。`validate_recording` 检查动作来源、形状、有限值和同回合观测连续性；它不判定示范质量或物理安全。当前格式**没有 schema_version、绝对时间戳、设备帧号、策略版本或真实动作确认**，实机使用前应升级并迁移数据。
+
+## Replay 内部契约
+
+`HILReplayBuffer` 保存字典观测和下一观测、归一化最终命令动作、奖励、done、timeout，以及 `human_mask` / `online_mask`。`done=terminated or truncated`；SB3 通过超时标记使时间上限截断的样本仍可估计后续价值。
+
+写入接口的 `info.action_source` 必须是 `human` 或 `policy`。`replay_origin` 默认 `online`；导入示范使用 `offline_demo`，且必须为 `human`。`replay_origin` 是入池路由字段，不是现有 JSONL 字段。入池后不保留整份 `info`，动作审计在 JSONL。
+
+`stream_counts()` 输出 `online`、`demonstration`、`offline_demonstration`；在线干预是前两者的交集，第三者是示范流中不属于在线流的部分。`replay.pkl` 保存池及标记，是训练快照，不是可直接驱动真机的轨迹，也没有对应的 CLI 续训入口。容量、抽样和覆盖行为见 [Buffer 纪传体](../../../simulation/records/training/evolution/hil-training.md#4-buffer-的存储与采样)。
+
+## 磁盘 Replay
+
+磁盘后端使用 schema_version=1 的 `manifest.json` 和 `.npy` 数组，元数据含 shape/dtype、容量、ring 位置、full、采样比例与 clean 标志。由 `DiskHILReplayBuffer.checkpoint/reopen` 保存/恢复，不生成 `replay.pkl`；dirty checkpoint 拒绝重开。字段、锁与保存边界见 [磁盘经验池](../../../replay/records/training/evolution/disk-replay.md)。
+
+## SDK
+
+厂商 SDK 关节目标和反馈使用**度**，`TianjiSdkArm` 对外使用**弧度**。`TianjiArmState` 包含七关节角、反馈帧号、控制状态、错误码和单调时钟接收时间。仿真 MJCF 关节角为弧度；两者不能直接混用。
+
+## 触觉零载荷基准包
+
+`omi_hil_rl.real.tactile_baseline` 在一个新目录中生成 schema version 1 的离线基准包：
+
+- `tactile_a_base.npy` / `tactile_b_base.npy`：原始分辨率的 `uint8 H×W` 时间中位数；
+- `tactile_baseline.npz`：两张基准及参与聚合的 bag 时间戳；
+- 两张同名 PNG：仅供人工查看；
+- `open_gripper_contact_sheet.png`：窗口内五个固定时刻的外部相机画面；
+- `metadata.json`：bag、相对时间窗口、topic、帧数、shape/dtype、raw 稳定性、零载荷检查、
+  serial 映射与限制。
+
+当前零载荷检查阈值是针对录包验证的启发式条件：夹爪位置最小值不低于 0.95，双侧平均
+合力模长不高于 1.0，双侧平均 depth 不高于 0.02。由于厂商力单位尚未确认，这些阈值
+不是物理校准限值。生成器拒绝覆盖已有输出目录；基准包位于 `local/`，不进入 Git。
+
+## 触觉离线场探针
+
+`tactile_offline` 每个逻辑侧和目标时刻生成压缩 NPZ：raw、`288×384×2 float32`
+deformation、同 shape shear、重建 depth、bag 记录 depth 和记录 wrench。PNG 只供人工
+查看；`metadata.json` 保存实际选中时间、数值范围、renderer 参数及 depth 对照指标。
+当前固定显示参数为 step 16、2 px/unit、deadband 0.2、最大 24 px，禁止逐帧归一化。
+重建矩阵没有已确认物理单位；记录 depth 始终保留为独立真值字段。
+
+字段语义如下：
+
+- `a_*` 属于右侧夹爪 A / `X26040546`，`b_*` 属于左侧夹爪 B / `X26040345`；
+- `deformation[y,x] = [dx,dy]` 是当前触觉纹理相对零载荷基准的二维稠密位移；
+- `shear` 是厂商 `Decomposer` 从 deformation 派生的同 shape 二维场，厂商示例称为
+  `2D curl`，当前只解释为剪切、旋转和滑移相关特征；
+- renderer 按图像坐标把 `+x` 画向右、`+y` 画向下，但左右图像坐标尚未标定到统一的
+  夹爪/机器人坐标系；
+- deformation、shear 都不是标定后的力，箭头长度不能解释为 N，shear 也不能直接解释为
+  已标定切向力。

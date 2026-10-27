@@ -1,140 +1,115 @@
 # 操作教程
 
-- [实时观测V2：独立原图、触觉面板与延迟诊断](grid_live_review_v2.md)，原V1入口保留。
+按操作目的选择；先看[项目当前摘要](../docs/current.md)核对选定配置和任务。辅助工具有各自契约，不因仍可运行就成为主流程。
 
-- [SpacePilot BC6148在线RL：显式setting、旧参数对照、触觉解冻、30秒与累计300回合](spacepilot_bc6148_online_rl.md)
+## 常用入口
 
-- [SpacePilot 初版测试：确认键位、只读预览和完整单回合采集指令](spacepilot_first_trial.md)
+- [SpacePilot BC6148：新任务与已有run续跑](spacepilot_bc6148_online_rl.md)
+- [RViz V2：九幅观测图与末端／人工／策略bar](grid_live_review_v2.md)
+- [Actor/Learner训练网页](training_monitor.md)
+- [设备与动作入口速查](common_live_commands.md)
+- [人工回合采集](rl_episode_collection.md)
+- [缓存和完整会话恢复](cached_replay.md)
 
-- [SpacePilot用于BC/RL采集及在线接管：按键配置、预览和输入选择](spacepilot_hil.md)
+训练、设备采集和监控使用各自入口；按教程核对实际任务目录。
 
-- [SpacePilot 控制机械臂：预览、发送与独立平移/旋转 scale](spacepilot_control.md)
+## 在线训练
 
-- [SpacePilot 六自由度物体操控](spacepilot_pose.md)：驱动检查、前 +X / 左 +Y / 上 +Z、实体按键、平移/旋转锁定与导出。
+- [SpacePilot BC6148 在线 RL：显式 setting 与旧配置对照](spacepilot_bc6148_online_rl.md)
+- [按回合交替的真机 RL（2026-10-07 最小版本）](alternating_rl.md)
+- [异步真机 RL：每 10 个完整回合检查新策略](async_rl.md)
+- [真机常用启动指令汇总](common_live_commands.md)
+- [六维真机 HIL 环境、SAC 与 Actor/Learner](hil_actor_learner.md)
+- [真机RL：人工回合采集与复位](rl_episode_collection.md)
+- [机器人接收端与手柄启动步骤](robot_gamepad_startup.md)
 
-- [当前训练操作总览与文档汇总](../docs/current_training_guide.md)：先分清新建空池、旧任务续跑和归档恢复。
-- [Ubuntu 22.04 在线 RL 与人工回合采集依赖](ubuntu2204_online_rl_dependencies.md)：现有传感器和机器人之外的 Python、ROS 与 CUDA 环境检查。
-- [新建 / 自动续跑 / 监控的可复制命令](common_live_commands.md#rl-new)：在线RL没有resume参数，按任务目录自动恢复。
-- [Oct 11归档、checkpoint恢复、buffer重建与续训](oct11_archive_restore.md)。
-- [全部项目Markdown索引](../docs/markdown_index.md)。
+## 示范与BC
 
-- [AprilTag：位姿记录、多姿态手眼标定与手柄跟随](marker_detect.md)；[独立窗口启动及排错](marker_detect.md#tag-follow) · [首次标定](marker_detect.md#tag-handeye) · [异步 RL 内置跟随](async_rl.md#tag-follow)。
+- [录包 → BC初始策略 → ROS影子推理](bag_bc_shadow.md)
+- [独立手柄录包、数据检查与逐帧可视化](demo_bag_dataset.md)
+- [集成手柄 Demo 采集、指令标签与 BC](demo_collection_bc.md)
+- [日期 bag → 含双指六维力/力矩的 BC 训练](passive_bag_bc_wrench.md)
 
-- [Demo/RL共享内存缓存：16/20 GiB预算、自动读取录制数据与启动](cached_replay.md)
+## 经验池与存储
 
-- [BC12045 预加载与异步 RL 首次试跑：新会话、3 回合命令、默认仲裁与监控](bc12045_async_rl_trial.md)
+- [双池内存缓存：全量数据留盘，后台加载训练](cached_replay.md)
+- [使用磁盘经验池](disk_replay.md)
+- [本机 local 与外接盘数据的使用](local_data_storage.md)
+- [完整 transition 的磁盘存储与双流导入](transition_replay.md)
 
-- [Actor/Learner 统一训练监控：传感器、仲裁、数据链、权重与逐帧审阅](training_monitor.md)
+## 策略模型
 
-- [local 大数据外置：原路径兼容、挂载检查与旧会话恢复](local_data_storage.md)
-
-- [真机 RL 回合逐帧可视化：两路相机、10 帧历史、触觉与训练片段状态](rl_episode_visual_review.md)
-
-- [真机常用启动指令汇总：机器人、三路传感器、看板、手柄、示范、BC 与 RL](common_live_commands.md)
-
-- [BC模型与成功label回放测试：295/3295/11795模型切换、按键及记录边界](bc_replay_testing.md)
-
-- [异步真机RL：Actor/Learner并行，每10个完整回合刷新策略](async_rl.md)；[Start保留十帧输入与重启生效](async_rl.md#2026-10-09start-保留十帧输入)
-
-- [按回合交替RL：采集后训练、重载策略、RB复位与下一回合](alternating_rl.md)
-
-- [RViz 操作教程：现场传感器、手柄、实时看板与历代三包回放的一行式命令](rviz_representative_bags.md)
-
-- [真机RL人工回合：按钮成功、超时停止、手柄复位和连续采集](rl_episode_collection.md)
-
-- [当前无wrench模型：推理、RB接管、单按314回home、Ctrl+C观测保存](no_wrench_policy_record.md)
-
-- [独立传感器采集、腕部可靠录制与时间审计](sensor_decoupling.md)
-
-- [新wrench BC模型真机入口：默认预览、RB手柄优先、单按314回home](wrench_policy_gamepad.md)
-
-- [本次日期bag转训练集：双指六维力/力矩BC训练](passive_bag_bc_wrench.md)
-
-- [独立手柄录包、四包检查、真实指令预览与左右键切帧](demo_bag_dataset.md)
-
-- [集成手柄 Demo 采集、发送指令标签与 BC](demo_collection_bc.md)
-
-- [六维真机HIL环境、无夹爪SAC与Actor/Learner](hil_actor_learner.md)
-
-- [USB 插入触觉保护：峰值锁定和负 X 撤退](tactile_guard.md)
-- [只读触觉预警：读取原始示数，超限打印日志](tactile_warning.md)
-- [双指六维力/力矩：实时查看和完整历史记录](wrench_live.md)
-
-- [机器人控制接收端：速度保持、参数、重启与离线预览](robot_controller.md)
-
-- [无关节模型实时 ROS 影子推理](stack_shadow.md)
-
-- [实时相机、触觉与末端位姿RViz看板](grid_live_review.md)
-
-
-- [不使用关节反馈的GPU训练](nojoint_stack_training.md)
-
-
-- [六关键点候选与人工审核工具](six_keypoint_review.md)
-
-- [当前帧独立＋过去9帧通道拼接训练](current_stack_history.md)
-
-- [冻结ResNet-10历史策略训练与对照](resnet10_history.md)
-
+- [bag_004：末端动作空间、BC与影子推理](eef_action_space.md)
 - [历史 policy 在线推理与 wrench 开关](eef_history_online.md)
+- [无关节模型：实时 ROS 影子推理](stack_shadow.md)
 
-- [oct3正式录包检查、学习格式转换与训练](oct3_formal_dataset.md)
+## 机器人控制
 
-传感器常用操作优先看三个互相索引的教程：
+- [右臂六维增量画圆](circle_test.md)
+- [真机准备：只读阶段](hardware_preflight.md)
+- [OpticalModule 机械臂控制代码迁移](robot_controller.md)
+- [USB 插入触觉保护](tactile_guard.md)
+- [只读触觉阈值预警](tactile_warning.md)
 
-- [腕部＋触觉常用命令速查](sensor_commands.md)
-- [腕部相机专项](wrist_camera.md)
-- [触觉专项：小矩阵、raw/wrench开关与录包](tactile_grid_transport.md)
+## 人工输入
 
-默认参数、topic和常用命令变更时，三份文件共同维护。
+- [手柄控制、SDK 换轴与 RB 接管](gamepad_control.md)
+- [SpacePilot 机械臂末端增量控制](spacepilot_control.md)
+- [SpacePilot 用于 BC/RL 采集与在线交互](spacepilot_hil.md)
+- [SpacePilot 六自由度物体操控](spacepilot_pose.md)
 
-- [24×16触觉＋腕部ROI＋3D机器人通用回放](grid_bag_review.md)：用于新的`/omi/tactile_grid24x16/...`录包。
+## 相机与触觉
 
-- [末端动作 rosbag、Float64MultiArray 与模拟控制端联调](eef_action_bag.md)
+- [戴蒙双指触觉与腕部相机实时预览](daimon_live.md)
+- [真机 ROS 观测接口（只读）](ros_observation_interface.md)
+- [独立 ROS 传感器：安装、采集、录包与回放](sensor_collection.md)
+- [腕部相机＋触觉：常用命令速查](sensor_commands.md)
+- [独立传感器采集、录制与时间审计](sensor_decoupling.md)
+- [触觉24×16低带宽发布（可选第一版）](tactile_grid_transport.md)
+- [在另一台机器恢复触觉重建并做可视化比对](tactile_reconstruction_migration.md)
+- [腕部相机：采集、ROI/full与查看](wrist_camera.md)
 
-- [戴蒙触觉与腕部相机独立实时启动、RViz及时延检查](daimon_live.md)
+## AprilTag
 
-- [bag_004末端动作空间、BC与类型化影子推理](eef_action_space.md)
+- [AprilTag：位姿记录、手眼标定与手柄跟随](marker_detect.md)
 
-含旧`/tj/dm_sensor/...`完整场的oct03包用[腕部＋触觉＋机器人回放](wrist_bag_review.md)：
-独立domain93，读取命名修正版模型。新的grid话题包使用上面的小矩阵入口，不能只按录制日期选择。
+## 仿真
 
-新增[Stand关节方向修正版](corrected_stand_review.md)：新支架与完整网格，修正角度约定；TCP/限位未验收。
+- [A 臂任务、训练与独立评估](a_arm_simulation.md)
+- [策略运行中的键盘干预](interactive_intervention.md)
+- [键盘录制 A 臂示范](keyboard_demonstration.md)
+- [最短可运行仿真案例](quickstart.md)
+- [录制、示范导入与可视化](recording_and_replay.md)
 
-新增[新外观＋旧运动链对照](hybrid_urdf_review.md)：保留旧关节链，新网格逐件配准，不确定部分回退旧外观。
+## 监控与可视化
 
-新增[Stand URDF 对照回放](stand_urdf_review.md)：独立新模型入口，区分 L7 原点与录包 EEF，未校准。
+- [Stand 关节方向修正版（只读可视化）](corrected_stand_review.md)
+- [将录制的末端位姿转为增量并回放](eef_pose_replay.md)
+- [小矩阵触觉＋腕部ROI＋机器人：通用RViz回放](grid_bag_review.md)
+- [实时相机、触觉与末端位姿 RViz 看板](grid_live_review.md)
+- [实时观测 V2：独立原图、触觉面板与延迟诊断](grid_live_review_v2.md)
+- [新外观与旧运动链对照](hybrid_urdf_review.md)
+- [真机 RL 回合逐帧可视化与人工检查](rl_episode_visual_review.md)
+- [RViz双臂3D回放＋视觉触觉看板](robot_3d_replay.md)
+- [旧录包：视觉、触觉与机器人状态同屏](robot_state_dashboard.md)
+- [RViz 操作教程：实时传感器与历代录包](rviz_representative_bags.md)
+- [SDK 原生数值看板](sdk_native_dashboard.md)
+- [六关键点自动候选与人工审核](six_keypoint_review.md)
+- [用新 Stand URDF 对照回放](stand_urdf_review.md)
+- [Actor / Learner 统一训练监控](training_monitor.md)
+- [双指六维力/力矩：实时查看与完整历史记录](wrench_live.md)
+- [bag_004腕部相机＋触觉＋机器人RViz回放](wrist_bag_review.md)
 
-新增[录包BC训练与ROS影子推理](bag_bc_shadow.md)：只输出诊断预测，不控制机械臂；
-短包验证只证明训练和推理链路跑通。
+## 环境与通用工具
 
-换机器先看[额外拷贝与安装清单](machine_transfer_checklist.md)，按功能准备SDK、bag、基准和消息源码。
+- [仿真环境安装与激活](environment_setup.md)
+- [在其他电脑复现手柄末端控制：Agent 执行手册](gamepad_reproduce_on_other_pc.md)
+- [换机器：额外拷贝与重新安装清单](machine_transfer_checklist.md)
+- [项目本地 marvin_msgs 消息包](marvin_messages.md)
+- [当前操作：无六维力/力矩模型推理与观测录制](no_wrench_policy_record.md)
+- [实时 policy、RB 接管与 SDK 输出](policy_gamepad.md)
+- [排障、停止与恢复](troubleshooting.md)
+- [Ubuntu 22.04：在线 RL 与人工回合采集的运行依赖](ubuntu2204_online_rl_dependencies.md)
+- [带六维力/力矩的 BC 模型：预览与真机手柄接管](wrench_policy_gamepad.md)
 
-新SDK原生字段看板见[原生数值看板](sdk_native_dashboard.md)：独立入口，旧看板保持不动。
-
-旧record010可选[机器人文字状态同屏](robot_state_dashboard.md)，
-或[RViz双臂3D回放](robot_3d_replay.md)：机器人命令只读，不回放控制话题。
-带原生触觉场与末端的新ZIP/录包，使用同教程的 `view_recorded_observation_3d.sh` 独立入口；
-末端与模型尚未标定对齐，不能拿显示位置当作已验证TCP。
-
-独立 ROS 相机/触觉采集、录包、回放与双发行版安装见[传感器采集](sensor_collection.md)。
-触觉图像重建的 SDK 本地归档、跨机器数值/箭头对照见[重建复现教程](tactile_reconstruction_migration.md)。
-
-磁盘经验存储和图像吞吐测试见 [磁盘回放](disk_replay.md)。
-
-建议顺序：[重建环境](environment_setup.md) → [最短仿真案例](quickstart.md) → [A 臂任务](a_arm_simulation.md) → [键盘示范](keyboard_demonstration.md) → [策略运行中干预](interactive_intervention.md) → [录制与回放](recording_and_replay.md)。真机阶段先看[硬件准备](hardware_preflight.md)，再运行[ROS 观测接口](ros_observation_interface.md)；两者都没有真机运动命令。遇到问题见 [排障](troubleshooting.md)。
-
-所有命令从 `omi_proj/` 执行。`SCENE` 需由操作者改为自己机器上完整的 MJCF 路径。
-- [触觉24×16低带宽发布](tactile_grid_transport.md)：独立可选数值场，不改变旧看板默认流程。
-
-- [录制末端位姿→动作增量→右臂回放与比较](eef_pose_replay.md)
-
-- [右臂六维增量画半径3cm圆](circle_test.md)
-
-- [本地 marvin_msgs 消息包：加载、迁移与重建](marvin_messages.md)
-
-- [手柄六维控制与 RB 接管](gamepad_control.md)：摇杆/十字键映射、预览和真机发布、策略候选接口。
-
-- [机器人接收端与手柄启动步骤](robot_gamepad_startup.md)：OpticalModule A 臂连接、反馈检查、手柄预览与发布，含 Python 环境修正。
-
-- [其他电脑复现手柄控制（Agent手册）](gamepad_reproduce_on_other_pc.md)：固定提交、最小文件包、环境、跨机ROS和验收。
+固定日期／模型实验的旧教程已移到[模块归档](../docs/archive/README.md)，用于复现而不是日常默认命令。

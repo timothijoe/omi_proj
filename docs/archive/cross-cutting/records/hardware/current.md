@@ -1,0 +1,225 @@
+> 历史资料：原路径 `docs/agent/hardware/current.md`；2026-10-26归档。正文中的运行状态和参数只适用于原记录时期。
+> 当前说明见[模块入口](../../../../current.md)；本页保留原过程与证据。
+
+# Hardware 当前摘要
+
+2026-10-24 23:06：[本轮完整快照与统一健康监控待办](../oct24_development_checkpoint.md)。末端反馈已升级为绿色独立bar列，与HUMAN／POLICY并列；右侧停靠配置遗漏已修复，但延时面板消失尚未复现。独立后台＋RViz总览＋现有网页详情目前是建议方案，尚未开发。
+
+2026-10-24 V2后续：移除Wrist full／A raw／B raw，九幅观测图改为三列布局；新增只读EEF数值与人工／策略六维命令条形图，路由读取接收端实际参数。外部ROI过期时保留末帧并标红STALE秒数，避免闪黑，训练门控未改变。[教程](../../../../../tutorials/grid_live_review_v2.md#eef与控制信号栏) · [开发记录](../../../visualization/records/hardware/chronicles/2026-10-24-grid-live-review-v2.md)。
+
+2026-10-24外部相机断流后已恢复接收；独立测试和新旧看板均确认中断并非V2话题改错。训练latest路径期间沿用缓存旧RGB，已按用户要求清理20个入池回合；完整时间边界、数据与权重影响见[训练编年](../../../replay/records/training/chronicles/2026-10-24-external-camera-outage-cleanup.md)。本次未改传感器驱动或断流训练门控。
+
+2026-10-24：[实时观测V2](../../../visualization/records/hardware/evolution/grid-live-review-v2.md)新增独立启动入口，原V1代码与布局保留。原图由RViz直接订阅，ROI与六路触觉图分别用独立进程转换，接收统计单独运行；默认不逐帧保存PNG。软件与隔离ROS合成故障测试通过，真实传感器性能需现场观察。[操作教程](../../../../../tutorials/grid_live_review_v2.md)。
+
+2026-10-17最新：[SpacePilot已接入BC/RL采集与在线Actor输入](../../../teleoperation/records/hardware/evolution/spacepilot-hil.md)。九键profile及数字1 ID12等已经实测，用户完成10回合新采集并训练BC6148，随后启动了实际在线RL；原手柄默认保留。当前Menu接管，ALT成功，Ctrl结束，夹爪开启；marker按用户要求暂关。数字3总开关和独立Marker节点仅讨论，尚未实现。训练结果、参数及23:29现场快照见[训练纪传](../../../online-rl/records/training/evolution/spacepilot-bc-online-rl.md)与[编年](../../../online-rl/records/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md)。
+
+2026-10-17早期收纳见[开发快照](../oct17_development_checkpoint.md)。19:32用户录制已分析：200 Hz/模式3，四次全零后约0.22–0.30秒接近停止，继续X移动约0.44–0.92 mm；对应接收端日志未记录SDK_REJECTED。旧500 Hz日志中的clear_set=0与SDK发送状态忙吻合。底层阻抗及停止策略未改；后续只对齐输入速度和发送节拍。分析证据纳入docs/evidence，原始录制保留local。
+
+2026-10-17 起停迟滞最新判断：用户实测手柄也有相近延迟。两发送端假ROS/时钟对照未发现SpacePilot额外等待；排查转向共用接收端的目标累加、普通零指令仅停新增目标、阻抗启动参数及运动时回调耗时。短时只读网络往返约0.63 ms、EEF间隔约20 ms，不能据此排除运动时延迟；尚未定位根因或修改执行逻辑。见[接收端排查](../../../control/records/hardware/evolution/robot-controller.md#待实机核对的语义)。
+
+2026-10-17 SpacePilot 首条动作立即发送：静止→有效非零动作不再等待下个发送周期，持续运动仍保持10 Hz，停止与再次起动均即时处理；速度/scale/坐标映射不变。60项相关测试及6个subtest通过，重启发送程序生效，真机时延改善尚待观察。见[控制说明](../../../teleoperation/records/hardware/evolution/spacepilot-control.md)。
+
+2026-10-17 SpacePilot 方向问题：用户三方向预览已确认前推→SDK +dx、左推→+dz、上提→-dy，纯平移单轴模式没有合并轴。前推/左推同时含较大旋转输入，原六轴模式会将其发出；这尚不能证明原真机现象的根因。需对照纯平移的真实指令与运动，映射未改、真机问题未宣告解决。见[诊断步骤](../../../../../tutorials/spacepilot_control.md#方向异常时只读诊断)。
+
+2026-10-17 SpacePilot 接收端发现修正：现场需要 domain13/SUBNET（LOCALHOST下不可见）；新入口兼容参数服务正常、唯一订阅类型正确但 DDS 节点名 UNKNOWN 的情况。真实网络只读完整预检通过，话题为 `/omi/controller_test/decision`、10 Hz/base；未发动作。见[当前教程](../../../../../tutorials/spacepilot_control.md)。
+
+2026-10-17 SpacePilot 现场按键修正：用户报告实体3上报 ID19，机器人控制入口默认启用键已从14改为19，仍可用 `--enable-button` 指定；需重启入口。原 GUI 的历史按键映射未改，见[控制说明](../../../teleoperation/records/hardware/evolution/spacepilot-control.md)。
+
+2026-10-17：[SpacePilot 末端增量发送入口](../../../teleoperation/records/hardware/evolution/spacepilot-control.md)已实现，支持独立平移/旋转 scale、默认按住实体3启用、预览与显式执行、接收端预检和手动话题。离线测试和设备只读连接通过，真机逐轴与操控待验收；见[教程](../../../../../tutorials/spacepilot_control.md)。下方 SpacePilot 位姿演示仍是独立 GUI 工具。
+
+2026-10-17：[AprilTag 位姿估计与视觉跟随](../../../marker/records/hardware/evolution/apriltag-follow.md)已支持独立窗口和异步 RL 内置运行，LB+305 保存默认关系、LB+304 持续跟随。tag10 多姿态标定已生成20样本 X/Z，平均平移残差3.03 mm，通过用户调整后的3.5 mm门槛。现场旧参数出现振荡后，增益改为0.08、每轴步长0.5 mm/0.2°，平移/旋转死区独立判断并增加恢复阈值；`HOLDING` 时归零但继续监测目标。跟随时效使用本地订阅接收时间，标定配对使用header。最新调参回归83项通过，新参数已在现场启动试用并正常退出，完整闭环精度仍待量化验收。[技术说明](../../../marker/records/marker_detect.md#tag-follow)与[操作教程](../../../../../tutorials/marker_detect.md#tag-follow)记录当前行为，冻结备份见[迁入记录](../../../marker/records/hardware/chronicles/2026-10-17-apriltag-follow-migration.md)。
+
+2026-10-17：[SpacePilot 六自由度物体位姿](../../../teleoperation/records/hardware/evolution/spacepilot-pose.md)已纳入项目；前 +X、左 +Y、上 +Z，包含 roll 手感修正与实体 1/2/3 模式切换。项目内 6 项专项测试和设备只读连接通过；GUI/人工操作证据见[本次编年](../../../teleoperation/records/hardware/chronicles/2026-10-17-spacepilot-pose.md)。尚未接入机器人、ROS 或 RL。
+
+2026-10-09：接收端修复跨topic迟到的无ID零停止覆盖另一通道动作/回执；带ID零动作仍可正式接管。
+SDK拒绝时新增返回值、目标/反馈关节角和控制器状态诊断。源码及安装副本已构建核对，未重启现场进程。
+本次SDK失败根因尚未确定，详见[真实试跑审计](../../../control/records/training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md)。
+
+2026-10-09 存储更新：历史力记录、传感器测试、离线数据和大显示缓存已迁往
+`/media/zhoutong/zt-think-d1/omi_proj_data/local/`，原目录保留软链接；
+SDK、Python/ROS 环境、模型资产和 record010 零载荷基准保留本机。
+三份代表 bag 本身仍在本机；旧 record010、原生场、腕部及 grid 回放的显示缓存均已外置，
+现有录包回放入口需要挂载移动盘，现场实时看板不使用这些录包缓存。
+具体范围与最终状态见[存储契约](../../../../interfaces/local-storage.md)。
+
+2026-10-07：左臂 A 的固定安装平移改为 `(0,0.0260,1.121)m`，旋转保持
+`Rx(-90°)`；接收端内部 EEF 复合矩阵和可选静态 TF 同步更新。实时 corrected
+RViz 看板移除旧的 EEF 平移补偿，直接显示新发布的原始位姿。
+需重建、重启接收端并重启看板；本轮尚未完成真机多姿态标定或现场 RViz 复核。
+详见[本次编年](../../../control/records/hardware/chronicles/2026-10-07-eef-mount-and-view.md)及
+[操作教程](../../../../../tutorials/grid_live_review.md#实时-eef-显示坐标2026-10-07)。
+
+2026-10-07：实时grid看板的第三视角外部RGB改按本机接收年龄判断显示新鲜度，
+避免跨机器源header时钟偏差导致LIVE/OLD_HEADER交替闪烁。header年龄仍显示供排查；
+接收新鲜不代表曝光到接收的实际延迟已测定，policy时间门控未改。
+见[看板机制](../../../visualization/records/hardware/evolution/grid-live-review.md)及[本次编年](../../../sensors/records/hardware/chronicles/2026-10-07-grid-camera-receive-freshness.md)。
+
+2026-10-07：推理手柄仲裁已支持按住RB接管、单按键码314回home；带wrench与无wrench推理脚本默认启用。
+回位期间使用手动话题并暂停模型候选，结束并松开314后才接收新候选；断连取消回位。
+直接手柄入口默认仍是RB+回位键。代码、测试与真机验证边界见
+[手柄实现记录](../../../teleoperation/records/hardware/evolution/gamepad-control.md#2026-10-07推理期间-rb-接管与单按314回位)，操作见[无wrench推理教程](../../../../../tutorials/no_wrench_policy_record.md)。
+
+2026-10-07：历代录包驱动 RViz 入口现用[本机三包操作页](../../../../../tutorials/rviz_representative_bags.md)中的完整命令；三包集中于 `/home/zhoutong/omi_folder/representative_rosbag/october/`，历史文件在移动硬盘 `/media/zhoutong/zt-think-d1/omi_rviz_archive_20261007/`。旧 Downloads 路径为兼容链接。覆盖范围、实际验证边界及空间变化见[机器人回放纪传体](../../../visualization/records/hardware/evolution/robot-3d-replay.md#当前代表录包与操作入口2026-10-07)和[本次编年](../../../visualization/records/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。实时看板不需要录包。
+
+2026-10-05：已补齐[采集解耦实现纪传体](../../../sensors/records/hardware/evolution/sensor-decoupling.md)，包含独立字段读取、力调度、腕部FIFO与双路发布、元数据及离线对齐。外部RGB的header年龄与本机接收年龄是两项检查，源时钟仍未确认；“接收新鲜但源时间不确定”不能等同无延迟。外部RGB专用接收时间策略尚未实施，见[时间基准说明](../../../sensors/records/hardware/evolution/sensor-time-alignment.md)和[排查编年](../../../sensors/records/hardware/chronicles/2026-10-05-rgb-clock-and-receive-age.md)。
+
+2026-10-05：[当前grid触觉与腕部采集已解耦](../../../sensors/records/hardware/chronicles/2026-10-05-sensor-decoupling.md)。字段独立发布、六维力不再被其他字段拒绝连带丢弃；腕部增加有限FIFO可靠录制topic。短测三场约30 Hz、力约29.6 Hz，仍不保证设备端无丢帧或力源时间已知。操作见[教程](../../../../../tutorials/sensor_decoupling.md)。
+
+2026-10-05：[手柄与策略速度保持](../../../control/records/hardware/evolution/robot-controller.md#速度保持参数与停止边界)已实现并构建。
+10Hz名义增量换算为速度，200Hz每周期IK后立即下发；零指令、保护或默认0.25秒断流停止。
+`delta_splits`不再决定话题执行；输入频率参数须匹配各发送端。网络scale与权重未修改。
+86项软件测试通过、1跳过；安装副本已用模拟SDK验证，实机平顺度未验收。
+直接手柄入口已默认启用项目夹爪配置，A闭合/B张开，`--no-gripper`关闭。
+操作与重启见[控制教程](../../../../../tutorials/robot_controller.md#速度保持执行与参数)，
+形成经过见[本次编年](../../../control/records/hardware/chronicles/2026-10-05-control-velocity-hold.md)。
+
+2026-10-05新增[USB 插入触觉保护](../../../../../tutorials/tactile_guard.md)：
+`arm_delta_cmd` 接收端按用户最新要求默认关闭、显式开启，**只约束模型**；
+手柄/返回走 `/omi/action/manual_decision`，不受触觉保护影响。接收端键盘控制及其切换服务已移除。
+模型走 `/omi/action/decision`；显式固定夹持基线后，任一指 `‖ΔF‖≥2.0` 或
+`‖ΔT‖≥0.5` 即锁定并清插补队列、尝试当前关节反馈位置保持。
+锁定且双侧健康时只保留 Base `dx<0`，其他分量归零，撤退每条≤0.2mm、名义≤2mm/s；
+缺失/无效/主机接收超时0.2s禁止全部模型动作，但不影响手动控制。
+数据健康仅指持续收到有限有效数值，不是力低；力大且数据有效仍允许模型负 X 撤退。
+需低于半阈值并显式复位，不自动重归零。
+41项纯逻辑/假SDK测试通过；未连接或驱动真机。单位/方向/设备采样新鲜度仍未标定，
+候选阈值未经正常/异常插入验收；现有运行接收端需重建和重启后才生效。
+
+2026-10-05新增[双指六维wrench实时看板和完整历史记录](../../../visualization/records/hardware/evolution/wrench-live.md)：
+`bash scripts/view_wrench_live.sh`，默认domain13，最近15秒曲线、逐条JSONL和退出全程PNG。
+最新加入最小比例尺：力图默认±2、力矩图默认±0.5，范围内固定、超界按2倍档位扩大，
+可通过`--force-min-span`/`--torque-min-span`调整，参数沿用到历史图。
+11项专项测试、首版A310/B316条记录及比例尺版A140/B142条记录通过，
+独立RViz启动/退出通过；不代表力标定或同帧验收，尚未接入当前模型或真机RL。
+
+2026-10-05：[OpticalModule控制端已迁入](../../../control/records/hardware/evolution/robot-controller.md)，维护源码在`ros2/arm_delta_cmd`，原包/SDK/资源在`local/vendor/optical_module_pu`。默认断开，独立Jazzy构建及5项离线测试通过。该段为迁移阶段记录：当时ABC均分20步；当前已改为速度保持，命令目标锚点仍保留，相关旋转/反馈语义仍待统一。
+
+手柄输出 wrapper 已支持显式 `--output-convention sdk-x-forward-z-left`：按假设安装方向 `(x,y,z)→(x,-z,y)` 并将旋转向量转 SDK ABC；默认 legacy 不转换。终端现同时显示原始值、转换状态和最终值，67项相关测试通过。接收端 FRAME_BASE/UserFrame 与实际安装方向仍待核对，用户曾报告旧映射左推导致上下移动，尚未完成换轴后的现场验收。详见[手柄教程](../../../../../tutorials/gamepad_control.md)。
+
+新增[手柄六维控制与 RB 接管首版](../../../teleoperation/records/hardware/chronicles/2026-10-04-gamepad-intervention.md)：右摇杆 XY、十字键上下 Z、左摇杆 Rx/Ry、十字键左右 Rz；按住 RB 接管，松开等待新策略候选，断连零增量。相关测试 37 通过、1 跳过，本机 Xbox 识别及 domain13 无动作发布预览通过。**尚未真机逐轴验证，shadow 策略尚未接入，当前松开 RB 后保持零增量**。见[操作教程](../../../../../tutorials/gamepad_control.md)。
+
+当前保留[实时 RViz 阶段版本](../../../visualization/records/hardware/chronicles/2026-10-04-live-rviz-checkpoint.md)：`bash scripts/view_grid_observation_live.sh`默认domain13，显示双相机/双指三场/EEF及topic状态，默认启用原方向修正版双臂模型。现场Jointfeedback已通过独立消息包修复，关节与EEF轻量订阅约50Hz，15项回归通过。**end effector与模型尚未完全对应**：本次L7—EEF约33.5cm、相对转角120°，基座/TCP关系仍待核对；已用球、坐标轴与连线可视化。保留当前实现，暂不拟合补偿。详细工具说明见[实时看板](../../../visualization/records/hardware/evolution/grid-live-review.md)。
+
+
+最新开关规则：grid默认deformation/shear/depth；raw通过`--publish-raw`、wrench通过
+`--tactile-wrench`显式开启。raw沿用`/omi/tactile/{a,b}/raw`，不改变小矩阵场话题。
+见[操作教程](../../../../../tutorials/tactile_grid_transport.md)。可选raw发布已实现，grid回放显示raw尚未适配。
+
+wrench零消息已定位并修复：SDK返回无帧号(1,6)数组，旧适配将其省略；现在保留六维值并
+标注未同步。domain13真机本地6秒收到A164/B160条，远端录包待复验。
+见[本次证据](chronicles/2026-10-03-wrench-unframed-fix.md)。下述旧包仍缺wrench，不可补回。
+
+当前[触觉24×16数值场传输](../../../sensors/records/hardware/evolution/tactile-resolution-and-throughput.md)：
+独立启动器`tactile`默认grid并开启depth；wrench显式开启，all/view保留旧full默认。
+oct3_011/bag_002已实录并RViz检查：双指三场约28 Hz，depth已显示；wrench仍零消息，
+触觉header与录包时钟相差约22 ms，需排查。raw/infer缺失是发布端主动省略，不是订错话题。
+可选发布raw已在后续用户授权下实现，之前暂缓记录保留在编年中。
+新增通用`view_grid_observation_3d.sh`，已用oct3_022/bag_001验证RViz；
+支持ZIP/目录、网格和ROI直显，见[教程](../../../../../tutorials/grid_bag_review.md)。
+旧看板及策略订阅仍未适配；此前local临时预览的检查详情见
+[最新编年](../../../visualization/records/hardware/chronicles/2026-10-03-grid-bag-review-and-raw-deferred.md)和[教程](../../../../../tutorials/tactile_grid_transport.md)。
+
+腕部卡顿的完整证据链、无效尝试、有效配置与剩余边界，统一见[视频流性能纪传体](../../../sensors/records/hardware/evolution/wrist-stream-performance.md)。
+
+新增[戴蒙触觉/腕部独立实时入口](../../../sensors/records/hardware/evolution/sensor-collection.md#独立触觉腕部实时测试入口2026-10-03)：
+触觉和腕部相机均已真实出图，RViz同屏首版已跑通；**原默认传输明显卡顿，后续共享内存实验改善了本机订阅连续性**。
+原配置腕部发布约30 Hz、订阅约10–12 Hz，见[原卡顿记录](../../../sensors/records/hardware/chronicles/2026-10-03-daimon-live-stream-stutter.md)。
+后续新增可选 `start_daimon_shm_test.sh`，65秒同机测试达到30 Hz、最长间隔72 ms；
+原默认未改，实验已接入当前RViz，用户体感与端到端时延仍待确认。见[传输实验](../../../sensors/records/hardware/chronicles/2026-10-03-wrist-shm-trial.md)。
+操作见[教程](../../../../../tutorials/daimon_live.md)，不修改旧回放入口，不控制机器人。
+
+已实现 `--image-mode full|roi` 启动开关，独立128×128 ROI话题与原图话题互斥发布，
+RViz/状态显示模式标签；采样与现有策略nearest逐像素测试一致，下游策略与录包接入尚未做。
+见[方案与边界](../../../sensors/records/hardware/evolution/sensor-collection.md)。
+
+两路裁剪已记录为[ROI第一版约定](../../../sensors/design/camera-roi-v1.md)：外部(.507,.426,.40)，
+腕部(.500,.704,.36)，均裁剪后缩至128；看板与训练插值方式的差异已明确。
+**腕部采集问题暂缓**：bag_004画面近乎静止已在源数据中出现，源图/缓存/发布逐级相符；
+怀疑采集端但具体原因未定位。时间戳变化不证明有效新画面，见[本次编年](../../../sensors/records/hardware/chronicles/2026-10-03-wrist-roi-and-capture-followup.md)。
+
+bag_004新证据：`/tj/dm_camera/camera/color`及CameraInfo已录入，18话题12820消息全解码。
+新增[腕部RViz入口](../../../../../tutorials/wrist_bag_review.md)：domain93，右上腕部原图＋旧版ROI的128预览，
+使用中心(.500,.704)/短边比例.36和Lanczos，替换初版中心大方框；右下触觉raw。
+直接使用命名修正版模型；ROI对新任务的适用性待观察。
+新[EEF v2策略](../../../policy/records/training/evolution/eef-action-space.md#v2可选腕部相机与输入源标记)已支持可选腕部，旧七关节BC不变。
+下述腕部缺失结论仅针对旧record001，不能套用到bag_004。
+
+当前新增[Stand方向修正版](../../../visualization/records/hardware/evolution/robot-3d-replay.md#stand方向修正版2026-10-03)：
+左3/4/6、右3/4/5轴按旧回放约定修正，保留新支架高度，独立入口domain94。
+派生资源命名`omi_marvin_stand_axis_corrected_v1`，存于项目`local/models/`，不是原版URDF。
+134测试通过、5跳过；末端差更符合约23.3厘米工具偏移假设，未做TCP标定。
+左joint4限位仍不一致，严禁用于真机控制；见[本阶段编年](../../../visualization/records/hardware/chronicles/2026-10-03-stand-axis-correction.md)。
+
+2026-10-03腕部话题议题暂缓：用户指出 `/tj/dm_camera/camera/color`，
+当前oct2/record001.zip的metadata未列出该名称；设备端是否发布、是否有另一版本录包待核实。
+不推断缺失原因、不继续改代码，详见[议题现状](../../../visualization/records/hardware/evolution/robot-3d-replay.md#可视化遗留右上角腕部相机原图与clip待下一次处理)。
+
+**旧record001入口的布局遗留（新bag_004入口已另行实现）**：右上角应显示腕部相机原图与clip，而非触觉预览；
+右下角保留A/B raw。新record001包没有腕部图像topic，当前布局不符合这项最终需求。
+先取得包含腕部相机的数据，再实现读取与布局；见[纪传体遗留项](../../../visualization/records/hardware/evolution/robot-3d-replay.md#可视化遗留右上角腕部相机原图与clip待下一次处理)
+与[澄清编年](../../../visualization/records/hardware/chronicles/2026-10-02-wrist-viewer-followup.md)。
+
+新外部录包record001已[检查并实现原生字段/末端同屏](../../../visualization/records/hardware/evolution/robot-3d-replay.md#新录包原生触觉与末端同屏)：
+`view_recorded_observation_3d.sh ZIP_OR_BAG`，domain97，显示原图/128图、原生触觉场、
+关节驱动双臂与录包末端三轴。全部21960条解码、Jazzy GUI及循环检查通过，测试120通过5跳过。
+**此处旧模型入口仍有约0.93米偏差；新Stand方向修正版已改善高度对应，但base/TCP仍未标定。**
+原生/重建触觉幅值差尚未受控比对；触觉约11–12 Hz，时钟语义/动作标签/现场模型仍待核对。
+夹爪开合暂不考虑；可先小规模低速示教试采，不宣称训练闭环已完成。见[新阶段编年](../../../visualization/records/hardware/chronicles/2026-10-02-native-record-review.md)。
+
+新增[RViz双臂3D录包回放](../../../visualization/records/hardware/evolution/robot-3d-replay.md)：
+`view_observation_robot_3d_bag.sh`默认localhost domain96，从本地模型生成双臂可视化URDF，
+历史关节反馈驱动专用joint_states/TF，模型与视觉触觉看板并排显示。实际RViz mesh和运动已检查。
+不回放控制命令；不含现场夹爪/精确TCP，rad、L/R映射与模型尚未经现场标定。
+
+新增[旧包机器人状态同屏入口](../../../../../tutorials/robot_state_dashboard.md)：
+`view_observation_robot_bag.sh`离线读取关节反馈/目标和夹爪状态，追加文字面板。
+不回放控制命令、不计算TCP，旧稳定看板文件不变；record010 headless回放、循环及无控制topic已验证。
+
+新增[触觉分辨率与30 Hz吞吐讨论](../../../sensors/records/hardware/evolution/tactile-resolution-and-throughput.md)：用户最新倾向
+考虑16×24低分辨率数值场；与现有箭头18×24采样网格区分，尚未定案或实施。
+完整场/低分辨率发送录包、预训练编码方案留待比较；SQLite3暂保留，缓存只登记观察项。
+系统资源检查与载荷算术不构成实机30 Hz无丢帧验收。
+
+[SDK原生数值看板](../../../visualization/records/hardware/evolution/sdk-native-dashboard.md)已新增：`view_sdk_observation.sh`，
+默认domain88，直接订阅schema2字段，显示彩色/内参、raw/infer/def/shear和有效性状态。
+合成数据采集、录包、循环回放、断流STALE已headless验证；旧看板冻结文件不变。
+不代表实机SDK或新版RL observation已验收。
+
+图像重建已[迁入独立包](../../../sensors/records/hardware/evolution/tactile-reconstruction-migration.md)，新 `_migrated` 看板复用共享适配器，
+SDK 运行文件已本地归档且按文件哈希校验。6组历史样本的12个数值场与迁移前逐元素一致；
+这不是实机SDK直读等价性验收。重建仍用厂商加密算法，并非自主实现。
+原 `view_observation_bag.sh` 链路已恢复d017387专用文件，保持稳定入口。
+新SDK数值场到最终策略尚未整合；不只是缺TCP，详见[集成方案及缺口](../../design/ros-to-policy-integration.md)。
+
+新增[独立 ROS 传感器包](../../../sensors/records/hardware/evolution/sensor-collection.md)：Jazzy/Humble 目标，
+RealSense 彩色+内参、SDK 双指触觉原图/预处理图/数值场、录包与隔离回放。
+安装和配置不依赖外部参考工程，也不依赖主 RL Python 环境。本机 Jazzy 构建与合成数据
+录包→回放已通过；Humble、真设备和深度尚未验收，Humble 需要匹配 Python3.10 的厂商 SDK。
+细节与证据见[采集包编年](../../../sensors/records/hardware/chronicles/2026-10-02-sensor-collection.md)。
+
+新增[相机与触觉合并模式](../../../sensors/records/hardware/evolution/tactile-live.md#相机与触觉合并模式)：一个播放器、一个
+RViz Image，同时显示两路原图/128 ROI 和 A/B raw/deformation/shear。各路保留自己的
+时间戳与过期提示，不代表跨传感器逐帧同步。该合并显示阶段自动测试为 59 passed、1 skipped；
+运行证据见[合并显示编年](../../../visualization/records/hardware/chronicles/2026-10-02-camera-tactile-dashboard.md)。
+
+`TianjiSdkArm` 已封装 SDK A/B 反馈索引、度/弧度换算、反馈帧与错误检查、显式运动授权、单步和关节范围检查、位置模式与停止/释放。假 SDK 与 MuJoCo 替身测试通过；没有设备只读连接记录，没有真机运动验收。项目也没有面向操作者的真机控制 CLI。
+
+`real` 包新增只读 ROS 2 观测接口，订阅 A 臂反馈、夹爪、外部/腕部 RGB 与双指触觉 raw/depth/force，按 header 时间对齐并输出固定 shape 的 Gym/NumPy/Torch 输入。两路 RGB 使用固定大小的正方形 ROI；头部 ROI 的逐帧像素偏移进入 observation，Wrist ROI 横向固定居中且不传偏移。`record010` 在 10 Hz 下离线生成 269 个有效 observation、0 个过期拒绝。该 observation 接口没有 publisher、动作执行、reward 或 episode 环境，不构成真机 RL 闭环。
+
+同级相机辅助工具已提供原图/128 ROI、独立 512 放大和双版 RViz 模式，并保留最初单进程
+入口。双版显示负载更高；追求流畅时使用原始单版。可视化不进入策略 observation，且当前
+可视化与 observation 的 resize 算法不同。触觉已有 raw/depth/双指 12 维 wrench 输入，
+另有[实时触觉回放工具](../../../sensors/records/hardware/evolution/tactile-live.md)，发布 deformation/shear 数值 topic，
+独立进程生成供 RViz 使用的 raw/向量 dashboard。`tactile_baseline` 已从 `record010` 的
+`25–26 s` 完全张开窗口生成 A/B 的 `270×360 uint8` 时间中位数基准和验证报告；五项
+零载荷启发式检查通过。bag 未记录 A/B 的厂商序列号，但底层 CPU `FlowTracker` 的
+deformation/shear 重建不需要 serial，已在 23、25.5 和 28 秒完成离线探针。
+操作者已确认右侧为逻辑 A / `X26040546`，左侧为逻辑 B / `X26040345`；确认映射已写入
+新版基准和离线结果 metadata，但原始 bag 本身仍没有身份字段。
+OMI 已有固定采样、固定 scale/deadband、显式 clipping 的 `H×W×2` 箭头 renderer，并通过
+零场、`+x`、`-y`、截断和非有限值测试；bag 回放数值发布与 dashboard 已验证，RViz
+交互和真机在线仍需验收。这里的 deformation 是触觉纹理相对零载荷基准的二维稠密
+位移场；shear 是厂商 `Decomposer` 从 deformation 派生的剪切/旋转/滑动相关二维场。
+两者单位均未完成物理标定，不能称为力场，也不能把箭头长度解释为牛顿。
+
+当前 API 与限制见 [Tianji 适配器](../../../control/records/hardware/evolution/tianji-adapter.md)与[ROS 观测接口](../../../sensors/records/hardware/evolution/ros-observation.md)；形成阶段见[编年记录](chronicles/README.md)。近期需要在线 ROS 只读验收、现场设备配置和控制边界设计。

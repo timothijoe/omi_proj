@@ -1,6 +1,6 @@
 # 历史 policy 在线推理与 wrench 开关
 
-> **实机对接暂定约定：** 用户指定暂按基坐标系旋转向量解释控制接口后三维，尚未经接收端核实。策略输出仍为m/rad，axis_test接口为mm/度；单位换算不能替代基坐标系和TCP变换。具体公式与条件见[动作接口对齐说明](../docs/agent/training/evolution/axis-controller-interface.md)。
+> **实机对接暂定约定：** 用户指定暂按基坐标系旋转向量解释控制接口后三维，尚未经接收端核实。策略输出仍为m/rad，axis_test接口为mm/度；单位换算不能替代基坐标系和TCP变换。具体公式与条件见[动作接口对齐说明](../docs/modules/control.md)。
 
 在项目根目录执行。需要已配置的 ROS Jazzy、marvin_msgs 和 `.venv` 中的 PyTorch。
 入口仅订阅观测、发布策略候选，没有机械臂执行器。
@@ -89,4 +89,4 @@ bash scripts/eef_bc.sh export /path/to/bag_001.zip local/datasets/my_v4/bag_001 
 训练时 `eef_bc_history` 会自动读取两者；不要手工删除历史池或将 v3/v4 混进同一次训练。
 
 wrench_mask 说明数值和时间是否可用，不代表 SDK 力单位、轴向已标定。
-更详细的字段和接口见[设计说明](../docs/agent/training/evolution/history-online-policy.md)。
+更详细的字段和接口见[设计说明](../docs/modules/policy.md)。

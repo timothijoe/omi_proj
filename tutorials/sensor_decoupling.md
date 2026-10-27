@@ -91,10 +91,10 @@ python3 scripts/audit_sensor_streams.py --duration 10 --output /tmp/sensor-rates
 输出必须不存在。工具不打开SDK、不发布控制，只订阅图像、触觉、力和状态，预热2秒后统计。
 它使用BEST_EFFORT探针，探针少收不能直接认定发布端丢失，需对照生产者计数和bag。
 
-本轮实测、限制和产物见[验证记录](../docs/agent/hardware/chronicles/2026-10-05-sensor-decoupling.md)。
+本轮实测、限制和产物见[验证记录](../docs/archive/sensors/records/hardware/chronicles/2026-10-05-sensor-decoupling.md)。
 
 ## 实现与RGB时间检查说明
 
-需要继续开发时，先看[采集解耦实现方法](../docs/agent/hardware/evolution/sensor-decoupling.md)，包含SDK读取顺序、字段去重、腕部线程与队列、双路发布和转换数据流。
+需要继续开发时，先看[采集解耦实现方法](../docs/modules/sensors.md)，包含SDK读取顺序、字段去重、腕部线程与队列、双路发布和转换数据流。
 
-外部RGB入口的 `header_age_ms` 与构造观测时的 `source_receive_age_ms` 含义不同；两者差大不证明没有真实积压。当前手柄策略wrapper的RGB 500 ms分别约束两项，不是跳过header。外部RGB专用接收时间策略尚未实施，不能使用全局诊断模式代替正式发布检查。见[时间基准纪传体](../docs/agent/hardware/evolution/sensor-time-alignment.md)。
+外部RGB入口的 `header_age_ms` 与构造观测时的 `source_receive_age_ms` 含义不同；两者差大不证明没有真实积压。当前手柄策略wrapper的RGB 500 ms分别约束两项，不是跳过header。外部RGB专用接收时间策略尚未实施，不能使用全局诊断模式代替正式发布检查。见[时间基准纪传体](../docs/modules/sensors.md)。

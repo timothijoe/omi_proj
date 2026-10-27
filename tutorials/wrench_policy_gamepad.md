@@ -1,7 +1,7 @@
 # 带六维力/力矩的 BC 模型：预览与真机手柄接管
 
 当前简明操作入口见[无wrench推理与录制教程](no_wrench_policy_record.md)，
-完整实验与诊断见[阶段记录](../docs/agent/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)。
+完整实验与诊断见[阶段记录](../docs/archive/bc/records/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)。
 
 ## 不使用六维wrench的对照模型
 

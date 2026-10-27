@@ -68,4 +68,4 @@
 - record010 保留 `metadata.yaml` 与其引用的 `.mcap.zstd`；本机的未压缩 MCAP 副本已经归档。旧触觉重建还使用 `omi_proj/local/tactile/record010_zero_load_25_26_confirmed_v2/` 和 Daimon SDK。零载荷基准在本次检查中按原包 25–26 秒窗口重建并通过记录用检查；它不是力标定。
 - Stand 与 Hybrid 命令还需要上述原版 RAR；该模型资源不属于三个 bag。命名修正版资源保留在 `omi_proj/local/models/omi_marvin_stand_axis_corrected_v1/`。机器人模型、EEF/TCP、限位尚未完成现场标定，只用于显示。
 - `native_wrist_bag_004.zip` 的腕部画面在原始录包中近乎静止；`grid24x16_bag_001.zip` 的 wrench 话题计数为零。它们可验证各自回放链路，不能用于验收腕部运动画面或 wrench 动态效果。
-- 本次从新路径重新生成了旧 record010 的机器人时间线/触觉缓存、bag_004 的原生与腕部缓存、grid 缓存；三个 ZIP 的 CRC 检查、录包格式与此前无 GUI ROS 启动检查通过。此次路径调整没有逐个打开 RViz 窗口人工目测。证据与迁移步骤见[2026-10-07 编年](../docs/agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。
+- 本次从新路径重新生成了旧 record010 的机器人时间线/触觉缓存、bag_004 的原生与腕部缓存、grid 缓存；三个 ZIP 的 CRC 检查、录包格式与此前无 GUI ROS 启动检查通过。此次路径调整没有逐个打开 RViz 窗口人工目测。证据与迁移步骤见[2026-10-07 编年](../docs/archive/visualization/records/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。

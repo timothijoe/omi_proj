@@ -9,7 +9,7 @@
 因此不是操作系统层面恰好两个 PID。
 
 **原默认传输的视频流存在明显卡顿；下述共享内存实验入口已改善本机订阅连续性，端到端时延仍未验收。**
-采集端约30 Hz不代表RViz画面达到30 FPS。详细证据见[当前能力与问题](../docs/agent/hardware/evolution/sensor-collection.md)。
+采集端约30 Hz不代表RViz画面达到30 FPS。详细证据见[当前能力与问题](../docs/modules/sensors.md)。
 
 ## 可选：本机大图共享内存实验
 

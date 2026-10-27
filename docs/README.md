@@ -1,136 +1,26 @@
-# OMI 文档总目录
+# OMI 文档入口
 
-2026-10-26提交前整理：[V2、数据清理、当前进展与待办汇总](oct24_development_checkpoint.md)。已实现内容与尚未实施的统一监控／断流门控分开记录；其中任务运行状态是10月24日快照，不代表10月26日现场状态。
+初次了解项目，先读本页和[当前摘要](current.md)。理解具体功能时选一个模块；执行操作时查[教程](../tutorials/README.md)。
+当前结构整理于2026-10-26，内容以本仓库实现及最新适用证据为准；运行快照始终保留采样日期。
 
-2026-10-24 23:06：[本轮完整工作快照与待办](oct24_development_checkpoint.md)。汇总V2九图与三列bar、停靠修复、旧任务20回合清理、当前新任务`spacepilot_bc6148_rl_20261024_215949`及统一健康监控建议。监控新方案尚未实施，断流入池门控待修复；下方旧任务清理数字是当时快照。
-
-2026-10-24：[外部相机断流、旧图入池审计与20回合清理](agent/training/chronicles/2026-10-24-external-camera-outage-cleanup.md)。已删除20个原始回合／30个片段及5681条经验，剩余45994；Actor/Learner已停止，30897权重未回滚、仍可能受历史污染。累计300上限剩余70，断流门控尚未修复。
-
-2026-10-24：[实时观测V2：独立原图、触觉面板与接收／绘图诊断](../tutorials/grid_live_review_v2.md)。新入口保留V1，单路绘图独立进程；[实现与边界](agent/hardware/evolution/grid-live-review-v2.md)。
-
-2026-10-18：[SpacePilot在线RL停止核验与续跑](agent/training/chronicles/2026-10-18-spacepilot-rl-stopped.md) · [最终保存证据](evidence/spacepilot_rl_stopped_20261018/README.md)。最终4628权重、67回合、13360条，正常关闭。
-
-2026-10-17全天进展：[SpacePilot采集、BC6148与在线RL纪传](agent/training/evolution/spacepilot-bc-online-rl.md) · [当天编年](agent/training/chronicles/2026-10-17-spacepilot-bc-online-rl.md) · [23:29只读证据快照](evidence/spacepilot_bc_rl_20261017/README.md) · [当前参数与操作](../tutorials/spacepilot_bc6148_online_rl.md)。
-
-新增[SpacePilot采集与在线HIL输入](../tutorials/spacepilot_hil.md)：BC/RL人工采集、固定BC和在线RL共用输入后端；原手柄保持默认。[机制与边界](agent/hardware/evolution/spacepilot-hil.md)。
-
-2026-10-17：[开发快照：SpacePilot、AprilTag与控制响应](oct17_development_checkpoint.md)。汇总当前实现、SDK缓存忙证据、四段真实响应分析及待调整事项。
-
-2026-10-17：[SpacePilot 机械臂增量控制](../tutorials/spacepilot_control.md)，支持独立平移/旋转 scale；用户真机试用及四段响应记录已完成，完整方向标定和停止性能仍待验收。
-
-2026-10-17：[AprilTag 默认相对位姿跟随](marker_detect.md#tag-follow)：多姿态 X/Z 标定、LB 组合键、订阅接收时间、低增益/限幅及独立死区已接入；独立窗口与异步 RL 共用控制逻辑。[启动和排错教程](../tutorials/marker_detect.md#tag-follow) · [训练内置入口](../tutorials/async_rl.md#tag-follow) · [现场结果与验证边界](marker_detect.md#tag-handeye-files)。
-
-SpacePilot：[操作教程](../tutorials/spacepilot_pose.md) · [当前能力](agent/hardware/evolution/spacepilot-pose.md) · [本次收纳与验证](agent/hardware/chronicles/2026-10-17-spacepilot-pose.md)。
-
-2026-10-12整理：[当前训练说明与文档汇总](current_training_guide.md)
-· [新建 / 自动续跑 / 监控 / 外盘恢复的常用指令](../tutorials/common_live_commands.md#rl-new)
-· [全部项目Markdown索引](markdown_index.md)。在线RL通过已有 `--run` 自动恢复，没有 `--resume` 开关。
-以下日期条目是对应时刻的历史记录；Oct 11最终已正常退出并归档，不把“当时正在运行”视为现在的状态。
-
-Oct 11最终数据已归档：[外盘归档与恢复验证](agent/training/chronicles/2026-10-11-external-archive-restore.md)
-· [checkpoint、buffer重建与续训教程](../tutorials/oct11_archive_restore.md)。
-
-当前可运行基线：[2026-10-11在线HIL RL版本记录](agent/training/chronicles/2026-10-11-runnable-baseline.md)。
-汇总代码版本、原BC/新数据会话、45秒batch64启动命令、双池/探索/监控、现场结果及待改项。
-
-2026-10-11最新：[batch64在线训练与探索噪声现场核验](agent/training/chronicles/2026-10-11-batch64-exploration-live.md)。
-45秒会话正在采集训练，已检查实际策略加噪与人工接管旁路；保存当前命令和运行快照。
-
-2026-10-11在线会话已启动：[新缓存在线采集、训练与网页入口](agent/training/chronicles/2026-10-11-cached-online-start.md)。
-记录原BC初始化、完整启动/续跑指令、首回合数据以及Learner训练与Actor换权重状态。
-
-2026-10-11追加：[Critic负Q诊断与预热对照](agent/training/chronicles/2026-10-11-critic-diagnostics.md)。
-真实抽样证实成功监督稀疏；1000/4000步预热均已完成，延长预热未解决负Q，实验权重未部署。
-
-2026-10-11：[缓存启动门槛修正与首轮离线训练实验](agent/training/chronicles/2026-10-11-cached-offline-exp01.md)。
-已完成1200次Critic、100次Actor更新，留出人工动作误差下降；Q估计偏负仍需继续实验，未上机器人。
-
-RealSense AprilTag：[数据流、坐标与控制约定](marker_detect.md) → [位姿记录、标定与跟随教程](../tutorials/marker_detect.md)。
-
-2026-10-10新增[共享内存Demo/RL双池](agent/training/evolution/cached-replay.md)：全量数据留盘、后台加载、
-默认16/20 GiB数据预算；真实数据验证已完成。[准备与启动命令](../tutorials/cached_replay.md)。
-
-2026-10-10验证：[单帧BC数据可重建历史并用于Learner训练](agent/training/chronicles/2026-10-10-recorded-bc-learner-validation.md)，
-3579条transition完成离线转换/导入，独立副本CUDA更新和续训通过；原BC与录制数据保持不变。
-
-2026-10-10数据整理：[旧格式与SDK错误回合已归档](agent/training/chronicles/2026-10-10-old-and-sdk-episode-archive.md)
-至 `Downloads/oct10/old_version_data/`；当前BC目录保留19个单帧格式回合。
-
-2026-10-10现场进展：[固定BC12045、数据统计与EEF现象](agent/training/chronicles/2026-10-10-fixed-bc-storage-live-review.md)。
-本轮固定BC评估已关闭，新采19回合3617条动作；无Learner、未入RL池，单帧存储已现场核查。
-
-2026-10-10 async RL 新回合采用[单帧共享存储](agent/training/evolution/real-online-rl.md#回合观测的单帧存储2026-10-10)：
-首窗十帧、后续新增当前帧，训练/查看自动重建；[重启与读取方法](../tutorials/async_rl.md#2026-10-10回合观测按单帧存储)。
-
-此前异步RL试跑：[BC12045 预加载与异步 RL 的可复制启动命令](../tutorials/bc12045_async_rl_trial.md)。
-
-当前主维护入口为人工采集 `collect_rl_episodes.sh` 与真机训练 `run_async_rl.sh`。
-2026-10-09 周期流程已改为[10 Hz latest 观测驱动动作，时序仅诊断](agent/training/chronicles/2026-10-09-observation-driven-control.md)；其他入口保留、按需维护。
-
-2026-10-09 Start 保留 SAC 十帧输入：[修改与验证记录](agent/training/chronicles/2026-10-09-start-history-retention.md)
-→ [生效与操作说明](../tutorials/async_rl.md#2026-10-09start-保留十帧输入)。完整有效历史不再重新预热，需重启 Actor。
-
-统一查看训练过程：[Actor/Learner 监控、数据链与验证边界](agent/training/evolution/training-monitor.md)
-→ [启动教程](../tutorials/training_monitor.md)。只读本机网页，新版训练进程自动报告心跳与仲裁。
-
-2026-10-09 local 冷数据外置：[目录映射与本机保留范围](agent/interfaces/local-storage.md)
-→ [挂载、使用与恢复教程](../tutorials/local_data_storage.md)。当前 RL live、对应 BC/seed 与新示范留本机。
-
-当前人工真机 RL 采集：[周期模式功能与现场进展](agent/training/chronicles/2026-10-07-human-periodic-collection.md)
-→ [操作教程](../tutorials/rl_episode_collection.md)。
-
-历代 RViz 回放的本机代表数据与完整命令见[三包操作页](../tutorials/rviz_representative_bags.md)；历史 bag 已外置，迁移记录见[2026-10-07 编年](agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md)。
-
-2026-10-09 更新：三份代表原包仍留本机，现有录包回放入口的显示缓存已外置，运行仍需挂载移动盘；现场实时看板不使用这些录包缓存。同日音频定制内核备份与空间清理见[主机清理记录](agent/interfaces/local-storage.md#同日主机空间清理与内核备份)。
-
-最新真机RL采集阶段：[实现与首批数据检查](agent/training/chronicles/2026-10-06-rl-episode-collection-audit.md)
-→ [采集操作教程](../tutorials/rl_episode_collection.md)。旧批次已采16段1723条并通过结构校验，
-成功标签待确认；旧编年中的短按漏检为当时问题，现有按键处理与周期入口见上方新记录。
-
-当前policy阶段：[现场后退诊断、录制与无wrench训练对照](agent/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)
-→ [无wrench推理与Ctrl+C保存教程](../tutorials/no_wrench_policy_record.md)。已完成BC与用户现场尝试，方向问题仍未解决。
-
-当前[独立手柄录包、检查与逐帧查看](../tutorials/demo_bag_dataset.md) → [四个真实bag检查记录](agent/training/chronicles/2026-10-05-passive-demo-audit.md)。第三包335条真实指令配对已可查看，支持左右键切帧；六维力/力矩位于触觉列顶部。
-
-[采集数据契约与 BC 入口](agent/training/evolution/demo-collection-bc.md) → [采集、指令标签和训练教程](../tutorials/demo_collection_bc.md)。区分独立录包、集成collector和零动作诊断；本批真实BC结果以上述最新阶段记录为准，尚无闭环成功率。
-
-新增六维真机HIL、无夹爪SAC与Actor/Learner：[当前进展与验证边界](agent/training/evolution/hil-actor-learner.md) → [操作教程](../tutorials/hil_actor_learner.md)。三项软件实现已完成，处于真机联调前阶段。
-
-双指六维力/力矩：[实时查看与完整历史记录](../tutorials/wrench_live.md)。
-
-控制接收端已迁入：[迁移与构建教程](../tutorials/robot_controller.md) → [架构及执行语义](agent/hardware/evolution/robot-controller.md)。
-
-实时检查现场topic：[实时小矩阵RViz看板](../tutorials/grid_live_review.md)，独立于录包回放。
-
-
-新增[六关键点自动候选与人工审核工具](../tutorials/six_keypoint_review.md)，用于独立关键点标注，不改变policy。
-
-末端动作开发：[bag_004操作教程](../tutorials/eef_action_space.md) → [版本契约与验证边界](agent/training/evolution/eef-action-space.md)。
-
-本项目目前是天机 Marvin **A 臂（左臂）**的 MuJoCo HIL RL 原型。当前状态以 [能力总表](capabilities.md) 和各领域 `current.md` 为准；历史实验数字保存在编年记录中。
-
-## 选择入口
-
-| 读者 | 从这里开始 |
+| 模块 | 查什么 |
 | --- | --- |
-| 第一次运行 | [环境准备](../tutorials/environment_setup.md) → [最短仿真案例](../tutorials/quickstart.md) |
-| 换机器/核对额外依赖 | [额外拷贝与重新安装清单](../tutorials/machine_transfer_checklist.md) |
-| SDK原生采集与看板 | [独立采集](../tutorials/sensor_collection.md) → [新数值看板](../tutorials/sdk_native_dashboard.md) |
-| record001机器人/末端对照 | [Stand方向修正版](../tutorials/corrected_stand_review.md) → [版本选择及模型限制](agent/hardware/evolution/robot-3d-replay.md#入口选择与当前结论) |
-| 操作键盘示范或回放 | [键盘示范](../tutorials/keyboard_demonstration.md) → [录制与训练](../tutorials/recording_and_replay.md) |
-| 核查 HIL RL 四项复现 | [训练、干预、buffer、policy improvement 审计](hil_rl_reproduction.md) |
-| 理解当前训练实现 | [干预、奖励、策略更新与 Buffer](agent/training/evolution/hil-training.md) |
-| 录包训练BC与模拟在线推理 | [操作教程](../tutorials/bag_bc_shadow.md) → [当前能力及限制](agent/training/evolution/bag-bc-shadow.md) |
-| 使用磁盘经验池 | [操作教程](../tutorials/disk_replay.md) → [存储与恢复机制](agent/training/evolution/disk-replay.md) |
-| 理解原版 HIL-SERL | [开源任务、USB、SpaceMouse、观测与视觉网络](agent/training/evolution/hil-serl-reference.md) |
-| 开发与维护 | [Agent 知识库](agent/README.md) → [接口索引](agent/interfaces/README.md) |
-| 理解边界 | [安全与副作用](safety.md) → [跨领域设计](design/hil-architecture.md) |
-| 规划和验收真机触觉数据 | [触觉观测、录制与可视化验证需求](design/tactile-observation-requirements.md) |
-| 播包时查看触觉箭头 | [操作入口](../tutorials/ros_observation_interface.md#播放时实时查看触觉向量) → [当前机制](agent/hardware/evolution/tactile-live.md) |
-| 同屏查看相机和触觉 | [原图、128 ROI 与双指向量](../tutorials/ros_observation_interface.md#同时查看相机与触觉) |
-| 查找 OMI 之外的工具和资源 | [工作区总索引](../../README.md) → [本地资源接口](agent/interfaces/local-resources.md) |
+| [在线RL](modules/online-rl.md) | Actor/Learner、仲裁、奖励、更新、初始化与续跑 |
+| [示范与BC](modules/bc.md) | 人工数据、标签、BC6148来源与验证边界 |
+| [经验池与存储](modules/replay.md) | 帧库、共享双池、清理台账与完整恢复 |
+| [策略模型](modules/policy.md) | 十帧输入、编码器、六维动作契约 |
+| [机器人控制](modules/control.md) | 接收端、坐标／单位、SDK提交与停止边界 |
+| [人工输入](modules/teleoperation.md) | SpacePilot／手柄、按键、接管与调度 |
+| [传感器](modules/sensors.md) | 相机／触觉来源、数值字段、时间与新鲜度 |
+| [AprilTag](modules/marker.md) | 标定、关系保存、跟随及当前关闭状态 |
+| [仿真](modules/simulation.md) | 七关节到达、模型资源与评估范围 |
+| [监控与可视化](modules/visualization.md) | RViz V2、三列bar、训练网页与历史回放 |
 
-现有 [A 臂实验报告](a_arm_reach.md) 保存可复现实验与证据；[早期技术调查](tianji_hil_rl.md) 保留当时的 SDK 和参考项目分析。功能的**当前事实**由 `agent/*/evolution/` 维护，避免把早期计划误认为现状。
+常用操作：[V2实时看板](../tutorials/grid_live_review_v2.md) · [SpacePilot在线训练](../tutorials/spacepilot_bc6148_online_rl.md) · [训练网页](../tutorials/training_monitor.md)。
 
-同级的 `ros2_camera_clip_tools/`、参考仓库、厂商 SDK 和工作区外数据统一由
-[工作区总索引](../../README.md)登记；不要只在某篇专题文档中留下无法反向发现的路径。
+按需查阅：[共享接口](interfaces/README.md) · [长期原则](decisions/README.md) · [设计与待办](design/README.md)
+· [术语](../CONTEXT.md) · [副作用边界](safety.md)。
+
+**历史原文在[模块归档](archive/README.md)，不是默认阅读材料。** 其中的“当前”“运行中”和命令只适用于原时期。
+普通检索可用`rg -n --glob '*.md' --glob '!**/archive/**' '关键词' docs tutorials`。
+迁移规则、原文去向和检查结果见[文档重构记录](design/documentation-reorganization.md)。

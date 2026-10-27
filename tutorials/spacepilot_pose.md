@@ -80,4 +80,4 @@ JSON 保存米制 XYZ、`wxyz` 四元数和角度制 RPY，始终是世界坐标
 - **只沿一条轴移动**：检查是否启用了「单轴优先」。
 - **方向与画面不直观**：恢复默认视角并取消局部坐标模式，再按 XYZ 数值核对；不要将视角方向当作世界坐标。
 
-开发与验证边界见[当前能力说明](../docs/agent/hardware/evolution/spacepilot-pose.md)。
+开发与验证边界见[当前能力说明](../docs/modules/teleoperation.md)。

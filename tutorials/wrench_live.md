@@ -89,4 +89,4 @@ bash scripts/view_wrench_live.sh --domain 13 \
 
 2026-10-05现场无GUI约12秒收到A310/B316条，有限值检查通过；RViz约15秒启动/退出与
 真实记录另验。最小比例尺版11项测试通过，约6秒现场收到A140/B142条，
-绘图及记录通过。当前结果见[功能机制及证据](../docs/agent/hardware/evolution/wrench-live.md)。
+绘图及记录通过。当前结果见[功能机制及证据](../docs/modules/visualization.md)。

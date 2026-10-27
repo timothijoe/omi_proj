@@ -1,11 +1,13 @@
 # 异步真机 RL：每 10 个完整回合检查新策略
 
+当前选定SpacePilot参数和任务路径以[BC6148操作页](spacepilot_bc6148_online_rl.md)为准；本文其余日期段落、BC12045及旧run命令保留为对应接口／历史示例。latest观测的时序诊断不能阻止全部旧图入池，相关[门控待办](../docs/design/system-health-monitoring.md)尚未实施。
+
 人工输入可选[SpacePilot](spacepilot_hil.md)，默认仍是原手柄。设备映射不改变回放契约、policy尺度或仲裁模式；松开接管键会归还策略。
 
 2026-10-12当前可复制命令见[新建/自动续跑/监控](common_live_commands.md#rl-new)，
 当前状态与历史导航见[文档汇总](../docs/current_training_guide.md)。
 `run_async_rl.sh --run 已有目录`自动恢复模型、优化器与数据，没有独立resume参数；不要在续跑前重新prepare。
-早期从原始 BC12045 开始的独立会话命令见[首次试跑历史操作页](bc12045_async_rl_trial.md)。
+早期从原始 BC12045 开始的独立会话命令见[首次试跑历史操作页](../docs/archive/online-rl/tutorials/bc12045_async_rl_trial.md)。
 旧 `rl_live_01` 已有 RL 更新；继续旧目录会加载其最新权重，不能视为重新从 BC 初始化。
 
 <a id="tag-follow"></a>
@@ -80,7 +82,7 @@ local/cuda-env/bin/python -m pip install --no-deps pupil-apriltags
 
 本机该依赖已安装，并在真实训练 Python 环境用合成图像检测到 tag10/tag12；
 按键、路由、断流、回合暂停和训练片段隔离已做无硬件测试。独立入口已进行真机采样与跟随试用；
-训练内的完整切换和新参数的闭环精度仍需单独验收，见[当前功能与验证记录](../docs/marker_detect.md#tag-handeye-files)。
+训练内的完整切换和新参数的闭环精度仍需单独验收，见[当前功能与验证记录](../docs/archive/marker/records/marker_detect.md#tag-handeye-files)。
 
 ## 2026-10-10：回合观测按单帧存储
 
@@ -103,7 +105,7 @@ print(observation["rgb"].shape)  # (10, 3, 128, 128)
 训练片段依赖对应回合的 `frames/`，不要仅拷贝片段或单个NPZ文件。
 本段描述单帧存储刚引入时对旧disk后端的兼容；现在也支持[共享内存cached后端](cached_replay.md)，
 其replay目录保存SQLite来源索引，完整transition仅在RAM中重建，不生成旧式展开磁盘数组。
-真实182窗口存储约缩小9.17倍，完整证据见[验证记录](../docs/agent/training/chronicles/2026-10-10-observation-frame-storage.md)。
+真实182窗口存储约缩小9.17倍，完整证据见[验证记录](../docs/archive/replay/records/training/chronicles/2026-10-10-observation-frame-storage.md)。
 
 ## 2026-10-09：默认推理完成后仲裁
 
@@ -129,7 +131,7 @@ RB 松开则用 policy 结果。按住 RB 时推理仍继续，人工动作也�
 启动日志 `ARBITRATION_MODE`、监控页面、`async_state.json` 和每回合审计记录实际模式。
 这两种模式只影响启用 policy 的周期 RL；未启用 policy 和人工采集继续直接读取手柄。
 旧 receipt RL 会话若启用 policy，需显式选择 `immediate`，不静默套用新默认。
-新设置在正常退出、保存完成并重启后生效；[实现与验证记录](../docs/agent/training/chronicles/2026-10-09-arbitration-modes.md)。
+新设置在正常退出、保存完成并重启后生效；[实现与验证记录](../docs/archive/online-rl/records/training/chronicles/2026-10-09-arbitration-modes.md)。
 
 ## 2026-10-09：观测驱动控制，时序仅诊断
 
@@ -147,7 +149,7 @@ RB、停止键、断连、数据格式/数值错误、接收端拒绝与真正�
 接收端 0.25 秒断流停止未修改，因此“推理仅告警”不代表硬件无限保持上一条速度。
 下面旧阶段的“候选过期改零”“时序不合格排除”“历史不足必须等待”不适用于新周期流程；
 旧 receipt 入口维持原行为。新记录的 `timing_policy` 为 `diagnostic_only_v1`，不回写历史数据。
-见[当前设计及验证](../docs/agent/training/chronicles/2026-10-09-observation-driven-control.md)。
+见[当前设计及验证](../docs/archive/online-rl/records/training/chronicles/2026-10-09-observation-driven-control.md)。
 
 2026-10-09 存储更新：下方新 BC12045 的 `rl_live_01`、对应 seed/BC/索引与新示范保留本机；
 旧 probe 和旧 RL 运行目录已外置归档，原路径以软链接兼容。本文旧会话命令是历史参考，
@@ -210,8 +212,8 @@ BC参考约束与编码器/示范池机制，不表示触觉保护已经打开�
 入口 `scripts/run_async_rl.sh`。Actor 与 Learner 同时运行；不再等待“本回合训练 N 步”。
 用户确认的“10 条”是 **10 个完整有效回合**，不是 10 条 transition。
 
-只想切换BC模型或播放成功label，请先看[现场测试速查](bc_replay_testing.md)。
-本次BC/replay/训练实现的完整交接记录见[开发记录](../docs/agent/training/chronicles/2026-10-07-periodic-replay-bc-fitting.md)。
+只想切换BC模型或播放成功label，请先看[现场测试速查](../docs/archive/bc/tutorials/bc_replay_testing.md)。
+本次BC/replay/训练实现的完整交接记录见[开发记录](../docs/archive/bc/records/training/chronicles/2026-10-07-periodic-replay-bc-fitting.md)。
 
 ## 2026-10-09：Start 保留十帧输入
 
@@ -232,12 +234,12 @@ BC参考约束与编码器/示范池机制，不表示触觉保护已经打开�
 
 回合仍从 Start 开始计时。接收端握手、重新推理或缺少新鲜候选时可能先发送零动作，
 本次修复不保证 Start 后立即出现非零动作。累计107项软件回归通过、3项跳过，
-尚未实机验收；[完整修改记录](../docs/agent/training/chronicles/2026-10-09-start-history-retention.md)。
+尚未实机验收；[完整修改记录](../docs/archive/online-rl/records/training/chronicles/2026-10-09-start-history-retention.md)。
 
 ## BC保护式RL热启动（最新）
 
 代码改动、测试证据、BC模型选择及视觉/触觉/历史帧冻结范围，统一见
-[最新开发记录](../docs/agent/training/chronicles/2026-10-07-bc-protected-rl-and-encoder.md)。
+[最新开发记录](../docs/archive/online-rl/records/training/chronicles/2026-10-07-bc-protected-rl-and-encoder.md)。
 
 最新双池目录为`local/rl_training/bc_protected_dual_20261007_01`，由旧保护式会话独立迁移，旧目录不覆盖。
 BC11795全部Actor参数、共享编码器和归一化逐项一致地迁入；新建Critic头、target和优化器。
@@ -328,7 +330,7 @@ bash scripts/migrate_dual_replay.sh \
 双池使用同一Learner写入，跨池操作有顶层dirty标记。正常Ctrl+C和干净checkpoint可恢复；
 checkpoint完成但imported标记未写时可以补记而不重复导入。硬崩溃造成半次跨池写入会拒绝重开，
 需要恢复干净备份，不承诺任意断电自动修复。初始示范“固定保留”不替代独立数据备份。
-实现和测试记录见[双池开发记录](../docs/agent/training/chronicles/2026-10-07-dual-replay.md)。
+实现和测试记录见[双池开发记录](../docs/archive/replay/records/training/chronicles/2026-10-07-dual-replay.md)。
 
 要重新准备另一个全新目录，可自定义保护参数（不会启动机器人）：
 
@@ -634,7 +636,7 @@ Back（默认键码314）可在回合外单按自动回home；A/B（304/305）�
 短按 A 检查闭合、B 检查张开，两者不要求按 RB；松开按键后再按才会重复触发。
 按键日志可用于核对系统是否读到 314/304/305。软件测试已通过，真机动作仍需现场确认；
 若按键已记录但设备未动作，保存启动及按键日志以检查接收端或夹爪连接。
-修复原因、改动和验证记录见[异步手柄修复日志](../docs/agent/training/chronicles/2026-10-07-async-gamepad-home-gripper-fix.md)。
+修复原因、改动和验证记录见[异步手柄修复日志](../docs/archive/online-rl/records/training/chronicles/2026-10-07-async-gamepad-home-gripper-fix.md)。
 
 夹爪默认使用 `gamepad_test.py` 相同的服务器和 `tutorials/gripper_limits.json` 标定；
 可用 `--no-gripper` 关闭，或用 `--gripper-*` 参数覆盖。更换手柄可用 `--home-button-code` 指定Back键码。

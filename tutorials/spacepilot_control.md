@@ -80,7 +80,7 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 
 发现同一手动话题的其他发布者或策略话题发布者时退出；ROS 图发现不是分布式独占锁，仍需只运行一个动作发送入口。
 
-实现与验收范围见[当前能力](../docs/agent/hardware/evolution/spacepilot-control.md)。
+实现与验收范围见[当前能力](../docs/modules/teleoperation.md)。
 
 ## 方向异常时只读诊断
 

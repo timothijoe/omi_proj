@@ -250,5 +250,5 @@ python3 scripts/gamepad_test.py --execute --topic /omi/action/decision \
 最小7文件从96e92e7导出后在临时目录验证了 --help 和左轴转换；使用已有Python环境，**不是新电脑全新安装验收**。
 已做过隔离domain113消息格式及退出检查；真实安装方向和换轴后的机械臂运动尚未完成正式验收。
 
-仓库内补充资料：`tutorials/gamepad_control.md` 和 `docs/agent/hardware/evolution/gamepad-control.md`。
+仓库内补充资料：`tutorials/gamepad_control.md` 和 `docs/modules/teleoperation.md`。
 后续策略联调是独立工作；本手册固定复现基线的纯手柄入口，不对后来工作区的策略进展作结论。

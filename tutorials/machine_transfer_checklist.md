@@ -1,7 +1,7 @@
 # 换机器：额外拷贝与重新安装清单
 
 2026-10-09 本机冷数据已外置到 `omi_proj_data/local/`，项目中选定目录用软链接兼容；
-当前 live/BC/seed/新示范与运行环境留本机。换机器时应按[完整目录映射](../docs/agent/interfaces/local-storage.md)
+当前 live/BC/seed/新示范与运行环境留本机。换机器时应按[完整目录映射](../docs/interfaces/local-storage.md)
 复制实际数据，不能只拷贝指向旧用户名/挂载点的软链接；使用和恢复见[存储教程](local_data_storage.md)。
 
 **Git只带代码、配置模板、文档和校验清单，不带厂商SDK、bag、基准、模型和虚拟环境。**
@@ -163,4 +163,4 @@ bash scripts/view_observation_bag.sh /YOUR_DATA_DISK/record010/bag_001
 4. 运行 `plan/doctor` 检查本机配置；doctor不检查全部厂商二进制和依赖，不等于设备已验收。
 5. 经操作者确认后再启动真实采集，核验身份/频率/错误状态/记录完整性；不自动启动机械臂动作。
 
-仅恢复采集/可视化不意味着真机RL闭环完成，剩余接口见[ROS到策略方案](../docs/design/ros-to-policy-integration.md)。
+仅恢复采集/可视化不意味着真机RL闭环完成，剩余接口见[ROS到策略方案](../docs/archive/cross-cutting/design/ros-to-policy-integration.md)。

@@ -2,7 +2,7 @@
 
 若检查当前record001的Stand机器人姿态，优先看[关节方向修正版](corrected_stand_review.md)
 （domain94）。本文保留旧record010及旧模型record001入口；它们没有被覆盖。
-各版用途与domain见[版本对照表](../docs/agent/hardware/evolution/robot-3d-replay.md#入口选择与当前结论)。
+各版用途与domain见[版本对照表](../docs/modules/visualization.md)。
 
 ## 启动
 
@@ -118,7 +118,7 @@ bash scripts/view_recorded_observation_3d.sh /home/zhoutong/omi_folder/represent
 robot_state_publisher、NumPy、Pillow、SciPy、PyYAML、zstd；不需要连接触觉SDK或机器人。
 Humble尚未验证，脚本目前明确source Jazzy。
 
-实包GUI播放已验证，验收数字见[开发记录](../docs/agent/hardware/chronicles/2026-10-02-native-record-review.md)。
+实包GUI播放已验证，验收数字见[开发记录](../docs/archive/visualization/records/hardware/chronicles/2026-10-02-native-record-review.md)。
 若看到末端三轴远离模型，不要直接加平移让其重合：先取得录包生产者的base_link定义、
 实际机器人模型与工具变换。这里domain97旧模型的约0.93米位置差仍保留；
 新domain94方向修正版已改善高度对应，但工具偏移/基座定义尚未标定，不能用于控制。

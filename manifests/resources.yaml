@@ -39,7 +39,7 @@ resources:
     tracked: false
     source: CUDA BC fit over 9 normal original episodes and 1499 accepted-command samples
     purpose: BC6148 actor.pt, dataset, normalization, training histories and reload-verified predictions
-    restore: Preserve this directory together with the source collection and index; actor.pt SHA256 is 611afee1d8e3020aebf5269a01b65deb59b8ee49bdaa937851b3058905ea2639. See docs/agent/training/evolution/spacepilot-bc-online-rl.md.
+    restore: Preserve this directory together with the source collection and index; actor.pt SHA256 is 611afee1d8e3020aebf5269a01b65deb59b8ee49bdaa937851b3058905ea2639. See docs/modules/bc.md and docs/current.md.
   - id: spacepilot-oct17-human-collection
     path: local/rl_episodes/spacepilot_response_20261017_213359
     tracked: false
@@ -54,7 +54,7 @@ resources:
     path: local/rl_training/spacepilot_bc6148_rl_legacy_30s_300_20261017
     tracked: false
     source: BC6148 weights-only initialization; new online data only
-    purpose: Active 30-second/300-episode task, checkpoints, replay catalog, data and monitoring
+    purpose: Historical Oct17 30-second/300-episode task; Oct24 outage cleanup applies here, not to the later new run
     restore: Resume this complete directory with run_async_rl.sh --parameter configs/spacepilot_bc6148_online_rl.json. Do not prepare over it or copy only actor.pt; see tutorials/spacepilot_bc6148_online_rl.md.
   - id: spacepilot-hil-button-profile
     path: local/spacepilot/hil_buttons.json
@@ -72,13 +72,13 @@ resources:
     tracked: true
     source: local/diagnostics/control_response/20261017_193243_851241.json
     purpose: Small verified plot and threshold analysis of four motion segments; original recording remains local
-    restore: Check the raw SHA-256 in analysis.json and run scripts/analyze_control_response.py with a new output directory. See docs/oct17_development_checkpoint.md.
+    restore: Check the raw SHA-256 in analysis.json and run scripts/analyze_control_response.py with a new output directory. See docs/archive/cross-cutting/records/oct17_development_checkpoint.md.
   - id: oct17-handeye-experiment-snapshot
     path: ros2/marker_detect/handeye_result.json
     tracked: true
     source: Oct17 local tag10 hand-eye samples and excluded-sample validation JSON stored alongside this result
     purpose: Preserve the current X/Z calibration and quality thresholds as a machine-specific experiment snapshot
-    restore: See docs/marker_detect.md. Recalibrate after camera, tag mounting or TCP changes; do not treat this snapshot as a generic robot configuration.
+    restore: See docs/archive/marker/records/marker_detect.md. Recalibrate after camera, tag mounting or TCP changes; do not treat this snapshot as a generic robot configuration.
   - id: control-response-readonly-captures
     path: local/diagnostics/control_response
     tracked: false
@@ -90,7 +90,7 @@ resources:
     tracked: false
     source: /home/zhoutong/Downloads/oct17
     purpose: Original tag_pose.py and tag_follow_tag_v2.py with source_sha256.json provenance; unadapted source copied into ros2/marker_detect
-    restore: Preserve this immutable migration snapshot and verify source_sha256.json before recovery. Downloads originals retained. Runtime handeye_solver.py and X/Z calibration were not supplied; see docs/agent/hardware/evolution/apriltag-follow.md.
+    restore: Preserve this immutable migration snapshot and verify source_sha256.json before recovery. Downloads originals retained. Runtime handeye_solver.py and X/Z calibration were not supplied; see docs/archive/marker/records/hardware/evolution/apriltag-follow.md.
   - id: spacepilot-local-artifacts
     path: local/spacepilot
     tracked: false
@@ -103,7 +103,7 @@ resources:
     tracked: false
     source: Stopped bc12045_newdata_30s_20261011_01 run; final Actor/Learner16677, all 140 raw episodes, 53513 catalog transitions plus 449 saved pending registration, and original BC12045
     purpose: Verified portable archive with full run tar, standalone checkpoints, original BC, actual source snapshot, environment metadata, restoration CLI/tutorial and real restore evidence
-    restore: See tutorials/oct11_archive_restore.md and archive README.md. Use training_archive.sh verify/restore into a NEW local POSIX directory, then probe-buffer. Original local run retained. Never point live training at run.tar or the exFAT archive root.
+    restore: See docs/archive/replay/tutorials/oct11_archive_restore.md and archive README.md. Use training_archive.sh verify/restore into a NEW local POSIX directory, then probe-buffer. Original local run retained. Never point live training at run.tar or the exFAT archive root.
   - id: oct11-real-archive-restore-validation
     path: local/diagnostics/oct11_archive_restore_20261011
     tracked: false
@@ -115,25 +115,25 @@ resources:
     tracked: false
     source: Stopped 30-second run after the first reset; 4 episodes, 792 transitions, RL1792
     purpose: Preserve the prior batch while resetting the same active path to original BC12045, empty pools and a consistent 45-second contract
-    restore: SHA-256 inventory and report in local/diagnostics/data_reset_20261011/20261011_184301. Do not import archived data into the active run. The active folder still has 30s in its name but its actual episode_seconds is now 45. See docs/agent/training/chronicles/2026-10-11-invalid-data-reset.md.
+    restore: SHA-256 inventory and report in local/diagnostics/data_reset_20261011/20261011_184301. Do not import archived data into the active run. The active folder still has 30s in its name but its actual episode_seconds is now 45. See docs/archive/replay/records/training/chronicles/2026-10-11-invalid-data-reset.md.
   - id: invalid-30s-collection-archive-20261011-183427
     path: local/archives/problematic_data/bc12045_newdata_30s_20261011_01_20261011_183427
     tracked: false
     source: Stopped bc12045_newdata_30s_20261011_01 run; user reported collected data invalid
     purpose: Preserve 3 episodes, 714 catalog transitions and RL1714 weights for investigation while resetting the active path to original BC12045 with empty pools
-    restore: Do not import this archive as training data. SHA-256 inventory and reset report are in local/diagnostics/data_reset_20261011/20261011_183427. See docs/agent/training/chronicles/2026-10-11-invalid-data-reset.md. Original BC checkpoint is unchanged.
+    restore: Do not import this archive as training data. SHA-256 inventory and reset report are in local/diagnostics/data_reset_20261011/20261011_183427. See docs/archive/replay/records/training/chronicles/2026-10-11-invalid-data-reset.md. Original BC checkpoint is unchanged.
   - id: bc12045-newdata-only-20261011-01
     path: local/rl_training/bc12045_newdata_only_20261011_01
     tracked: false
     source: BC12045 actor/config only from demo_new_20261007_213643_eval_01; no old dataset index, demonstration records or recorded sources imported
     purpose: New online collection session with empty Demo and RL pools; train exclusively on this session's newly collected human and policy transitions
-    restore: Prepared via prepare_bc_rl.sh --weights-only --replay-backend cached. See docs/agent/training/chronicles/2026-10-11-weights-only-new-data.md. Initialization and weights_only_validation.json verify exact BC actor and zero catalog records/sources. Resume the run, do not reinitialize it; first collect new human data to populate Demo.
+    restore: Prepared via prepare_bc_rl.sh --weights-only --replay-backend cached. See docs/archive/online-rl/records/training/chronicles/2026-10-11-weights-only-new-data.md. Initialization and weights_only_validation.json verify exact BC actor and zero catalog records/sources. Resume the run, do not reinitialize it; first collect new human data to populate Demo.
   - id: bc12045-cached-online-20261011-01
     path: local/rl_training/bc12045_cached_online_20261011_01
     tracked: false
     source: Original BC12045 actor and 1387 training demonstrations from demo_new_20261007_213643_eval_01, plus read-only registration of its 19 compact recorded episodes
     purpose: Live asynchronous collection and learning with shared cached Demo/RL pools, 16/20 GiB managed budgets, 1000 Critic warmup and Actor reload checks every 10 valid episodes
-    restore: See docs/agent/training/chronicles/2026-10-11-cached-online-start.md for exact commands and the dated live snapshot. Resume the existing run with run_async_rl.sh, not prepare_bc_rl.sh. Preserve source data referenced by replay/catalog.sqlite3; restarting loads this run's latest RL checkpoint. Gripper controls disabled by --no-gripper.
+    restore: See docs/archive/replay/records/training/chronicles/2026-10-11-cached-online-start.md for exact commands and the dated live snapshot. Resume the existing run with run_async_rl.sh, not prepare_bc_rl.sh. Preserve source data referenced by replay/catalog.sqlite3; restarting loads this run's latest RL checkpoint. Gripper controls disabled by --no-gripper.
   - id: cached-rl-critic-diagnostics-exp02-20261011
     path: local/experiments/cached_rl_exp02_q_diagnostics_20261011
     tracked: false
@@ -181,13 +181,13 @@ resources:
     tracked: false
     source: Read-only metadata and receipts of two episodes in bc12045_obs_after_inference_20261009_01
     purpose: Record source/RB consistency, SDK rejection receipts and immutable audit hashes; not a replay import or model update
-    restore: Source SDK-rejected episodes were archived under /home/zhoutong/Downloads/oct10/old_version_data/rl_training/bc12045_obs_after_inference_20261009_01/periodic_episodes. Use the archive manifest for original-path mapping; see docs/agent/training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md.
+    restore: Source SDK-rejected episodes were archived under /home/zhoutong/Downloads/oct10/old_version_data/rl_training/bc12045_obs_after_inference_20261009_01/periodic_episodes. Use the archive manifest for original-path mapping; see docs/archive/control/records/training/chronicles/2026-10-09-sdk-rejection-and-handoff-audit.md.
   - id: bc12045-observation-after-inference-trial
     path: local/rl_training/bc12045_obs_after_inference_20261009_01
     tracked: false
     source: BC12045 evaluation snapshot and its 11 training segments, 1387 human samples
     purpose: Independent periodic async RL session for latest-observation control and after-inference arbitration; initialized at RL version 0
-    restore: Recreate a NEW run using scripts/prepare_bc_rl.sh and local/bc_episodes/demo_new_20261007_213643_eval_01. Do not overwrite a used session. See tutorials/bc12045_async_rl_trial.md; keep active replay on local SSD.
+    restore: Recreate a NEW run using scripts/prepare_bc_rl.sh and local/bc_episodes/demo_new_20261007_213643_eval_01. Do not overwrite a used session. See docs/archive/online-rl/tutorials/bc12045_async_rl_trial.md; keep active replay on local SSD.
   - id: training-monitor-telemetry
     path: local/rl_training/*/monitor
     tracked: false
@@ -213,7 +213,7 @@ resources:
     required_for: optional_historical_rviz_bag_recovery
     source: Former Downloads/img, Downloads/oct03, Downloads/oct2/record001.zip, and omi_proj/local/bags/oct03 copies
     purpose: SHA256-verified historical bag files and original-path mapping; no extra local physical copies
-    restore: Read manifest.json for 58 file paths, sizes, hashes, and the three kept local samples. Historical Downloads paths are symlinks to this archive and require the USB drive to be mounted. See docs/agent/hardware/chronicles/2026-10-07-rviz-bag-relocation.md.
+    restore: Read manifest.json for 58 file paths, sizes, hashes, and the three kept local samples. Historical Downloads paths are symlinks to this archive and require the USB drive to be mounted. See docs/archive/visualization/records/hardware/chronicles/2026-10-07-rviz-bag-relocation.md.
   - id: live-wrench-recording-sessions
     path: local/wrench_live
     tracked: false
@@ -244,7 +244,7 @@ resources:
     tracked: false
     source: oct03_split2 v3 retained samples and local/pretrained/serl_resnet10/backbone.pt
     purpose: Independent no-joint current9stack CUDA training; joint_enabled and joint_mask fixed zero; weights and validation evidence
-    restore: Follow tutorials/nojoint_stack_training.md with CUDA environment and a new output directory
+    restore: Follow docs/archive/policy/tutorials/nojoint_stack_training.md with CUDA environment and a new output directory
   - id: oct04-right-pose-replay
     path: local/eef_replay
     tracked: false
@@ -264,7 +264,7 @@ resources:
     required_for: current_frame_plus_stacked_history_comparison
     source: Original oct03_split2 v3 datasets and local/pretrained/serl_resnet10/backbone.pt
     purpose: Current RGB3 plus past9 RGB27 without GRU; best/last weights, predictions, comparisons and CPU latency
-    restore: Follow tutorials/current_stack_history.md. Run1 is an interrupted CPU throughput pilot, not the completed experiment. No online model replacement.
+    restore: Follow docs/archive/policy/tutorials/current_stack_history.md. Run1 is an interrupted CPU throughput pilot, not the completed experiment. No online model replacement.
   - id: serl-resnet10-pretrained
     path: local/pretrained/serl_resnet10
     tracked: false
@@ -272,7 +272,7 @@ resources:
     source: https://github.com/rail-berkeley/serl/releases/download/resnet10/resnet10_params.pkl
     source_sha256: 175745d43d30233eb01b5369465d1c24c11b8ee71ccb734cc1c1bca13e07f57b
     purpose: Original ImageNet weights, PyTorch backbone, conversion provenance and Flax numerical references
-    restore: Follow tutorials/resnet10_history.md; runtime requires only backbone.pt and PyTorch. New experiment outputs in local/eef_history/oct04_resnet10_run1, old models retained.
+    restore: Follow docs/archive/policy/tutorials/resnet10_history.md; runtime requires only backbone.pt and PyTorch. New experiment outputs in local/eef_history/oct04_resnet10_run1, old models retained.
   - id: omi-marvin-stand-axis-corrected-v1
     path: local/models/omi_marvin_stand_axis_corrected_v1
     tracked: false

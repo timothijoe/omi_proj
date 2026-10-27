@@ -136,7 +136,7 @@ deformation/shear**。旧包重建数值场/合并显示仍用
 
 ### 验收要求
 
-新 topic 契约见[接口说明](../docs/agent/hardware/evolution/sensor-collection.md)。
+新 topic 契约见[接口说明](../docs/modules/sensors.md)。
 现场至少验收：驱动版本、相机 serial/彩色尺寸/内参、A/B 物理身份、帧率与丢帧统计、
 断开后的 stale/retry 状态、停止无残留进程、录包报告、回放与采集数值一致性。
 默认关闭深度；以后另行验收深度单位、内参、对齐和有效值。

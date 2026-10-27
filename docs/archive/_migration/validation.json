@@ -1,0 +1,137 @@
+{
+  "schema": "omi-docs-validation-v1",
+  "date": "2026-10-26",
+  "baseline_commit": "963a7c29f8e39bff59ba4eb285693976b224961e",
+  "preservation": {
+    "source_documents": 305,
+    "actions": {
+      "rewrite": 11,
+      "archive": 215,
+      "move": 10,
+      "keep": 69
+    },
+    "preserved_archive_bodies": 226,
+    "protected_existing_files": 467,
+    "protected_files_changed": [],
+    "evidence_checksums": [
+      {
+        "path": "docs/evidence/external_camera_outage_20261024/SHA256SUMS",
+        "result": [
+          "README.md: OK",
+          "buffer_validation.json: OK",
+          "cleanup_result.json: OK",
+          "outage_audit.json: OK",
+          "reference_validation.json: OK"
+        ]
+      },
+      {
+        "path": "docs/evidence/spacepilot_rl_stopped_20261018/SHA256SUMS",
+        "result": [
+          "README.md: OK",
+          "snapshot.json: OK"
+        ]
+      },
+      {
+        "path": "docs/evidence/spacepilot_bc_rl_20261017/SHA256SUMS",
+        "result": [
+          "README.md: OK",
+          "buttons.json: OK",
+          "settings.json: OK",
+          "snapshot.json: OK"
+        ]
+      }
+    ],
+    "compatibility_stubs": 6,
+    "runtime_code_configs_tests_unchanged": true
+  },
+  "counts": {
+    "current_docs_markdown": 49,
+    "archive_markdown": 239,
+    "current_tutorials_markdown": 67,
+    "default_reading_lines": 75
+  },
+  "links": {
+    "markdown_files": 362,
+    "checked_links": 2872,
+    "broken": [],
+    "missing_external_resources": [
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 17,
+        "target": "../../../../../cooking_proj/packages/tianji_arm",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 43,
+        "target": "../../../../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/arm_command_diagnostic.py",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 45,
+        "target": "../../../../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/gamepad_cartesian_jog_simstyle.py",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 53,
+        "target": "../../../../../cooking_proj/tutorials/tianji_hardware.md",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 54,
+        "target": "../../../../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/keyboard_cartesian_jog.py",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 55,
+        "target": "../../../../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/gamepad_cartesian_jog.py",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 56,
+        "target": "../../../../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/gamepad_cartesian_jog_simstyle.py",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 57,
+        "target": "../../../../../cooking_proj/tutorials/hardware/tianji_teleoperation.md",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 59,
+        "target": "../../../../../cooking_proj/tutorials/hardware/experiment_inventory.md",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 99,
+        "target": "../../../../../cooking_proj/manifests/local-assets.yaml",
+        "reason": "missing_path"
+      },
+      {
+        "source": "docs/archive/cross-cutting/records/tianji_hil_rl.md",
+        "line": 110,
+        "target": "../../../../../cooking_proj/docs/safety.md",
+        "reason": "missing_path"
+      }
+    ]
+  },
+  "missing_external_targets_unchanged": true,
+  "shell_blocks_syntax_checked": 5,
+  "resource_registry": {
+    "changed_fields_only": [
+      "restore",
+      "purpose"
+    ],
+    "changed_values": 16,
+    "resource_paths_unchanged": true
+  },
+  "scope": "Static document/link preservation checks only; no ROS, training, motion, HTTP URL or absolute-machine-path validation."
+}

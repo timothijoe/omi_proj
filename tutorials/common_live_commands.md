@@ -1,5 +1,7 @@
 # 真机常用启动指令汇总
 
+本页是多入口速查，BC12045／45秒等命令保留为对应历史任务示例，不是当前SpacePilot基线。当前任务选择、新建与续跑统一见[SpacePilot BC6148教程](spacepilot_bc6148_online_rl.md)；其中新run需显式`--run`。设备栈使用本页已有独立入口。
+
 以下命令均在 `/home/zhoutong/omi_folder/omi_proj` 执行。每个持续运行的命令占用一个终端；保留其终端运行，按 `Ctrl+C` 停止。本页汇总现场常用入口；参数、按键和数据含义以链接的专项教程为准。
 
 2026-10-12已按Oct 11可运行版本更新。**新建任务初始化新目录；续跑任务只启动旧目录；监控指向同一个任务目录。**
@@ -241,7 +243,7 @@ bash scripts/run_bc_episodes.sh \
   --resume --control-mode periodic --episodes 1 --execute
 ```
 
-从指定已有目录恢复 BC 模型，运行一个周期回合。此入口做实时网络推理和审计，**不播放训练标签，也不训练模型**。Start(315) 开始，RB 接管，308 成功，307 停止；`--resume` 继续使用该目录而不覆盖已有回合。运行前核对目录中的权重和版本。[BC 评估及标签回放的区别](bc_replay_testing.md)。
+从指定已有目录恢复 BC 模型，运行一个周期回合。此入口做实时网络推理和审计，**不播放训练标签，也不训练模型**。Start(315) 开始，RB 接管，308 成功，307 停止；`--resume` 继续使用该目录而不覆盖已有回合。运行前核对目录中的权重和版本。[BC 评估及标签回放的区别](../docs/archive/bc/tutorials/bc_replay_testing.md)。
 
 ### D. 异步在线 RL：新建与续跑
 
@@ -462,7 +464,7 @@ bash scripts/training_archive.sh probe-buffer \
 恢复副本续训时，在训练终端设置 `run_dir="local/rl_training/oct11_restored_01"` 再执行D4；
 其网页也必须指向这个恢复目录。
 这是**完整RL状态和数据的恢复**，不等于“只用任意RL checkpoint、新建空buffer”。
-校验、代码恢复、重新归档及环境要求见[外盘复现教程](oct11_archive_restore.md)。
+校验、代码恢复、重新归档及环境要求见[外盘复现教程](../docs/archive/replay/tutorials/oct11_archive_restore.md)。
 
 ### G. 只跑Learner的离线验证（不是真机采集入口）
 
@@ -480,7 +482,7 @@ local/cuda-env/bin/python -m omi_hil_rl.hil.learner \
 
 `--updates 20`是追加20次，不是把累计进度改成20。若更新预算已耗尽则等待新增数据。
 此前的 `run_cached_offline_experiment.py` 是读取历史数据做留出对照的另一种离线实验；
-日常在线采集使用D4，不使用该实验脚本。见[离线对照记录](../docs/agent/training/chronicles/2026-10-11-critic-diagnostics.md)。
+日常在线采集使用D4，不使用该实验脚本。见[离线对照记录](../docs/archive/online-rl/records/training/chronicles/2026-10-11-critic-diagnostics.md)。
 
 ## 停止与记录
 

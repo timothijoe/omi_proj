@@ -4,11 +4,11 @@
 输入完整且新鲜时不再重新预热约1秒；首次不足十帧、缺流或过期时仍等待有效输入。
 需正常退出并重启 Actor 后生效，模型无需重训；
 [操作与检查](async_rl.md#2026-10-09start-保留十帧输入)
-· [实现与测试记录](../docs/agent/training/chronicles/2026-10-09-start-history-retention.md)。
+· [实现与测试记录](../docs/archive/online-rl/records/training/chronicles/2026-10-09-start-history-retention.md)。
 
 ## 2026-10-07：共享编码器与 HIL-SERL 参数对齐
 
-开发归档与交接见[2026-10-07阶段记录](../docs/agent/training/chronicles/2026-10-07-shared-serl-resume.md)。
+开发归档与交接见[2026-10-07阶段记录](../docs/archive/online-rl/records/training/chronicles/2026-10-07-shared-serl-resume.md)。
 
 新 RL checkpoint 版本为 `omi-hil-sac-shared-serl-v2`。没有启动真机运动；
 架构/恢复测试通过不代表策略已经具备插入成功率。
@@ -63,7 +63,7 @@ Learner在每50次更新发布完整模型/优化器/目标网络/RNG状态；�
 ## 当前阶段与下一步操作
 
 三项软件实现已完成，目前处于真机联调前阶段；尚未进行真机训练。
-实现范围、测试证据及限制见 [docs 专题](../docs/agent/training/evolution/hil-actor-learner.md)。
+实现范围、测试证据及限制见 [docs 专题](../docs/modules/online-rl.md)。
 以下是下一阶段的操作顺序，不是已经完成的现场验收记录。
 
 1. 先运行本文的 fake 双进程示例，核对 `status.json` 中的 update 和 streams，

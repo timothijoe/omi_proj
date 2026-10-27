@@ -1,16 +1,18 @@
 # 双池内存缓存：全量数据留盘，后台加载训练
 
+本文说明cached后端；下文BC12045路径属于旧任务示例。当前BC6148新建／续跑见[操作页](spacepilot_bc6148_online_rl.md)，清理后的旧任务与新任务库存分开，删除台账和完整恢复语义见[经验池模块](../docs/modules/replay.md)。
+
 新后端为 `omi-cached-dual-replay-v1`。Demo/RL各有采样索引，人工干预共享一份完整transition。
 原始单帧数据留盘；后台校验、登记索引并重建内存数据，训练线程只从驻留数据随机采样。
 已有磁盘ring会话保持原后端，不自动迁移或覆盖。
 两池滚动独立：一侧移出不会使另一侧失去数据；只有双方都移出时才回收对应RAM缓存。
-刚才的独立淘汰修正需要重启Learner才会加载新代码，已有SQLite目录不需要转换。
+独立淘汰修正属于已有实现；代码更新需在后续正常重启Learner后加载，已有SQLite目录无需因该修正转换。
 
 ## 1. 从原始 BC12045 准备新的缓存会话
 
 若只要原BC权重，连初始1387条Demo也不保留，使用 `--weights-only` 且不要传 `--recorded-source`。
 此模式Demo/RL都从空开始，必须新采人工接管数据供Demo使用；完整已准备会话与命令见
-[只用本批新数据](../docs/agent/training/chronicles/2026-10-11-weights-only-new-data.md)。下方原示例仍会导入旧Demo。
+[只用本批新数据](../docs/archive/online-rl/records/training/chronicles/2026-10-11-weights-only-new-data.md)。下方原示例仍会导入旧Demo。
 
 在项目根目录执行。下面是新的正式会话示例，验证目录中的测试权重不用于这里。
 准备命令不连接机器人、不启动在线训练，初始Actor完整继承BC12045。
@@ -77,7 +79,7 @@ bash scripts/run_async_rl.sh \
 后端按会话自动识别，新完成回合自动登记并滚动进入缓存。
 需要显式探索时，在在线命令中追加 `--exploration-noise-std 0.05 --exploration-noise-clip 0.15`。
 仅策略动作在仲裁后添加归一化高斯噪声，人工动作不变；默认std=0关闭，每次重启须显式携带参数。
-含当前会话的完整命令、幅度解释与测试见[在线探索记录](../docs/agent/training/chronicles/2026-10-11-online-exploration.md)。
+含当前会话的完整命令、幅度解释与测试见[在线探索记录](../docs/archive/online-rl/records/training/chronicles/2026-10-11-online-exploration.md)。
 Actor仍遵循现有回合边界换权重规则；这个命令启动在线RL，不是固定BC评估。
 原 `run_bc_episodes.sh` 仍只做固定BC；本次没有把它改成后台自动训练。
 
@@ -95,14 +97,14 @@ Actor仍遵循现有回合边界换权重规则；这个命令启动在线RL，�
 本运行目录自身的ready片段会补记 `catalog_registered=true` 的imported标记；
 它表示已登记到磁盘索引，不保证全部数据同时常驻内存。外部来源文件保持只读。
 
-机制与验证见[缓存双池](../docs/agent/training/evolution/cached-replay.md)。
+机制与验证见[缓存双池](../docs/modules/replay.md)。
 
 ## 有界离线迭代实验
 
 `scripts/run_cached_offline_experiment.py` 从原始BC新建独立运行目录，按完整回合留出2个成功和1个超时回合，
 其余用于训练。默认预热1000步、总更新1200步，输出前后人工动作误差、Q统计、内存与训练日志。
 它不连接机器人；固定BC策略文件不被覆盖。示例与首轮真实结果见
-[2026-10-11实验记录](../docs/agent/training/chronicles/2026-10-11-cached-offline-exp01.md)。
+[2026-10-11实验记录](../docs/archive/replay/records/training/chronicles/2026-10-11-cached-offline-exp01.md)。
 
 加 `--diagnose-q` 会额外评估训练前和预热结束的Critic，输出 `probe_initial.*` 与
 `probe_warmup.*`；预热步数须为50的倍数，与检查点发布对齐。探针保存/恢复随机数状态，

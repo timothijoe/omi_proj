@@ -1,6 +1,6 @@
 # bag_004腕部相机＋触觉＋机器人RViz回放
 
-外部与腕部两套裁剪的文字基线见[双相机ROI第一版](../docs/design/camera-roi-v1.md)，
+外部与腕部两套裁剪的文字基线见[双相机ROI第一版](../docs/archive/sensors/design/camera-roi-v1.md)，
 包括相对参数、实际像素边界与显示/训练插值方式的区别。
 
 已知限制：bag_004的腕部画面近乎静止，原始图像、缓存和实时发布逐级比对相符。

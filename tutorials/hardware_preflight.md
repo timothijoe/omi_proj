@@ -1,6 +1,6 @@
 # 真机准备：只读阶段
 
-当前仓库**没有可直接执行的真机 CLI**，也没有现场验收过的 IP、SDK 配置和关节限位。先在开发机阅读 [能力边界](../docs/safety.md)与 [SDK 接口](../docs/agent/hardware/evolution/tianji-adapter.md)，并运行无设备自动测试：
+当前仓库**没有可直接执行的真机 CLI**，也没有现场验收过的 IP、SDK 配置和关节限位。先在开发机阅读 [能力边界](../docs/safety.md)与 [SDK 接口](../docs/modules/control.md)，并运行无设备自动测试：
 
 ```bash
 .venv/bin/python -m pytest -q tests/test_tianji_sdk.py tests/test_tianji_sdk_sim.py

@@ -3,7 +3,7 @@
 2026-10-09 已将选定冷数据迁到
 `/media/zhoutong/zt-think-d1/omi_proj_data/local/`。
 完成状态见 `local/storage_migrations/20261009_202357/manifest.json`。
-目录选择与本机保留清单见[存储契约](../docs/agent/interfaces/local-storage.md)。
+目录选择与本机保留清单见[存储契约](../docs/interfaces/local-storage.md)。
 
 ## 读取迁出的数据
 
@@ -42,7 +42,7 @@ df -hT . /media/zhoutong/zt-think-d1
 
 同日还完成 pip/npm 下载缓存清理及定制音频内核的完整备份、生成文件清理。
 备份位于用户指定的移动盘“legion笔记本历史性质的备份/历史备份”下，
-目录、保留范围和恢复说明见[主机清理记录](../docs/agent/interfaces/local-storage.md#同日主机空间清理与内核备份)。
+目录、保留范围和恢复说明见[主机清理记录](../docs/interfaces/local-storage.md#同日主机空间清理与内核备份)。
 
 ## 恢复旧会话
 

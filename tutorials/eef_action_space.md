@@ -95,7 +95,7 @@ status为JSON诊断；预测日志与报告保存在输出目录。不向任何�
 
 常见错误：缺少omi_action_msgs时先完成第1步；数据/模型契约不符时用匹配版本重新导出和训练；
 EEF frame或时间校验失败时核实源数据；越界候选被拒绝时检查模型和标签，不放大阈值假装验收。
-完整契约与限制见[当前说明](../docs/agent/training/evolution/eef-action-space.md)。
+完整契约与限制见[当前说明](../docs/modules/policy.md)。
 
 ## 6. 开启或关闭腕部相机（v2）
 

@@ -1,0 +1,104 @@
+{
+  "markdown_files": 310,
+  "checked_links": 2043,
+  "broken": [
+    {
+      "source": "docs/agent/hardware/chronicles/2026-10-04-gamepad-intervention.md",
+      "line": 85,
+      "target": "../../../../tutorials/gamepad_control.md#sdk-单臂安装坐标转换-wrapper",
+      "reason": "missing_anchor"
+    },
+    {
+      "source": "docs/agent/training/chronicles/2026-10-04-cuda-policy-latency.md",
+      "line": 54,
+      "target": "../../../tutorials/current_stack_history.md#独立cuda环境与复测",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/agent/training/chronicles/2026-10-04-current-stack-history.md",
+      "line": 27,
+      "target": "../../../tutorials/current_stack_history.md",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/agent/training/chronicles/2026-10-04-resnet10-history.md",
+      "line": 23,
+      "target": "../../../tutorials/resnet10_history.md",
+      "reason": "missing_path"
+    },
+    {
+      "source": "tutorials/rl_episode_collection.md",
+      "line": 161,
+      "target": "gamepad_control.md#夹爪-sdk-与-a-b-按键",
+      "reason": "missing_anchor"
+    }
+  ],
+  "missing_external_resources": [
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 14,
+      "target": "../../cooking_proj/packages/tianji_arm/",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 40,
+      "target": "../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/arm_command_diagnostic.py",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 42,
+      "target": "../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/gamepad_cartesian_jog_simstyle.py",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 50,
+      "target": "../../cooking_proj/tutorials/tianji_hardware.md",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 51,
+      "target": "../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/keyboard_cartesian_jog.py",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 52,
+      "target": "../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/gamepad_cartesian_jog.py",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 53,
+      "target": "../../cooking_proj/packages/tianji_arm/src/tianji_arm/experiments/gamepad_cartesian_jog_simstyle.py",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 54,
+      "target": "../../cooking_proj/tutorials/hardware/tianji_teleoperation.md",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 56,
+      "target": "../../cooking_proj/tutorials/hardware/experiment_inventory.md",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 96,
+      "target": "../../cooking_proj/manifests/local-assets.yaml",
+      "reason": "missing_path"
+    },
+    {
+      "source": "docs/tianji_hil_rl.md",
+      "line": 107,
+      "target": "../../cooking_proj/docs/safety.md",
+      "reason": "missing_path"
+    }
+  ]
+}

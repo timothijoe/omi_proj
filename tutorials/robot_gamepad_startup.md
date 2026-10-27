@@ -453,7 +453,7 @@ RB+X 返回目前仍要求发送端使用 10 Hz。
 - 能收到动作消息但机器人不动：检查接收端连接日志、两端 domain 与话题，以及是否按住 RB。消息到达不代表控制器执行成功。
 - 换机仅 clone 仓库不足以获得 SDK：另带 `local/vendor/optical_module_pu/` 或重新导入原 ZIP，再重新构建。
 
-相关文档：[控制接收端迁移与恢复](robot_controller.md)、[手柄映射与输出转换](gamepad_control.md)、[接收端契约与遗留问题](../docs/agent/hardware/evolution/robot-controller.md)。
+相关文档：[控制接收端迁移与恢复](robot_controller.md)、[手柄映射与输出转换](gamepad_control.md)、[接收端契约与遗留问题](../docs/modules/control.md)。
 
 ### 策略速度保持
 

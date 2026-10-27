@@ -120,5 +120,5 @@ ROS订阅、解码和维护有界历史，并用与导出相同的预处理生�
 - 所有输出均标记shadow-only；尚未验证的动作单位、关节映射、时间语义和数据成功标签
   仍需采集方确认，不能把影子预测接到实机。
 
-实现与限制见[纪传体](../docs/agent/training/evolution/bag-bc-shadow.md)，
-本次真实数据结果见[编年记录](../docs/agent/training/chronicles/2026-10-03-bag-bc-shadow.md)。
+实现与限制见[纪传体](../docs/modules/bc.md)，
+本次真实数据结果见[编年记录](../docs/archive/bc/records/training/chronicles/2026-10-03-bag-bc-shadow.md)。

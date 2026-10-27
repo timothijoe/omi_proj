@@ -1,6 +1,6 @@
 # 当前操作：无六维力/力矩模型推理与观测录制
 
-阶段证据、三轮训练对照和未解决事项见[诊断记录](../docs/agent/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)。
+阶段证据、三轮训练对照和未解决事项见[诊断记录](../docs/archive/bc/records/training/chronicles/2026-10-05-policy-input-audit-no-wrench.md)。
 当前模型关闭的是**wrench六维力/力矩**，不是所有触觉：触觉网格、双相机和EEF十帧历史仍需发布。
 离线重放仍有后退，不能视为可以稳定插USB的模型。
 

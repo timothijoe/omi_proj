@@ -66,4 +66,4 @@ python -m omi_hil_rl.training.replay_benchmark \
 - `no clean checkpoint`：非正常退出后缺少可恢复 checkpoint，本版不支持自动修复。
 - 磁盘读取慢或控制循环停顿：减少图像/容量、使用 SSD、比较关闭预取后的表现。本版依赖 OS 回写，未提供真机硬实时保证。
 
-格式、锁和恢复边界见 [磁盘经验池说明](../docs/agent/training/evolution/disk-replay.md)。
+格式、锁和恢复边界见 [磁盘经验池说明](../docs/modules/replay.md)。

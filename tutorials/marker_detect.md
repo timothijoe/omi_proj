@@ -2,7 +2,7 @@
 
 tag10/tag12 用户先看[独立跟随启动](#tag-follow)；首次使用或安装位置改变时，先做[多姿态手眼标定](#tag-handeye)。训练过程中使用[异步 RL 内置跟随](async_rl.md#tag-follow)，不要同时启动独立脚本。
 
-以下前半部分介绍原 ID 0–7 标记板工具。从仓库根目录 `omi_proj/` 执行命令，脚本订阅 ROS 2 RealSense 彩色图像和内参，求出两组 marker 各自相对于**彩色相机光学中心**的位姿。SSH 无桌面时使用 `--headless`，不需要 X11 转发。算法、单位和验证范围见[技术说明](../docs/marker_detect.md)。
+以下前半部分介绍原 ID 0–7 标记板工具。从仓库根目录 `omi_proj/` 执行命令，脚本订阅 ROS 2 RealSense 彩色图像和内参，求出两组 marker 各自相对于**彩色相机光学中心**的位姿。SSH 无桌面时使用 `--headless`，不需要 X11 转发。算法、单位和验证范围见[技术说明](../docs/archive/marker/records/marker_detect.md)。
 
 ## 准备图像与标记板
 
@@ -193,4 +193,4 @@ local/cuda-env/bin/python ros2/marker_detect/tag_handeye_calibration.py \
   --output ros2/marker_detect/handeye_result.json
 ```
 
-本机当前结果已经过20条样本求解与软件校验，文件为 `ros2/marker_detect/handeye_result.json`，并非原始采样文件；平均平移残差3.03 mm、留出验证 RMS为4.22 mm/1.05°。该结果对应当时的固定安装，详见[标定来源与验证边界](../docs/marker_detect.md#tag-handeye-files)。
+本机当前结果已经过20条样本求解与软件校验，文件为 `ros2/marker_detect/handeye_result.json`，并非原始采样文件；平均平移残差3.03 mm、留出验证 RMS为4.22 mm/1.05°。该结果对应当时的固定安装，详见[标定来源与验证边界](../docs/archive/marker/records/marker_detect.md#tag-handeye-files)。

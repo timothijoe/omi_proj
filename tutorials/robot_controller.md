@@ -167,4 +167,4 @@ python3 scripts/import_optical_module.py import /path/to/OpticalModule_PU.zip
 导入要求目标目录不存在；不覆盖旧版本，另一个版本使用 `--destination` 指定新目录。
 导入脚本只读 ZIP、复制文件、写哈希，不运行安装器、示例、厂商 SDK 或网络命令。
 Python 要求3.11及以上；Humble/Python3.10机器可直接复制已验证资源，再单独重建 ROS 包。
-Humble 尚未验证。完整控制契约及保留问题见[架构与接收端审计](../docs/agent/hardware/evolution/robot-controller.md)。
+Humble 尚未验证。完整控制契约及保留问题见[架构与接收端审计](../docs/modules/control.md)。
